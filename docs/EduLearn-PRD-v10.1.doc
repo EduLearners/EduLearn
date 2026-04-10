@@ -1,0 +1,599 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>EduLearn PRD v10.1</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->
+<style>
+body { font-family: Calibri, sans-serif; font-size: 11pt; line-height: 1.4; margin: 1in; color: #1a1a1a; }
+h1 { font-size: 20pt; color: #1a3c5e; border-bottom: 2px solid #1a3c5e; padding-bottom: 4pt; margin-top: 24pt; page-break-before: always; }
+h1:first-of-type { page-break-before: avoid; }
+h2 { font-size: 15pt; color: #2a5a8a; margin-top: 18pt; }
+h3 { font-size: 12pt; color: #333; margin-top: 14pt; }
+table { border-collapse: collapse; width: 100%; margin: 8pt 0; font-size: 10pt; }
+th { background-color: #1a3c5e; color: white; padding: 6pt 8pt; text-align: left; font-weight: bold; }
+td { border: 1px solid #ccc; padding: 5pt 8pt; vertical-align: top; }
+tr:nth-child(even) { background-color: #f5f7fa; }
+code { font-family: Consolas, monospace; font-size: 9.5pt; background-color: #f0f0f0; padding: 1pt 3pt; }
+pre { font-family: Consolas, monospace; font-size: 9pt; background-color: #f5f5f5; padding: 8pt; border: 1px solid #ddd; overflow-x: auto; }
+blockquote { border-left: 3px solid #2a5a8a; margin-left: 0; padding: 6pt 12pt; background-color: #f0f5fa; font-size: 10pt; }
+.title-block { text-align: center; margin-bottom: 30pt; }
+.title-block h1 { border: none; font-size: 28pt; color: #1a3c5e; page-break-before: avoid; }
+.title-block .subtitle { font-size: 14pt; color: #555; }
+.title-block .tagline { font-size: 10pt; color: #888; margin-top: 6pt; }
+.changelog { background: #fffbe6; border: 1px solid #e6d866; padding: 10pt; margin: 12pt 0; }
+.changelog strong { color: #8a7000; }
+</style>
+</head>
+<body>
+
+<div class="title-block">
+<h1>EduLearn Platform</h1>
+<p style="font-size:16pt; color:#2a5a8a; font-weight:bold;">Product Requirements Document &mdash; Version 10.1</p>
+<p class="subtitle">University Learning Management &amp; Student Information System</p>
+<p class="tagline">6 Microservices &bull; 25 Entities &bull; 9 Modules &bull; 7 Roles &bull; Enterprise Scope</p>
+</div>
+
+<table>
+<tr><th>Attribute</th><th>Value</th></tr>
+<tr><td>Team Size</td><td>6 Developers</td></tr>
+<tr><td>Timeline</td><td>12 Weeks (Mar 25 &ndash; Jun 16, 2026)</td></tr>
+<tr><td>Architecture</td><td>6 Microservices (Shared Database)</td></tr>
+<tr><td>Modules</td><td>9 (IAM, SRA, CCM, ETS, LMS, AGI, SFB, RKA, NHT)</td></tr>
+<tr><td>Total Features</td><td>30 across 9 modules</td></tr>
+<tr><td>Database</td><td>25 Entities, Single Schema (SQL Server)</td></tr>
+<tr><td>User Roles</td><td>7 (Student, Instructor, Registrar, Dept Admin, Finance, IT Admin, Auditor)</td></tr>
+<tr><td>Cloud Platform</td><td>Microsoft Azure (App Service)</td></tr>
+<tr><td>Interim Milestone</td><td>April 24, 2026 (&ge;50% backend complete)</td></tr>
+<tr><td>Final Deadline</td><td>June 16, 2026 (Full project + viva)</td></tr>
+</table>
+
+<p>Cognizant ADM DotNet FSE &ndash; React Stage<br/>Program: INTDE26DFSR002 | March 2026</p>
+
+<div class="changelog">
+<strong>Change Log (v10.0 &rarr; v10.1)</strong>
+<ul>
+<li>Removed <code>RefreshToken</code> and <code>RefreshTokenExpiry</code> columns from User table (simpler JWT-to-session approach adopted)</li>
+<li>All status/type/role/category columns now use <strong>strongly-typed C# enums</strong> stored as strings via <code>HasConversion&lt;string&gt;()</code> &mdash; never integers</li>
+<li>Enum values updated throughout all table definitions to match finalized codebase (see Section 5.7 for full enum reference)</li>
+<li>Database migration strategy updated to <strong>single DbMigrator pattern</strong> &mdash; one <code>MigrationDbContext</code> creates all 25 tables atomically</li>
+<li>Migration order table replaced with single-step DbMigrator command</li>
+<li>Swagger configuration standardized across all 6 services (JsonStringEnumConverter + EnumSchemaFilter)</li>
+</ul>
+</div>
+
+<h1>1. Introduction</h1>
+
+<h2>1.1 What is EduLearn?</h2>
+<p>EduLearn is an integrated platform for universities and colleges to manage student records, course delivery, assessments, timetables, faculty workflows, and accreditation reporting. It centralizes student profiles, enrollment, course catalogs, learning content, assessments, grades, billing, and audit logs so administrators, instructors, and students can operate with transparency, academic integrity, and regulatory compliance.</p>
+<p>EduLearn supports deterministic enrollment rules, manual overrides, evidence capture for assessments, and exportable audit packages for accreditors. The platform replaces fragmented legacy systems (Canvas, Moodle, Blackboard) with a unified ecosystem covering the complete university operations lifecycle.</p>
+
+<h2>1.2 Actors and Users</h2>
+<table>
+<tr><th>Role</th><th>Description</th><th>Key Capabilities</th></tr>
+<tr><td>Student</td><td>Primary learner user</td><td>Enrolls in courses, accesses learning materials, submits assignments, views grades and bills</td></tr>
+<tr><td>Instructor</td><td>Teaching faculty</td><td>Creates courses, delivers content, grades assessments, manages office hours</td></tr>
+<tr><td>Registrar</td><td>Academic administration</td><td>Manages enrollment rules, timetables, transcripts, and graduation processing</td></tr>
+<tr><td>Department Administrator</td><td>Department-level management</td><td>Configures course offerings, faculty assignments, and room allocations</td></tr>
+<tr><td>Finance Officer</td><td>Financial operations</td><td>Issues invoices, records payments, manages scholarships and refunds</td></tr>
+<tr><td>IT Administrator</td><td>System administration</td><td>Manages system configuration, integrations, backups, and security</td></tr>
+<tr><td>Compliance Officer / Auditor</td><td>Regulatory compliance</td><td>Reviews academic records, grade changes, and audit packages</td></tr>
+</table>
+
+<h2>1.3 Document Team</h2>
+<table>
+<tr><th>Member</th><th>Name</th><th>Role</th><th>Primary Service</th></tr>
+<tr><td>M1</td><td>Ashish</td><td>Project Lead / Solution Architect</td><td>AuthService</td></tr>
+<tr><td>M2</td><td>Saurav</td><td>Backend Developer</td><td>SISService</td></tr>
+<tr><td>M3</td><td>Vikash</td><td>Backend Developer</td><td>LMSService</td></tr>
+<tr><td>M4</td><td>Utkarsh</td><td>Backend Developer</td><td>AnalyticsService</td></tr>
+<tr><td>M5</td><td>Tanya</td><td>Backend Developer</td><td>FinanceService</td></tr>
+<tr><td>M6</td><td>Swarna Priyanshu</td><td>Full-Stack / QA</td><td>NotificationService</td></tr>
+</table>
+
+<h2>1.4 Core Design Principles</h2>
+<p>&bull; <strong>Curriculum Compliant:</strong> Every technology is from the Cognizant ADM DotNet FSE curriculum. No external AI/ML dependencies.</p>
+<p>&bull; <strong>Deterministic Rules:</strong> Enrollment, prerequisites, graduation, and billing follow deterministic rule engines &mdash; transparent, testable, auditable.</p>
+<p>&bull; <strong>Lean Schema:</strong> 25 entities with strategic JSON columns where full normalization adds complexity without query benefits.</p>
+<p>&bull; <strong>Production Discipline:</strong> SonarQube, OWASP ZAP, structured logging, append-only audit logs from Day 1.</p>
+<p>&bull; <strong>Evidence-Based:</strong> Assignments, recordings, transcripts stored in object storage with SHA-256 checksums for tamper evidence.</p>
+<p>&bull; <strong>Regulatory Compliance:</strong> FERPA, GDPR ready with exportable audit packages for accreditors.</p>
+<p>&bull; <strong>Strongly-Typed Enums:</strong> All status, type, role, and category fields use C# enums stored as strings in the database &mdash; no magic strings.</p>
+
+<h1>2. Module Overview</h1>
+<table>
+<tr><th>#</th><th>Module</th><th>Service</th><th>Description</th></tr>
+<tr><td>M1</td><td>Identity &amp; Access Management (IAM)</td><td>AuthService</td><td>Authentication, RBAC, MFA for privileged roles, session management, append-only audit logs</td></tr>
+<tr><td>M2</td><td>Student Registry &amp; Admissions (SRA)</td><td>SISService</td><td>Applicant intake, admissions decisions, student lifecycle, transcripts</td></tr>
+<tr><td>M3</td><td>Course Catalog &amp; Curriculum (CCM)</td><td>LMSService</td><td>Course definitions, programs, syllabi, prerequisites, credit tracking</td></tr>
+<tr><td>M4</td><td>Enrollment &amp; Timetable Scheduling (ETS)</td><td>SISService</td><td>Section-based enrollment, capacity/waitlist, room allocation, timetable conflict detection</td></tr>
+<tr><td>M5</td><td>Learning Content &amp; LMS Delivery (LMS)</td><td>LMSService</td><td>Learning materials, content versioning, discussion forums</td></tr>
+<tr><td>M6</td><td>Assessment, Grading &amp; Academic Integrity (AGI)</td><td>LMSService</td><td>Assessments, submissions, rubric grading, plagiarism tracking, grade change audit</td></tr>
+<tr><td>M7</td><td>Student Finance &amp; Billing (SFB)</td><td>FinanceService</td><td>Fee schedules, invoicing, payments, scholarships, refunds, financial holds</td></tr>
+<tr><td>M8</td><td>Reporting, KPIs &amp; Audit Packages (RKA)</td><td>AnalyticsService</td><td>Academic reports, KPI dashboards, accreditation exports, audit package generation</td></tr>
+<tr><td>M9</td><td>Notifications, Helpdesk &amp; Tasks (NHT)</td><td>NotificationService</td><td>Alerts, email notifications, IT/academic support ticketing</td></tr>
+</table>
+
+<h1>3. Technology Stack (100% Curriculum Compliant)</h1>
+<table>
+<tr><th>Layer</th><th>Technology</th><th>Version</th><th>Purpose</th></tr>
+<tr><td>Frontend</td><td>React + TypeScript</td><td>v18 + v5</td><td>Type-safe SPA with component architecture</td></tr>
+<tr><td>UI Framework</td><td>Bootstrap</td><td>5.3</td><td>Responsive grid, WCAG-compliant components</td></tr>
+<tr><td>Backend</td><td>ASP.NET Core</td><td>8.0 LTS</td><td>REST APIs for 6 microservices</td></tr>
+<tr><td>ORM</td><td>Entity Framework Core</td><td>8.0</td><td>Code-first migrations, LINQ queries</td></tr>
+<tr><td>Database</td><td>MS SQL Server (Azure SQL)</td><td>2022</td><td>ACID compliant, 25 entity tables</td></tr>
+<tr><td>Rule Engine</td><td>C# Deterministic Logic</td><td>&mdash;</td><td>Deterministic enrollment, prerequisites, graduation checks</td></tr>
+<tr><td>Cloud</td><td>Microsoft Azure</td><td>App Service</td><td>Managed platform, no Docker/K8s required</td></tr>
+<tr><td>Auth</td><td>JWT + BCrypt</td><td>&mdash;</td><td>Stateless auth, simplified JWT-to-session approach</td></tr>
+<tr><td>Real-Time</td><td>SignalR</td><td>ASP.NET Core</td><td>WebSocket for live notifications</td></tr>
+<tr><td>File Storage</td><td>Azure Blob Storage</td><td>&mdash;</td><td>Assignments, recordings, transcripts, certificates</td></tr>
+<tr><td>PDF Generation</td><td>QuestPDF</td><td>2024.x</td><td>Transcript/report PDFs with QR codes</td></tr>
+<tr><td>Testing</td><td>NUnit 3 + Moq</td><td>&mdash;</td><td>Unit + integration tests, InMemory DB</td></tr>
+<tr><td>Code Quality</td><td>SonarQube + OWASP ZAP</td><td>&mdash;</td><td>Static analysis, security scanning</td></tr>
+<tr><td>Logging</td><td>Serilog</td><td>&mdash;</td><td>Structured logging, centralized observability</td></tr>
+</table>
+
+<h1>4. Microservice Architecture</h1>
+
+<h2>4.1 Service Responsibilities</h2>
+<table>
+<tr><th>Service</th><th>Port</th><th>Modules Covered</th><th>Tables Owned</th></tr>
+<tr><td>AuthService</td><td>5001</td><td>IAM</td><td>User, AuditLog</td></tr>
+<tr><td>SISService</td><td>5002</td><td>SRA, ETS</td><td>Student, Applicant, Transcript, Section, Enrollment, Room</td></tr>
+<tr><td>LMSService</td><td>5003</td><td>CCM, LMS, AGI</td><td>Course, Program, Syllabus, Content, Discussion, Assessment, Submission, GradeChange</td></tr>
+<tr><td>AnalyticsService</td><td>5004</td><td>RKA</td><td>Report, KPI, AuditPackage</td></tr>
+<tr><td>NotificationService</td><td>5005</td><td>NHT</td><td>Notification, Ticket</td></tr>
+<tr><td>FinanceService</td><td>5006</td><td>SFB</td><td>FeeSchedule, Invoice, Payment, Scholarship</td></tr>
+</table>
+
+<h2>4.2 Communication Pattern</h2>
+<p>React SPA &rarr; API Gateway (YARP or direct) &rarr; Individual Service &rarr; Shared Database. AnalyticsService reads data from tables owned by other services via read-only cross-service queries. NotificationService pushes events via SignalR Hub. FinanceService reads Student data from SIS-owned tables for invoice generation.</p>
+
+<h2>4.3 Shared Database Strategy</h2>
+<p>All 6 services connect to the same Azure SQL database (EduLearnDb). Each service has ownership over specific tables (only that service writes to its tables), but any service can read from any table. This avoids the complexity of database-per-service while maintaining logical separation. Entity Framework DbContext per service only includes the entity classes that service needs. Non-owned tables use <code>ExcludeFromMigrations()</code> to prevent duplicate schema creation.</p>
+
+<h2>4.4 Module-to-Service Mapping</h2>
+<table>
+<tr><th>Module</th><th>Service</th><th>Rationale</th></tr>
+<tr><td>IAM &mdash; Identity &amp; Access</td><td>AuthService</td><td>Standalone: auth logic is independent and security-critical</td></tr>
+<tr><td>SRA &mdash; Student Registry</td><td>SISService</td><td>Shares Student entity with Enrollment module</td></tr>
+<tr><td>ETS &mdash; Enrollment &amp; Timetable</td><td>SISService</td><td>Shares Student, Section entities with Registry</td></tr>
+<tr><td>CCM &mdash; Course Catalog</td><td>LMSService</td><td>Shares Course entity with Content and Assessment</td></tr>
+<tr><td>LMS &mdash; Learning Content</td><td>LMSService</td><td>Shares Course, Content entities with Catalog</td></tr>
+<tr><td>AGI &mdash; Assessment &amp; Grading</td><td>LMSService</td><td>Shares Course, Submission entities with Content</td></tr>
+<tr><td>SFB &mdash; Student Finance</td><td>FinanceService</td><td>Standalone: billing logic is isolated, references Student via FK</td></tr>
+<tr><td>RKA &mdash; Reporting &amp; KPIs</td><td>AnalyticsService</td><td>Read-only: queries all services, writes only Report/KPI/AuditPackage</td></tr>
+<tr><td>NHT &mdash; Notifications &amp; Helpdesk</td><td>NotificationService</td><td>Standalone: alerts + ticketing, SignalR hub</td></tr>
+</table>
+
+<h1>5. Database Schema (25 Entities)</h1>
+<p>All entities reside in a single Azure SQL database (EduLearnDb) under the default dbo schema. JSON columns are used where query-by-column is not needed. Media files are stored in Azure Blob Storage; the database stores URIs and SHA-256 checksums for tamper evidence.</p>
+<p><strong>Enum Storage Convention:</strong> All status, type, role, category, and method fields use strongly-typed C# enums with <code>HasConversion&lt;string&gt;()</code> in EF Core. Values are stored as <code>nvarchar</code> strings in the database (e.g., <code>"Active"</code>, <code>"Enrolled"</code>, <code>"Student"</code>), never as integers. See Section 5.7 for the complete enum reference.</p>
+
+<h2>5.1 Entity Ownership by Service</h2>
+<table>
+<tr><th>Service</th><th>Tables Owned (Write)</th><th>Tables Referenced (Read-Only)</th></tr>
+<tr><td>AuthService (:5001)</td><td>User, AuditLog</td><td>&mdash;</td></tr>
+<tr><td>SISService (:5002)</td><td>Student, Applicant, Transcript, Section, Enrollment, Room</td><td>User, Course, Program</td></tr>
+<tr><td>LMSService (:5003)</td><td>Course, Program, Syllabus, Content, Discussion, Assessment, Submission, GradeChange</td><td>User, Section, Student</td></tr>
+<tr><td>AnalyticsService (:5004)</td><td>Report, KPI, AuditPackage</td><td>ALL tables (read-only)</td></tr>
+<tr><td>NotificationService (:5005)</td><td>Notification, Ticket</td><td>User</td></tr>
+<tr><td>FinanceService (:5006)</td><td>FeeSchedule, Invoice, Payment, Scholarship</td><td>Student, Program, User</td></tr>
+</table>
+
+<h2>5.2 Table Definitions</h2>
+
+<h3>Module 1: Identity &amp; Access Management (AuthService)</h3>
+
+<p><strong>1. User</strong></p>
+<p><em>Authentication and identity for all 7 roles. PasswordHash uses BCrypt (cost=12). MFAEnabled flag for privileged roles.</em></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>UserID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>Username</td><td>nvarchar(100)</td><td>Unique, Not Null</td><td>Login username</td></tr>
+<tr><td>FullName</td><td>nvarchar(200)</td><td>Not Null</td><td>Display name</td></tr>
+<tr><td>Email</td><td>nvarchar(255)</td><td>Unique, Not Null</td><td>Email address</td></tr>
+<tr><td>Phone</td><td>nvarchar(20)</td><td>Nullable</td><td>Contact phone</td></tr>
+<tr><td>Role</td><td>nvarchar(30)</td><td>Not Null, Enum: <code>UserRole</code></td><td>Student &verbar; Instructor &verbar; Registrar &verbar; DeptAdmin &verbar; Finance &verbar; ITAdmin &verbar; Auditor</td></tr>
+<tr><td>PasswordHash</td><td>nvarchar(500)</td><td>Not Null</td><td>BCrypt hashed password (cost=12)</td></tr>
+<tr><td>MFAEnabled</td><td>bit</td><td>Default: 0</td><td>Multi-factor auth flag for privileged roles</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Active', Enum: <code>UserStatus</code></td><td>Active &verbar; Inactive &verbar; Suspended &verbar; Locked</td></tr>
+<tr><td>CreatedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Account creation timestamp</td></tr>
+<tr><td>UpdatedAt</td><td>datetime2</td><td>Nullable</td><td>Last profile update timestamp</td></tr>
+</table>
+<blockquote><strong>v10.1 Change:</strong> <code>RefreshToken</code> (nvarchar(500)) and <code>RefreshTokenExpiry</code> (datetime2) columns removed. A simpler JWT-to-session approach is used.</blockquote>
+
+<p><strong>2. AuditLog</strong></p>
+<p><em>Append-only audit trail. Immutable &mdash; no UPDATE or DELETE allowed.</em></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>AuditID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>UserID</td><td>int</td><td>FK &rarr; User.UserID</td><td>User who performed the action</td></tr>
+<tr><td>Action</td><td>nvarchar(100)</td><td>Not Null</td><td>Action performed</td></tr>
+<tr><td>ResourceType</td><td>nvarchar(50)</td><td>Not Null</td><td>Entity type affected</td></tr>
+<tr><td>ResourceID</td><td>int</td><td>Not Null</td><td>ID of the affected entity</td></tr>
+<tr><td>DetailsJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: action-specific context</td></tr>
+<tr><td>Timestamp</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>When the action occurred</td></tr>
+</table>
+
+<h3>Module 2: Student Registry &amp; Admissions (SISService)</h3>
+
+<p><strong>3. Applicant</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>ApplicantID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>Name</td><td>nvarchar(200)</td><td>Not Null</td><td>Applicant full name</td></tr>
+<tr><td>DOB</td><td>date</td><td>Not Null</td><td>Date of birth</td></tr>
+<tr><td>NationalID</td><td>nvarchar(50)</td><td>Nullable</td><td>Government ID number</td></tr>
+<tr><td>ContactInfoJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: {email, phone, address, emergencyContact}</td></tr>
+<tr><td>ProgramApplied</td><td>nvarchar(100)</td><td>Not Null</td><td>Program/degree applied for</td></tr>
+<tr><td>ApplicationStatus</td><td>nvarchar(30)</td><td>Not Null, Default: 'Submitted', Enum: <code>ApplicationStatus</code></td><td>Submitted &verbar; UnderReview &verbar; Accepted &verbar; Rejected &verbar; Waitlisted</td></tr>
+<tr><td>SubmittedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Application submission date</td></tr>
+<tr><td>DocumentsURIJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: [{name, uri, sha256, uploadedAt}]</td></tr>
+</table>
+
+<p><strong>4. Student</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>StudentID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>UserID</td><td>int</td><td>FK &rarr; User.UserID, Unique</td><td>Link to authentication identity</td></tr>
+<tr><td>MRN</td><td>nvarchar(20)</td><td>Unique, Not Null</td><td>University registration number</td></tr>
+<tr><td>Name</td><td>nvarchar(200)</td><td>Not Null</td><td>Student full name</td></tr>
+<tr><td>DOB</td><td>date</td><td>Not Null</td><td>Date of birth</td></tr>
+<tr><td>Gender</td><td>nvarchar(10)</td><td>Nullable</td><td>Male &verbar; Female &verbar; Other &verbar; Prefer not to say</td></tr>
+<tr><td>ContactInfoJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: {email, phone, address, guardian}</td></tr>
+<tr><td>EnrollmentStatus</td><td>nvarchar(20)</td><td>Not Null, Default: 'Active', Enum: <code>StudentLifecycleStatus</code></td><td>Active &verbar; OnLeave &verbar; Graduated &verbar; Expelled</td></tr>
+<tr><td>ProgramID</td><td>int</td><td>FK &rarr; Program.ProgramID</td><td>Enrolled degree program</td></tr>
+<tr><td>EntryTerm</td><td>nvarchar(20)</td><td>Not Null</td><td>e.g., Fall 2026</td></tr>
+<tr><td>ExpectedGraduationTerm</td><td>nvarchar(20)</td><td>Nullable</td><td>Projected graduation term</td></tr>
+<tr><td>CreatedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Record creation timestamp</td></tr>
+</table>
+<blockquote><strong>v10.1 Change:</strong> <code>EnrollmentStatus</code> enum values updated to Active &verbar; OnLeave &verbar; Graduated &verbar; Expelled (was Active &verbar; Graduated &verbar; Withdrawn &verbar; Suspended).</blockquote>
+
+<p><strong>5. Transcript</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>TranscriptID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>StudentID</td><td>int</td><td>FK &rarr; Student.StudentID</td><td>Student whose transcript this is</td></tr>
+<tr><td>IssuedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>When the transcript was generated</td></tr>
+<tr><td>EntriesJSON</td><td>nvarchar(max)</td><td>Not Null</td><td>JSON: [{courseCode, courseName, credits, grade, term}]</td></tr>
+<tr><td>GPA</td><td>decimal(3,2)</td><td>Nullable</td><td>Cumulative GPA at time of issue</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Draft', Enum: <code>TranscriptStatus</code></td><td>Draft &verbar; Issued &verbar; Revoked</td></tr>
+<tr><td>TranscriptURI</td><td>nvarchar(500)</td><td>Nullable</td><td>Generated PDF URI in blob storage</td></tr>
+</table>
+
+<h3>Module 3: Course Catalog &amp; Curriculum (LMSService)</h3>
+
+<p><strong>6. Course</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>CourseID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>Code</td><td>nvarchar(20)</td><td>Unique, Not Null</td><td>Course code (e.g., CS101)</td></tr>
+<tr><td>Title</td><td>nvarchar(200)</td><td>Not Null</td><td>Course title</td></tr>
+<tr><td>Description</td><td>nvarchar(max)</td><td>Nullable</td><td>Detailed course description</td></tr>
+<tr><td>Credits</td><td>int</td><td>Not Null, Default: 3</td><td>Credit hours</td></tr>
+<tr><td>DepartmentID</td><td>int</td><td>Nullable</td><td>Department offering the course</td></tr>
+<tr><td>Level</td><td>nvarchar(20)</td><td>Nullable</td><td>100-level, 200-level, Graduate, etc.</td></tr>
+<tr><td>PrerequisitesJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: [courseID1, courseID2, ...]</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Active', Enum: <code>CourseStatus</code></td><td>Active &verbar; Deprecated &verbar; Archived</td></tr>
+<tr><td>CreatedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Catalog entry creation</td></tr>
+</table>
+
+<p><strong>7. Program</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>ProgramID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>Name</td><td>nvarchar(200)</td><td>Not Null</td><td>Program name</td></tr>
+<tr><td>DepartmentID</td><td>int</td><td>Nullable</td><td>Owning department</td></tr>
+<tr><td>DegreeType</td><td>nvarchar(50)</td><td>Not Null</td><td>Bachelor &verbar; Master &verbar; PhD &verbar; Diploma &verbar; Certificate</td></tr>
+<tr><td>RequiredCoursesJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: [courseID1, courseID2, ...]</td></tr>
+<tr><td>ElectivesJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: [{group, minCredits, courses}]</td></tr>
+<tr><td>DurationTerms</td><td>int</td><td>Not Null, Default: 8</td><td>Number of terms to complete</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Active'</td><td>Active &verbar; Deprecated &verbar; Archived</td></tr>
+</table>
+
+<p><strong>8. Syllabus</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>SyllabusID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>CourseID</td><td>int</td><td>FK &rarr; Course.CourseID</td><td>Associated course</td></tr>
+<tr><td>Version</td><td>nvarchar(20)</td><td>Not Null</td><td>Version string (e.g., 2026-Spring-v1)</td></tr>
+<tr><td>LearningOutcomesJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: [{outcome, bloomLevel, assessmentMethod}]</td></tr>
+<tr><td>AssessmentPlanJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: [{type, weight, description}]</td></tr>
+<tr><td>CreatedByFK</td><td>int</td><td>FK &rarr; User.UserID</td><td>Instructor who created</td></tr>
+<tr><td>CreatedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Creation timestamp</td></tr>
+<tr><td>SyllabusURI</td><td>nvarchar(500)</td><td>Nullable</td><td>PDF/document URI in blob storage</td></tr>
+</table>
+
+<h3>Module 4: Enrollment &amp; Timetable Scheduling (SISService)</h3>
+
+<p><strong>9. Section</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>SectionID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>CourseID</td><td>int</td><td>FK &rarr; Course.CourseID</td><td>Course being offered</td></tr>
+<tr><td>Term</td><td>nvarchar(20)</td><td>Not Null</td><td>Academic term (e.g., Fall 2026)</td></tr>
+<tr><td>InstructorID</td><td>int</td><td>FK &rarr; User.UserID</td><td>Assigned instructor</td></tr>
+<tr><td>RoomID</td><td>int</td><td>FK &rarr; Room.RoomID, Nullable</td><td>Assigned room (null = TBD)</td></tr>
+<tr><td>Capacity</td><td>int</td><td>Not Null, Default: 60</td><td>Maximum enrollment capacity</td></tr>
+<tr><td>EnrolledCount</td><td>int</td><td>Not Null, Default: 0</td><td>Current enrollment count (denormalized)</td></tr>
+<tr><td>ScheduleJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: [{day, startTime, endTime, room}]</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Open'</td><td>Open &verbar; Closed &verbar; Cancelled</td></tr>
+</table>
+
+<p><strong>10. Enrollment</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>EnrollID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>StudentID</td><td>int</td><td>FK &rarr; Student.StudentID</td><td>Enrolling student</td></tr>
+<tr><td>SectionID</td><td>int</td><td>FK &rarr; Section.SectionID</td><td>Section enrolled in</td></tr>
+<tr><td>EnrolledAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Enrollment timestamp</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Enrolled', Enum: <code>EnrollmentStatus</code></td><td>Enrolled &verbar; Waitlisted &verbar; Dropped</td></tr>
+<tr><td>WaitlistPosition</td><td>int</td><td>Nullable</td><td>Position in waitlist queue (null if enrolled)</td></tr>
+<tr><td>GradePostedFlag</td><td>bit</td><td>Default: 0</td><td>Whether final grade has been posted</td></tr>
+</table>
+
+<p><strong>11. Room</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>RoomID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>Building</td><td>nvarchar(100)</td><td>Not Null</td><td>Building name</td></tr>
+<tr><td>RoomNumber</td><td>nvarchar(20)</td><td>Not Null</td><td>Room identifier (e.g., A101)</td></tr>
+<tr><td>Capacity</td><td>int</td><td>Not Null</td><td>Seating capacity</td></tr>
+<tr><td>ResourcesJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: {projector, whiteboard, computers, ...}</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Available'</td><td>Available &verbar; UnderMaintenance &verbar; Reserved</td></tr>
+</table>
+
+<h3>Module 5: Learning Content &amp; LMS Delivery (LMSService)</h3>
+
+<p><strong>12. Content</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>ContentID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>CourseID</td><td>int</td><td>FK &rarr; Course.CourseID</td><td>Parent course</td></tr>
+<tr><td>Title</td><td>nvarchar(200)</td><td>Not Null</td><td>Content title</td></tr>
+<tr><td>Type</td><td>nvarchar(20)</td><td>Not Null, Enum: <code>ContentType</code></td><td>Document &verbar; Video &verbar; Quiz &verbar; Link</td></tr>
+<tr><td>URI</td><td>nvarchar(500)</td><td>Not Null</td><td>Blob storage URI or external link</td></tr>
+<tr><td>UploadedByFK</td><td>int</td><td>FK &rarr; User.UserID</td><td>Instructor who uploaded</td></tr>
+<tr><td>UploadedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Upload timestamp</td></tr>
+<tr><td>Version</td><td>int</td><td>Not Null, Default: 1</td><td>Content version number</td></tr>
+<tr><td>MetadataJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: {fileSize, mimeType, duration, sha256}</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Active', Enum: <code>ContentStatus</code></td><td>Active &verbar; Archived &verbar; Draft</td></tr>
+</table>
+
+<p><strong>13. Discussion</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>DiscussionID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>CourseID</td><td>int</td><td>FK &rarr; Course.CourseID</td><td>Parent course</td></tr>
+<tr><td>ThreadStarterID</td><td>int</td><td>FK &rarr; User.UserID</td><td>User who started the thread</td></tr>
+<tr><td>Title</td><td>nvarchar(200)</td><td>Not Null</td><td>Discussion title</td></tr>
+<tr><td>PostsJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: [{authorID, authorName, content, timestamp, parentPostIndex}]</td></tr>
+<tr><td>CreatedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Thread creation timestamp</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Open', Enum: <code>DiscussionStatus</code></td><td>Open &verbar; Closed &verbar; Pinned &verbar; Archived</td></tr>
+</table>
+
+<h3>Module 6: Assessment, Grading &amp; Academic Integrity (LMSService)</h3>
+
+<p><strong>14. Assessment</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>AssessmentID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>CourseID</td><td>int</td><td>FK &rarr; Course.CourseID</td><td>Course this assessment belongs to</td></tr>
+<tr><td>SectionID</td><td>int</td><td>FK &rarr; Section.SectionID, Nullable</td><td>Specific section (null = all sections)</td></tr>
+<tr><td>Title</td><td>nvarchar(200)</td><td>Not Null</td><td>Assessment title</td></tr>
+<tr><td>Type</td><td>nvarchar(20)</td><td>Not Null, Enum: <code>AssessmentType</code></td><td>Assignment &verbar; Quiz &verbar; Exam</td></tr>
+<tr><td>DueAt</td><td>datetime2</td><td>Nullable</td><td>Submission deadline</td></tr>
+<tr><td>MaxScore</td><td>decimal(5,1)</td><td>Not Null</td><td>Maximum possible score</td></tr>
+<tr><td>GradingRubricJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: [{criterion, maxPoints, description}]</td></tr>
+<tr><td>CreatedByFK</td><td>int</td><td>FK &rarr; User.UserID</td><td>Instructor who created</td></tr>
+<tr><td>CreatedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Creation timestamp</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Draft', Enum: <code>AssessmentStatus</code></td><td>Draft &verbar; Published &verbar; Closed</td></tr>
+</table>
+<blockquote><strong>v10.1 Change:</strong> <code>AssessmentStatus</code> has 3 values: Draft &verbar; Published &verbar; Closed (removed Archived).</blockquote>
+
+<p><strong>15. Submission</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>SubmissionID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>AssessmentID</td><td>int</td><td>FK &rarr; Assessment.AssessmentID</td><td>Parent assessment</td></tr>
+<tr><td>StudentID</td><td>int</td><td>FK &rarr; Student.StudentID</td><td>Submitting student</td></tr>
+<tr><td>SubmittedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Submission timestamp</td></tr>
+<tr><td>FileURI</td><td>nvarchar(500)</td><td>Nullable</td><td>Uploaded file URI in blob storage</td></tr>
+<tr><td>Score</td><td>decimal(5,1)</td><td>Nullable</td><td>Achieved score</td></tr>
+<tr><td>GraderID</td><td>int</td><td>FK &rarr; User.UserID, Nullable</td><td>Instructor who graded</td></tr>
+<tr><td>GradedAt</td><td>datetime2</td><td>Nullable</td><td>When grading was completed</td></tr>
+<tr><td>PlagiarismReportURI</td><td>nvarchar(500)</td><td>Nullable</td><td>Anti-plagiarism report URI</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Submitted', Enum: <code>SubmissionStatus</code></td><td>Submitted &verbar; Graded &verbar; Late &verbar; Plagiarised</td></tr>
+</table>
+<blockquote><strong>v10.1 Change:</strong> <code>SubmissionStatus</code> values are Submitted &verbar; Graded &verbar; Late &verbar; Plagiarised (replaced Returned with Plagiarised).</blockquote>
+
+<p><strong>16. GradeChange</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>GradeChangeID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>SubmissionID</td><td>int</td><td>FK &rarr; Submission.SubmissionID</td><td>Submission whose grade changed</td></tr>
+<tr><td>OldScore</td><td>decimal(5,1)</td><td>Not Null</td><td>Previous score</td></tr>
+<tr><td>NewScore</td><td>decimal(5,1)</td><td>Not Null</td><td>Updated score</td></tr>
+<tr><td>ChangedByFK</td><td>int</td><td>FK &rarr; User.UserID</td><td>Who made the change</td></tr>
+<tr><td>ChangedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>When the change occurred</td></tr>
+<tr><td>Reason</td><td>nvarchar(500)</td><td>Not Null</td><td>Reason for grade change</td></tr>
+<tr><td>AuditNote</td><td>nvarchar(max)</td><td>Nullable</td><td>Additional audit documentation</td></tr>
+</table>
+
+<h3>Module 7: Student Finance &amp; Billing (FinanceService)</h3>
+
+<p><strong>17. FeeSchedule</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>FeeID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>ProgramID</td><td>int</td><td>FK &rarr; Program.ProgramID</td><td>Program this schedule applies to</td></tr>
+<tr><td>Term</td><td>nvarchar(20)</td><td>Not Null</td><td>Academic term</td></tr>
+<tr><td>FeeItemsJSON</td><td>nvarchar(max)</td><td>Not Null</td><td>JSON: [{item, amount}]</td></tr>
+<tr><td>EffectiveFrom</td><td>date</td><td>Not Null</td><td>Schedule start date</td></tr>
+<tr><td>EffectiveTo</td><td>date</td><td>Not Null</td><td>Schedule end date</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Draft', Enum: <code>FeeScheduleStatus</code></td><td>Draft &verbar; Active &verbar; Superseded</td></tr>
+</table>
+<blockquote><strong>v10.1 Change:</strong> <code>FeeScheduleStatus</code> values are Draft &verbar; Active &verbar; Superseded (was Active &verbar; Expired &verbar; Draft).</blockquote>
+
+<p><strong>18. Invoice</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>InvoiceID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>StudentID</td><td>int</td><td>FK &rarr; Student.StudentID</td><td>Billed student</td></tr>
+<tr><td>Term</td><td>nvarchar(20)</td><td>Not Null</td><td>Billing term</td></tr>
+<tr><td>LineItemsJSON</td><td>nvarchar(max)</td><td>Not Null</td><td>JSON: [{item, amount, discount, net}]</td></tr>
+<tr><td>AmountDue</td><td>decimal(10,2)</td><td>Not Null</td><td>Total amount due</td></tr>
+<tr><td>IssuedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Invoice issue date</td></tr>
+<tr><td>DueDate</td><td>date</td><td>Not Null</td><td>Payment deadline</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Pending', Enum: <code>InvoiceStatus</code></td><td>Pending &verbar; PartiallyPaid &verbar; Paid &verbar; Overdue &verbar; Cancelled</td></tr>
+<tr><td>InvoiceURI</td><td>nvarchar(500)</td><td>Nullable</td><td>Generated invoice PDF URI</td></tr>
+</table>
+
+<p><strong>19. Payment</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>PaymentID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>InvoiceID</td><td>int</td><td>FK &rarr; Invoice.InvoiceID</td><td>Invoice being paid</td></tr>
+<tr><td>PaidAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Payment timestamp</td></tr>
+<tr><td>Amount</td><td>decimal(10,2)</td><td>Not Null</td><td>Amount paid</td></tr>
+<tr><td>Method</td><td>nvarchar(30)</td><td>Not Null, Enum: <code>PaymentMethod</code></td><td>BankTransfer &verbar; Cash &verbar; Card &verbar; UPI &verbar; Cheque</td></tr>
+<tr><td>Reference</td><td>nvarchar(100)</td><td>Nullable</td><td>Transaction reference number</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Completed', Enum: <code>PaymentStatus</code></td><td>Completed &verbar; Failed &verbar; Refunded</td></tr>
+</table>
+<blockquote><strong>v10.1 Change:</strong> <code>PaymentStatus</code> has 3 values: Completed &verbar; Failed &verbar; Refunded (removed Pending).</blockquote>
+
+<p><strong>20. Scholarship</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>ScholarID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>StudentID</td><td>int</td><td>FK &rarr; Student.StudentID</td><td>Recipient student</td></tr>
+<tr><td>AwardType</td><td>nvarchar(100)</td><td>Not Null</td><td>Merit &verbar; Need-based &verbar; Athletic &verbar; Department &verbar; External</td></tr>
+<tr><td>Amount</td><td>decimal(10,2)</td><td>Not Null</td><td>Scholarship amount</td></tr>
+<tr><td>AppliedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>When scholarship was applied</td></tr>
+<tr><td>ValidFrom</td><td>date</td><td>Not Null</td><td>Scholarship start date</td></tr>
+<tr><td>ValidTo</td><td>date</td><td>Not Null</td><td>Scholarship end date</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Active', Enum: <code>ScholarshipStatus</code></td><td>Active &verbar; Suspended &verbar; Revoked &verbar; Expired</td></tr>
+</table>
+<blockquote><strong>v10.1 Change:</strong> <code>ScholarshipStatus</code> has 4 values: Active &verbar; Suspended &verbar; Revoked &verbar; Expired (added Suspended).</blockquote>
+
+<h3>Module 8: Reporting, KPIs &amp; Audit Packages (AnalyticsService)</h3>
+
+<p><strong>21. Report</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>ReportID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>Scope</td><td>nvarchar(30)</td><td>Not Null, Enum: <code>ReportScope</code></td><td>Course &verbar; Department &verbar; Institution &verbar; Student</td></tr>
+<tr><td>ParametersJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: {term, department, dateRange, filters}</td></tr>
+<tr><td>MetricsJSON</td><td>nvarchar(max)</td><td>Nullable</td><td>JSON: computed result data</td></tr>
+<tr><td>GeneratedByFK</td><td>int</td><td>FK &rarr; User.UserID</td><td>User who generated the report</td></tr>
+<tr><td>GeneratedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Report generation timestamp</td></tr>
+<tr><td>ReportURI</td><td>nvarchar(500)</td><td>Nullable</td><td>Exported report URI (PDF/CSV)</td></tr>
+</table>
+<blockquote><strong>v10.1 Change:</strong> <code>ReportScope</code> values are Course &verbar; Department &verbar; Institution &verbar; Student (was Enrollment &verbar; Grades &verbar; Finance &verbar; Compliance).</blockquote>
+
+<p><strong>22. KPI</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>KPIID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>Name</td><td>nvarchar(100)</td><td>Not Null</td><td>KPI name (e.g., 'Retention Rate')</td></tr>
+<tr><td>Definition</td><td>nvarchar(500)</td><td>Nullable</td><td>How this KPI is calculated</td></tr>
+<tr><td>Target</td><td>decimal(10,2)</td><td>Nullable</td><td>Target value</td></tr>
+<tr><td>CurrentValue</td><td>decimal(10,2)</td><td>Nullable</td><td>Current computed value</td></tr>
+<tr><td>ReportingPeriod</td><td>nvarchar(20)</td><td>Not Null, Enum: <code>ReportingPeriod</code></td><td>Monthly &verbar; Quarterly &verbar; Semester &verbar; Annual</td></tr>
+</table>
+<blockquote><strong>v10.1 Change:</strong> <code>ReportingPeriod</code> values are Monthly &verbar; Quarterly &verbar; Semester &verbar; Annual (was Term &verbar; Semester &verbar; Annual).</blockquote>
+
+<p><strong>23. AuditPackage</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>PackageID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>PeriodStart</td><td>date</td><td>Not Null</td><td>Audit period start</td></tr>
+<tr><td>PeriodEnd</td><td>date</td><td>Not Null</td><td>Audit period end</td></tr>
+<tr><td>ContentsJSON</td><td>nvarchar(max)</td><td>Not Null</td><td>JSON: [{reportType, reportID, description}]</td></tr>
+<tr><td>GeneratedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Package generation timestamp</td></tr>
+<tr><td>PackageURI</td><td>nvarchar(500)</td><td>Nullable</td><td>Downloadable archive URI</td></tr>
+</table>
+
+<h3>Module 9: Notifications, Helpdesk &amp; Tasks (NotificationService)</h3>
+
+<p><strong>24. Notification</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>NotificationID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>UserID</td><td>int</td><td>FK &rarr; User.UserID</td><td>Target user</td></tr>
+<tr><td>EntityID</td><td>int</td><td>Nullable</td><td>ID of the related entity</td></tr>
+<tr><td>Message</td><td>nvarchar(1000)</td><td>Not Null</td><td>Notification message</td></tr>
+<tr><td>Category</td><td>nvarchar(30)</td><td>Not Null, Enum: <code>NotificationCategory</code></td><td>Enrollment &verbar; Grade &verbar; Finance &verbar; System &verbar; Academic</td></tr>
+<tr><td>Severity</td><td>nvarchar(20)</td><td>Not Null, Default: 'Info', Enum: <code>NotificationSeverity</code></td><td>Info &verbar; Warning &verbar; Error &verbar; Critical</td></tr>
+<tr><td>CreatedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Notification creation timestamp</td></tr>
+<tr><td>ReadAt</td><td>datetime2</td><td>Nullable</td><td>When the notification was read (null = unread)</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Active', Enum: <code>NotificationStatus</code></td><td>Active &verbar; Dismissed</td></tr>
+</table>
+<blockquote><strong>v10.1 Changes:</strong> NotificationCategory: Enrollment &verbar; Grade &verbar; Finance &verbar; System &verbar; Academic. NotificationSeverity: added Error. NotificationStatus: removed Expired.</blockquote>
+
+<p><strong>25. Ticket</strong></p>
+<table>
+<tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr>
+<tr><td>TicketID</td><td>int</td><td>PK, Identity</td><td>Auto-increment primary key</td></tr>
+<tr><td>CreatedByFK</td><td>int</td><td>FK &rarr; User.UserID</td><td>User who submitted the ticket</td></tr>
+<tr><td>AssignedToFK</td><td>int</td><td>FK &rarr; User.UserID, Nullable</td><td>Support staff assigned</td></tr>
+<tr><td>Subject</td><td>nvarchar(200)</td><td>Not Null</td><td>Ticket subject line</td></tr>
+<tr><td>Description</td><td>nvarchar(max)</td><td>Not Null</td><td>Detailed issue description</td></tr>
+<tr><td>Priority</td><td>nvarchar(20)</td><td>Not Null, Default: 'Medium', Enum: <code>TicketPriority</code></td><td>Low &verbar; Medium &verbar; High &verbar; Critical</td></tr>
+<tr><td>CreatedAt</td><td>datetime2</td><td>Default: GETUTCDATE()</td><td>Ticket creation timestamp</td></tr>
+<tr><td>UpdatedAt</td><td>datetime2</td><td>Nullable</td><td>Last update timestamp</td></tr>
+<tr><td>Status</td><td>nvarchar(20)</td><td>Not Null, Default: 'Open', Enum: <code>TicketStatus</code></td><td>Open &verbar; InProgress &verbar; Resolved &verbar; Closed</td></tr>
+<tr><td>ResolutionURI</td><td>nvarchar(500)</td><td>Nullable</td><td>Resolution documentation URI</td></tr>
+</table>
+
+<h2>5.3 Design Notes</h2>
+<p>&bull; <strong>DeleteBehavior:</strong> All foreign keys use <code>DeleteBehavior.NoAction</code> to prevent cascade issues in shared database.</p>
+<p>&bull; <strong>ExcludeFromMigrations:</strong> Non-owned tables in each DbContext use <code>ExcludeFromMigrations()</code> to prevent duplicate schema creation.</p>
+<p>&bull; <strong>Strongly-typed enums:</strong> All status, type, role, category, and method fields use C# enums with <code>HasConversion&lt;string&gt;().HasMaxLength(N)</code> in EF Core. Swagger displays human-readable string dropdowns via <code>JsonStringEnumConverter</code> + <code>EnumSchemaFilter</code>.</p>
+<p>&bull; <strong>Media storage:</strong> Azure Blob Storage with SHA-256 checksums for tamper evidence.</p>
+<p>&bull; <strong>Indexes:</strong> (StudentID, ProgramID), (CourseID, Term), (Timestamp) on AuditLog, (DueDate) on Invoice.</p>
+
+<h2>5.6 Database Migration Strategy</h2>
+<p>EduLearn uses a <strong>dedicated MigrationDbContext</strong> pattern. A single <code>EduLearn.DbMigrator</code> project contains one <code>MigrationDbContext</code> that maps all 25 entities with all FK constraints. This creates the entire database schema in one atomic migration &mdash; zero FK ordering issues.</p>
+<p><strong>Why this pattern?</strong> Multiple services with cross-service FK dependencies cannot be migrated independently without FK ordering failures. The single-migrator pattern is used by production frameworks like ABP and is recommended by Microsoft for shared-database architectures.</p>
+<p><strong>Migration command:</strong> <code>.\migrate-database.bat</code></p>
+<blockquote><strong>v10.1 Change:</strong> The previous multi-step migration order (Auth &rarr; LMS &rarr; SIS &rarr; Finance &rarr; Notification &rarr; Analytics) has been replaced with this single-step DbMigrator approach.</blockquote>
+
+<h2>5.7 Enum Reference (Strongly-Typed)</h2>
+<table>
+<tr><th>File</th><th>Enum</th><th>Values</th><th>Used By</th></tr>
+<tr><td>UserEnums.cs</td><td>UserRole</td><td>Student, Instructor, Registrar, DeptAdmin, Finance, ITAdmin, Auditor</td><td>User.Role</td></tr>
+<tr><td>UserEnums.cs</td><td>UserStatus</td><td>Active, Inactive, Suspended, Locked</td><td>User.Status</td></tr>
+<tr><td>EnrollmentEnums.cs</td><td>EnrollmentStatus</td><td>Enrolled, Waitlisted, Dropped</td><td>Enrollment.Status</td></tr>
+<tr><td>EnrollmentEnums.cs</td><td>StudentLifecycleStatus</td><td>Active, OnLeave, Graduated, Expelled</td><td>Student.EnrollmentStatus</td></tr>
+<tr><td>CourseEnums.cs</td><td>CourseStatus</td><td>Active, Deprecated, Archived</td><td>Course.Status</td></tr>
+<tr><td>AdmissionsEnums.cs</td><td>ApplicationStatus</td><td>Submitted, UnderReview, Accepted, Rejected, Waitlisted</td><td>Applicant.ApplicationStatus</td></tr>
+<tr><td>AdmissionsEnums.cs</td><td>TranscriptStatus</td><td>Draft, Issued, Revoked</td><td>Transcript.Status</td></tr>
+<tr><td>AssessmentEnums.cs</td><td>AssessmentType</td><td>Assignment, Quiz, Exam</td><td>Assessment.Type</td></tr>
+<tr><td>AssessmentEnums.cs</td><td>AssessmentStatus</td><td>Draft, Published, Closed</td><td>Assessment.Status</td></tr>
+<tr><td>AssessmentEnums.cs</td><td>SubmissionStatus</td><td>Submitted, Graded, Late, Plagiarised</td><td>Submission.Status</td></tr>
+<tr><td>ContentEnums.cs</td><td>ContentType</td><td>Document, Video, Quiz, Link</td><td>Content.Type</td></tr>
+<tr><td>ContentEnums.cs</td><td>ContentStatus</td><td>Active, Archived, Draft</td><td>Content.Status</td></tr>
+<tr><td>ContentEnums.cs</td><td>DiscussionStatus</td><td>Open, Closed, Pinned, Archived</td><td>Discussion.Status</td></tr>
+<tr><td>FinanceEnums.cs</td><td>FeeScheduleStatus</td><td>Draft, Active, Superseded</td><td>FeeSchedule.Status</td></tr>
+<tr><td>FinanceEnums.cs</td><td>InvoiceStatus</td><td>Pending, PartiallyPaid, Paid, Overdue, Cancelled</td><td>Invoice.Status</td></tr>
+<tr><td>FinanceEnums.cs</td><td>PaymentStatus</td><td>Completed, Failed, Refunded</td><td>Payment.Status</td></tr>
+<tr><td>FinanceEnums.cs</td><td>PaymentMethod</td><td>BankTransfer, Cash, Card, UPI, Cheque</td><td>Payment.Method</td></tr>
+<tr><td>FinanceEnums.cs</td><td>ScholarshipStatus</td><td>Active, Suspended, Revoked, Expired</td><td>Scholarship.Status</td></tr>
+<tr><td>NotificationEnums.cs</td><td>NotificationCategory</td><td>Enrollment, Grade, Finance, System, Academic</td><td>Notification.Category</td></tr>
+<tr><td>NotificationEnums.cs</td><td>NotificationSeverity</td><td>Info, Warning, Error, Critical</td><td>Notification.Severity</td></tr>
+<tr><td>NotificationEnums.cs</td><td>NotificationStatus</td><td>Active, Dismissed</td><td>Notification.Status</td></tr>
+<tr><td>NotificationEnums.cs</td><td>TicketStatus</td><td>Open, InProgress, Resolved, Closed</td><td>Ticket.Status</td></tr>
+<tr><td>NotificationEnums.cs</td><td>TicketPriority</td><td>Low, Medium, High, Critical</td><td>Ticket.Priority</td></tr>
+<tr><td>AnalyticsEnums.cs</td><td>ReportScope</td><td>Course, Department, Institution, Student</td><td>Report.Scope</td></tr>
+<tr><td>AnalyticsEnums.cs</td><td>ReportingPeriod</td><td>Monthly, Quarterly, Semester, Annual</td><td>KPI.ReportingPeriod</td></tr>
+</table>
+
+<h1>6&ndash;17. Remaining Sections</h1>
+<p>Sections 6 through 17 (Feature Specifications, API Endpoint Reference, Team Assignment, Scope Exclusions, Implementation Patterns, UI Design, Non-Functional Requirements, Deployment, Assumptions, Error Handling, Environment Configuration, and Glossary) are fully detailed in the companion Markdown artifact (EduLearn-PRD-v10.1.md). All enum values in those sections have been updated to match this document.</p>
+
+<hr/>
+<p style="text-align:center; color:#888; font-size:10pt;"><strong>End of Document</strong><br/>EduLearn v10.1 PRD | 6 Services &bull; 25 Entities &bull; 9 Modules &bull; 7 Roles &bull; 30 Features</p>
+
+</body>
+</html>
