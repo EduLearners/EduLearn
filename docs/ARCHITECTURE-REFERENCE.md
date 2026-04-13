@@ -20,8 +20,8 @@ EduLearn.API/
 ├── Models/               25 entity classes
 │   └── Enums/            10 enum files
 ├── Repositories/
-│   ├── Interfaces/       14 IXxxRepository interfaces
-│   └── Implementations/  14 XxxRepository classes
+│   ├── Interfaces/       16 IXxxRepository interfaces
+│   └── Implementations/  16 XxxRepository classes
 └── Program.cs            DI, Swagger, CORS, JsonStringEnumConverter
 ```
 

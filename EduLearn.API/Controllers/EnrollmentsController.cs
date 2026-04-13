@@ -1,4 +1,3 @@
-using EduLearn.API.Data;
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
@@ -11,67 +10,57 @@ namespace EduLearn.API.Controllers;
 [Route("api/enrollment")]
 public class EnrollmentsController : ControllerBase
 {
-    // Repository pattern: data access through repository interfaces
-    private readonly IEnrollmentRepository _enrollmentRepository;
-    private readonly IStudentRepository _studentRepository;
-    private readonly ISectionRepository _sectionRepository;
-
-    // AppDbContext is only used for transaction management (BeginTransaction)
-    // All data access goes through repositories
-    private readonly AppDbContext _context;
+    private readonly IEnrollmentRepository _enrollRepo;
+    private readonly IStudentRepository _studentRepo;
+    private readonly ISectionRepository _sectionRepo;
 
     public EnrollmentsController(
-        IEnrollmentRepository enrollmentRepository,
-        IStudentRepository studentRepository,
-        ISectionRepository sectionRepository,
-        AppDbContext context)
+        IEnrollmentRepository enrollRepo,
+        IStudentRepository studentRepo,
+        ISectionRepository sectionRepo)
     {
-        _enrollmentRepository = enrollmentRepository;
-        _studentRepository = studentRepository;
-        _sectionRepository = sectionRepository;
-        _context = context;
+        _enrollRepo = enrollRepo;
+        _studentRepo = studentRepo;
+        _sectionRepo = sectionRepo;
     }
 
-    // ── POST /api/enrollment/enroll — Enroll student in a section ──
+    // POST /api/enrollment/enroll
     [HttpPost("enroll")]
-    public async Task<ActionResult<EnrollmentResponseDto>> Enroll(CreateEnrollmentDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<EnrollmentResponseDto>> Enroll(
+        CreateEnrollmentDto dto, CancellationToken cancellationToken)
     {
-        // ── Validation (read-only, outside transaction) ──
-        var student = await _studentRepository.GetByIdAsync(dto.StudentID);
-
+        var student = await _studentRepo.GetByIdAsync(dto.StudentID);
         if (student is null)
             return BadRequest(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
-        // ── Transaction-wrapped enrollment ──
-        // Note: AppDbContext is used ONLY for transaction management here
-        // All data access still goes through repositories
-        using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        using var transaction = await _enrollRepo.BeginTransactionAsync();
         try
         {
-            // Get section with Course loaded (for CourseName in response)
-            var section = await _sectionRepository.GetByIdWithCourseAsync(dto.SectionID);
-
+            var section = await _sectionRepo.GetByIdWithCourseAsync(dto.SectionID);
             if (section is null)
             {
                 await transaction.RollbackAsync(cancellationToken);
                 return BadRequest(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
             }
 
-            // Check for duplicate active enrollment using repository
-            if (await _enrollmentRepository.HasActiveEnrollmentAsync(dto.StudentID, dto.SectionID))
+            var isDuplicate = await _enrollRepo.IsAlreadyEnrolledAsync(dto.StudentID, dto.SectionID);
+            if (isDuplicate)
             {
                 await transaction.RollbackAsync(cancellationToken);
-                return Conflict(new { error = "Student is already enrolled in this section", code = "DUPLICATE_ENROLLMENT" });
+                return Conflict(new
+                {
+                    error = "Student is already enrolled in this section",
+                    code = "DUPLICATE_ENROLLMENT"
+                });
             }
 
             var status = EnrollmentStatus.Enrolled;
             int? waitlistPosition = null;
 
-            // If section is full, put on waitlist
             if (section.EnrolledCount >= section.Capacity)
             {
                 status = EnrollmentStatus.Waitlisted;
-                var maxPosition = await _enrollmentRepository.GetMaxWaitlistPositionAsync(dto.SectionID);
+                var maxPosition = await _enrollRepo.GetMaxWaitlistPositionAsync(dto.SectionID);
                 waitlistPosition = maxPosition + 1;
             }
 
@@ -83,13 +72,12 @@ public class EnrollmentsController : ControllerBase
                 WaitlistPosition = waitlistPosition
             };
 
-            // Repository handles Add + SaveChanges
-            await _enrollmentRepository.CreateAsync(enrollment);
+            await _enrollRepo.CreateAsync(enrollment);
 
             if (status == EnrollmentStatus.Enrolled)
             {
                 section.EnrolledCount++;
-                await _sectionRepository.SaveChangesAsync();
+                await _sectionRepo.UpdateAsync(section);
             }
 
             await transaction.CommitAsync(cancellationToken);
@@ -117,15 +105,14 @@ public class EnrollmentsController : ControllerBase
         }
     }
 
-    // ── DELETE /api/enrollment/{id}/drop — Drop enrollment (auto-promote waitlist) ──
+    // DELETE /api/enrollment/{id}/drop
     [HttpDelete("{id}/drop")]
     public async Task<IActionResult> Drop(int id, CancellationToken cancellationToken)
     {
-        using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        using var transaction = await _enrollRepo.BeginTransactionAsync();
         try
         {
-            var enrollment = await _enrollmentRepository.GetByIdAsync(id);
-
+            var enrollment = await _enrollRepo.GetByIdAsync(id);
             if (enrollment is null)
             {
                 await transaction.RollbackAsync(cancellationToken);
@@ -134,25 +121,28 @@ public class EnrollmentsController : ControllerBase
 
             var wasEnrolled = enrollment.Status == EnrollmentStatus.Enrolled;
             enrollment.Status = EnrollmentStatus.Dropped;
+            await _enrollRepo.UpdateAsync(enrollment);
 
             if (wasEnrolled)
             {
-                var section = await _sectionRepository.GetByIdAsync(enrollment.SectionID);
-                section!.EnrolledCount--;
-
-                // Auto-promote first waitlisted student using repository
-                var nextInLine = await _enrollmentRepository.GetFirstWaitlistedAsync(enrollment.SectionID);
-
-                if (nextInLine is not null)
+                var section = await _sectionRepo.GetByIdAsync(enrollment.SectionID);
+                if (section is not null)
                 {
-                    nextInLine.Status = EnrollmentStatus.Enrolled;
-                    nextInLine.WaitlistPosition = null;
-                    section.EnrolledCount++;
+                    section.EnrolledCount--;
+
+                    var nextInLine = await _enrollRepo.GetFirstWaitlistedAsync(enrollment.SectionID);
+                    if (nextInLine is not null)
+                    {
+                        nextInLine.Status = EnrollmentStatus.Enrolled;
+                        nextInLine.WaitlistPosition = null;
+                        await _enrollRepo.UpdateAsync(nextInLine);
+                        section.EnrolledCount++;
+                    }
+
+                    await _sectionRepo.UpdateAsync(section);
                 }
             }
 
-            // Save all changes (enrollment status + section count + promoted student)
-            await _enrollmentRepository.SaveChangesAsync();
             await transaction.CommitAsync(cancellationToken);
             return NoContent();
         }
@@ -163,14 +153,14 @@ public class EnrollmentsController : ControllerBase
         }
     }
 
-    // ── GET /api/enrollment/student/{studentId} — Student's current enrollments ──
+    // GET /api/enrollment/student/{studentId}
     [HttpGet("student/{studentId}")]
-    public async Task<ActionResult<List<EnrollmentResponseDto>>> GetByStudent(int studentId)
+    public async Task<ActionResult<IEnumerable<EnrollmentResponseDto>>> GetByStudent(
+        int studentId, CancellationToken cancellationToken)
     {
-        // Repository returns enrollments with Student, Section, and Course navigation loaded
-        var enrollments = await _enrollmentRepository.GetByStudentIdWithDetailsAsync(studentId);
+        var enrollments = await _enrollRepo.GetByStudentIdAsync(studentId);
 
-        var response = enrollments.Select(e => new EnrollmentResponseDto
+        var result = enrollments.Select(e => new EnrollmentResponseDto
         {
             EnrollID = e.EnrollID,
             StudentID = e.StudentID,
@@ -182,19 +172,19 @@ public class EnrollmentsController : ControllerBase
             WaitlistPosition = e.WaitlistPosition,
             GradePostedFlag = e.GradePostedFlag,
             EnrolledAt = e.EnrolledAt
-        }).ToList();
+        });
 
-        return Ok(response);
+        return Ok(result);
     }
 
-    // ── GET /api/enrollment/section/{sectionId} — Section roster ──
+    // GET /api/enrollment/section/{sectionId}
     [HttpGet("section/{sectionId}")]
-    public async Task<ActionResult<List<EnrollmentResponseDto>>> GetBySection(int sectionId)
+    public async Task<ActionResult<IEnumerable<EnrollmentResponseDto>>> GetBySection(
+        int sectionId, CancellationToken cancellationToken)
     {
-        // Repository returns enrollments with Student, Section, and Course navigation loaded
-        var enrollments = await _enrollmentRepository.GetBySectionIdWithDetailsAsync(sectionId);
+        var enrollments = await _enrollRepo.GetBySectionIdAsync(sectionId);
 
-        var response = enrollments.Select(e => new EnrollmentResponseDto
+        var result = enrollments.Select(e => new EnrollmentResponseDto
         {
             EnrollID = e.EnrollID,
             StudentID = e.StudentID,
@@ -206,8 +196,8 @@ public class EnrollmentsController : ControllerBase
             WaitlistPosition = e.WaitlistPosition,
             GradePostedFlag = e.GradePostedFlag,
             EnrolledAt = e.EnrolledAt
-        }).ToList();
+        });
 
-        return Ok(response);
+        return Ok(result);
     }
 }

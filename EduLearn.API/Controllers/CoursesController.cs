@@ -9,7 +9,6 @@ namespace EduLearn.API.Controllers;
 [Route("api/[controller]")]
 public class CoursesController : ControllerBase
 {
-    // Repository pattern: controller talks to repository interface, NOT AppDbContext directly
     private readonly ICourseRepository _courseRepository;
 
     public CoursesController(ICourseRepository courseRepository)
@@ -17,11 +16,9 @@ public class CoursesController : ControllerBase
         _courseRepository = courseRepository;
     }
 
-    // ── POST /api/courses — Create a new course in the catalog ──
     [HttpPost]
     public async Task<ActionResult<CourseResponseDto>> CreateCourse(CreateCourseDto dto)
     {
-        // Check duplicate using repository method (searches by unique Code)
         var existing = await _courseRepository.GetByCodeAsync(dto.Code);
         if (existing is not null)
             return Conflict(new { error = "Course code already exists", code = "DUPLICATE_COURSE_CODE" });
@@ -37,24 +34,17 @@ public class CoursesController : ControllerBase
             PrerequisitesJSON = dto.PrerequisitesJSON
         };
 
-        // Repository handles Add + SaveChanges internally
         await _courseRepository.CreateAsync(course);
-
         return CreatedAtAction(nameof(GetCourse), new { id = course.CourseID }, MapToDto(course));
     }
 
-    // ── GET /api/courses — List all courses ──
     [HttpGet]
     public async Task<ActionResult<List<CourseResponseDto>>> GetCourses()
     {
-        // Repository returns all courses
         var courses = await _courseRepository.GetAllAsync();
-
-        var response = courses.Select(c => MapToDto(c)).ToList();
-        return Ok(response);
+        return Ok(courses.Select(c => MapToDto(c)).ToList());
     }
 
-    // ── GET /api/courses/{id} — Get one course by ID ──
     [HttpGet("{id}")]
     public async Task<ActionResult<CourseResponseDto>> GetCourse(int id)
     {
@@ -66,7 +56,6 @@ public class CoursesController : ControllerBase
         return Ok(MapToDto(course));
     }
 
-    // ── PUT /api/courses/{id} — Update a course ──
     [HttpPut("{id}")]
     public async Task<ActionResult<CourseResponseDto>> UpdateCourse(int id, CreateCourseDto dto)
     {
@@ -75,7 +64,6 @@ public class CoursesController : ControllerBase
         if (course is null)
             return NotFound(new { error = "Course not found", code = "COURSE_NOT_FOUND" });
 
-        // Update fields from DTO
         course.Title = dto.Title;
         course.Description = dto.Description;
         course.Credits = dto.Credits;
@@ -83,13 +71,10 @@ public class CoursesController : ControllerBase
         course.Level = dto.Level;
         course.PrerequisitesJSON = dto.PrerequisitesJSON;
 
-        // Repository calls SaveChanges
         await _courseRepository.UpdateAsync(course);
-
         return Ok(MapToDto(course));
     }
 
-    // Helper method that converts the entity to a response DTO
     private static CourseResponseDto MapToDto(Course course) => new()
     {
         CourseID = course.CourseID,
