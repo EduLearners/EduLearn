@@ -1,4 +1,4 @@
-# EduLearn v11.0 — Testing Guide & Next Steps
+# EduLearn v1.0 — Testing Guide & Next Steps
 
 ## Current Status (April 10, 2026)
 

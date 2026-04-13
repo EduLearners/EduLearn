@@ -1,6 +1,7 @@
 using EduLearn.API.Data;
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
+using Microsoft.AspNetCore.Authorization; // AUTH CHANGE: added for [Authorize]
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,7 @@ namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize] // AUTH CHANGE: All endpoints require a valid JWT token
 public class CoursesController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -17,7 +19,9 @@ public class CoursesController : ControllerBase
         _context = context;
     }
 
+    // AUTH CHANGE: Only Instructor, DeptAdmin, ITAdmin can create courses
     [HttpPost]
+    [Authorize(Policy = "CourseManagerPolicy")]
     public async Task<ActionResult<CourseResponseDto>> CreateCourse(CreateCourseDto dto, CancellationToken cancellationToken)
     {
         if (await _context.Courses.AnyAsync(c => c.Code == dto.Code, cancellationToken))
@@ -40,7 +44,9 @@ public class CoursesController : ControllerBase
         return CreatedAtAction(nameof(GetCourse), new { id = course.CourseID }, MapToDto(course));
     }
 
+    // AUTH CHANGE: Any logged-in user can view courses
     [HttpGet]
+    [Authorize(Policy = "AllUsersPolicy")]
     public async Task<ActionResult<List<CourseResponseDto>>> GetCourses(CancellationToken cancellationToken)
     {
         var courses = await _context.Courses
@@ -63,7 +69,9 @@ public class CoursesController : ControllerBase
         return Ok(courses);
     }
 
+    // AUTH CHANGE: Any logged-in user can view a single course
     [HttpGet("{id}")]
+    [Authorize(Policy = "AllUsersPolicy")]
     public async Task<ActionResult<CourseResponseDto>> GetCourse(int id, CancellationToken cancellationToken)
     {
         var course = await _context.Courses
@@ -76,7 +84,9 @@ public class CoursesController : ControllerBase
         return Ok(MapToDto(course));
     }
 
+    // AUTH CHANGE: Only Instructor, DeptAdmin, ITAdmin can update courses
     [HttpPut("{id}")]
+    [Authorize(Policy = "CourseManagerPolicy")]
     public async Task<ActionResult<CourseResponseDto>> UpdateCourse(int id, CreateCourseDto dto, CancellationToken cancellationToken)
     {
         var course = await _context.Courses.FirstOrDefaultAsync(c => c.CourseID == id, cancellationToken);

@@ -2,6 +2,7 @@ using EduLearn.API.Data;
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
+using Microsoft.AspNetCore.Authorization; // AUTH CHANGE: added for [Authorize]
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/enrollment")]
+[Authorize] // AUTH CHANGE: All endpoints require a valid JWT token
 public class EnrollmentsController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -18,7 +20,9 @@ public class EnrollmentsController : ControllerBase
         _context = context;
     }
 
+    // AUTH CHANGE: Student, Registrar, ITAdmin can enroll
     [HttpPost("enroll")]
+    [Authorize(Policy = "EnrollmentPolicy")]
     public async Task<ActionResult<EnrollmentResponseDto>> Enroll(CreateEnrollmentDto dto, CancellationToken cancellationToken)
     {
         // ── Validation (read-only, outside transaction) ──
@@ -103,7 +107,9 @@ public class EnrollmentsController : ControllerBase
         }
     }
 
+    // AUTH CHANGE: Student, Registrar, ITAdmin can drop
     [HttpDelete("{id}/drop")]
+    [Authorize(Policy = "EnrollmentPolicy")]
     public async Task<IActionResult> Drop(int id, CancellationToken cancellationToken)
     {
         using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
@@ -151,7 +157,9 @@ public class EnrollmentsController : ControllerBase
         }
     }
 
+    // AUTH CHANGE: Student, Instructor, Registrar, ITAdmin can view student enrollments
     [HttpGet("student/{studentId}")]
+    [Authorize(Policy = "EnrollmentViewPolicy")]
     public async Task<ActionResult<List<EnrollmentResponseDto>>> GetByStudent(int studentId, CancellationToken cancellationToken)
     {
         var enrollments = await _context.Enrollments
@@ -178,7 +186,9 @@ public class EnrollmentsController : ControllerBase
         return Ok(enrollments);
     }
 
+    // AUTH CHANGE: Instructor, Registrar, DeptAdmin, ITAdmin can view section roster
     [HttpGet("section/{sectionId}")]
+    [Authorize(Policy = "RosterViewPolicy")]
     public async Task<ActionResult<List<EnrollmentResponseDto>>> GetBySection(int sectionId, CancellationToken cancellationToken)
     {
         var enrollments = await _context.Enrollments

@@ -1,11 +1,10 @@
-# EduLearn v11.0 — Architecture Reference
+# EduLearn v1.0 — Architecture Reference
 
 ## Architecture: Monolithic REST API
 
 Single `EduLearn.API` project. Single `AppDbContext`. Single port (5000/5001).
 
-**Previous (v10.0):** 6 microservices + DbMigrator + Shared project
-**Current (v11.0):** 1 API project, 1 DbContext, migrations run from EduLearn.API
+1 API project, 1 DbContext, migrations run from EduLearn.API.
 
 ---
 
@@ -13,7 +12,7 @@ Single `EduLearn.API` project. Single `AppDbContext`. Single port (5000/5001).
 
 ```
 EduLearn.API/
-├── Controllers/          One file per resource
+├── Controllers/          One file per resource (27 controllers)
 ├── Data/
 │   └── AppDbContext.cs   All 25 entities, all FK configs, all HasConversion calls
 ├── DTOs/                 Request and response DTOs per controller
@@ -22,6 +21,10 @@ EduLearn.API/
 ├── Repositories/
 │   ├── Interfaces/       13 IXxxRepository interfaces
 │   └── Implementations/  13 XxxRepository classes
+├── Services/             Business logic services (TokenService, EnrollmentRuleEngine, etc.)
+├── Hubs/
+│   └── NotificationHub.cs  SignalR WebSocket hub
+├── Migrations/           EF Core generated migrations
 └── Program.cs            DI, Swagger, CORS, JsonStringEnumConverter
 ```
 
@@ -75,7 +78,7 @@ All FK constraints use `DeleteBehavior.NoAction`. All enum columns stored as nva
 
 ## AppDbContext Enum Conversion Coverage
 
-Every enum field in every entity has a corresponding `HasConversion<string>().HasMaxLength(N)` call in `OnModelCreating`. The 3 added in v11.0 restructuring: `Section.Status`, `Program.Status`, `Room.Status`.
+Every enum field in every entity has a corresponding `HasConversion<string>().HasMaxLength(N)` call in `OnModelCreating`, including `Section.Status`, `Program.Status`, and `Room.Status`.
 
 ---
 
@@ -83,13 +86,13 @@ Every enum field in every entity has a corresponding `HasConversion<string>().Ha
 
 ```bash
 # Generate
-dotnet ef migrations add <Name> --project EduLearn.API --startup-project EduLearn.API
+dotnet ef migrations add <n> --project EduLearn.API --startup-project EduLearn.API
 
 # Apply
 dotnet ef database update --project EduLearn.API --startup-project EduLearn.API
 ```
 
-Or use the batch files: `.\add-migrations.bat <Name>` and `.\migrate-database.bat`
+Or use the batch files: `.\add-migrations.bat <n>` and `.\migrate-database.bat`
 
 ---
 
