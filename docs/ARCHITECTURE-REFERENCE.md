@@ -19,13 +19,13 @@ EduLearn.API/
 ├── Models/               25 entity classes
 │   └── Enums/            10 enum files
 ├── Repositories/
-│   ├── Interfaces/       13 IXxxRepository interfaces
-│   └── Implementations/  13 XxxRepository classes
-├── Services/             Business logic services (TokenService, EnrollmentRuleEngine, etc.)
+│   ├── Interfaces/       16 IXxxRepository interfaces
+│   └── Implementations/  16 XxxRepository classes
+├── Services/             Business logic services (TokenService, AuthService, AuditLogService, etc.)
 ├── Hubs/
 │   └── NotificationHub.cs  SignalR WebSocket hub
 ├── Migrations/           EF Core generated migrations
-└── Program.cs            DI, Swagger, CORS, JsonStringEnumConverter
+└── Program.cs            DI, Swagger, CORS, JWT Auth, JsonStringEnumConverter
 ```
 
 ---

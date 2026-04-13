@@ -15,8 +15,9 @@ public class CourseRepository : ICourseRepository
         _context = context;
     }
 
+    // AsNoTracking for read-only list queries (no modification needed)
     public async Task<IEnumerable<Course>> GetAllAsync()
-        => await _context.Courses.ToListAsync();
+        => await _context.Courses.AsNoTracking().ToListAsync();
 
     public async Task<Course?> GetByIdAsync(int courseId)
         => await _context.Courses.FindAsync(courseId);

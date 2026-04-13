@@ -82,6 +82,8 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+builder.Services.AddScoped<IApplicantRepository, ApplicantRepository>();
+builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<IAssessmentRepository, AssessmentRepository>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
@@ -91,6 +93,8 @@ builder.Services.AddScoped<ISectionRepository, SectionRepository>();
 builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
 builder.Services.AddScoped<ITranscriptRepository, TranscriptRepository>();
 builder.Services.AddScoped<IDiscussionRepository, DiscussionRepository>();
+builder.Services.AddScoped<IProgramRepository, ProgramRepository>();
+builder.Services.AddScoped<IReportRepository, ReportRepository>();
 
 // AUDIT CHANGE: Register audit log repository (append-only: create + read, no update/delete)
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();

@@ -1,9 +1,8 @@
-using EduLearn.API.Data;
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
-using Microsoft.AspNetCore.Authorization; // AUTH CHANGE: added for [Authorize]
+using EduLearn.API.Repositories.Interfaces;          // TEAMMATE: added for repository pattern
+using Microsoft.AspNetCore.Authorization;             // AUTH CHANGE: added for [Authorize]
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace EduLearn.API.Controllers;
 
@@ -12,22 +11,25 @@ namespace EduLearn.API.Controllers;
 [Authorize] // AUTH CHANGE: All endpoints require a valid JWT token
 public class UsersController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    // TEAMMATE: Changed from AppDbContext to IUserRepository
+    private readonly IUserRepository _userRepository;
 
-    public UsersController(AppDbContext context)
+    public UsersController(IUserRepository userRepository)
     {
-        _context = context;
+        _userRepository = userRepository;
     }
 
     // AUTH CHANGE: Only ITAdmin can create users directly (others use /api/auth/register)
     [HttpPost]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto dto)
     {
-        if (await _context.Users.AnyAsync(u => u.Email == dto.Email, cancellationToken))
+        var existingByEmail = await _userRepository.GetByEmailAsync(dto.Email);
+        if (existingByEmail is not null)
             return Conflict(new { error = "Email already exists", code = "DUPLICATE_EMAIL" });
 
-        if (await _context.Users.AnyAsync(u => u.Username == dto.Username, cancellationToken))
+        var existingByUsername = await _userRepository.GetByUsernameAsync(dto.Username);
+        if (existingByUsername is not null)
             return Conflict(new { error = "Username already exists", code = "DUPLICATE_USERNAME" });
 
         var user = new User
@@ -41,8 +43,7 @@ public class UsersController : ControllerBase
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
         };
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync(cancellationToken);
+        await _userRepository.CreateAsync(user);
 
         var response = MapToDto(user);
         return CreatedAtAction(nameof(GetUser), new { id = user.UserID }, response);
@@ -51,36 +52,18 @@ public class UsersController : ControllerBase
     // AUTH CHANGE: Only ITAdmin and Registrar can list all users
     [HttpGet]
     [Authorize(Policy = "UserViewPolicy")]
-    public async Task<ActionResult<List<UserResponseDto>>> GetUsers(CancellationToken cancellationToken)
+    public async Task<ActionResult<List<UserResponseDto>>> GetUsers()
     {
-        var users = await _context.Users
-            .AsNoTracking()
-            .Select(u => new UserResponseDto
-            {
-                UserID = u.UserID,
-                Username = u.Username,
-                FullName = u.FullName,
-                Email = u.Email,
-                Phone = u.Phone,
-                Role = u.Role,
-                MFAEnabled = u.MFAEnabled,
-                Status = u.Status,
-                CreatedAt = u.CreatedAt,
-                UpdatedAt = u.UpdatedAt
-            })
-            .ToListAsync(cancellationToken);
-
-        return Ok(users);
+        var users = await _userRepository.GetAllAsync();
+        return Ok(users.Select(u => MapToDto(u)).ToList());
     }
 
     // AUTH CHANGE: ITAdmin and Registrar can view any user profile
     [HttpGet("{id}")]
     [Authorize(Policy = "UserViewPolicy")]
-    public async Task<ActionResult<UserResponseDto>> GetUser(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> GetUser(int id)
     {
-        var user = await _context.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.UserID == id, cancellationToken);
+        var user = await _userRepository.GetByIdAsync(id);
 
         if (user is null)
             return NotFound(new { error = "User not found", code = "USER_NOT_FOUND" });
@@ -91,9 +74,9 @@ public class UsersController : ControllerBase
     // AUTH CHANGE: Only ITAdmin can update user profiles
     [HttpPut("{id}")]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<UserResponseDto>> UpdateUser(int id, UpdateUserDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> UpdateUser(int id, UpdateUserDto dto)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == id, cancellationToken);
+        var user = await _userRepository.GetByIdAsync(id);
 
         if (user is null)
             return NotFound(new { error = "User not found", code = "USER_NOT_FOUND" });
@@ -101,26 +84,24 @@ public class UsersController : ControllerBase
         user.FullName = dto.FullName;
         user.Email = dto.Email;
         user.Phone = dto.Phone;
-        user.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _userRepository.UpdateAsync(user);
         return Ok(MapToDto(user));
     }
 
     // AUTH CHANGE: Only ITAdmin can activate/suspend/lock users
     [HttpPut("{id}/status")]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<UserResponseDto>> UpdateUserStatus(int id, UpdateStatusDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> UpdateUserStatus(int id, UpdateStatusDto dto)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == id, cancellationToken);
+        var user = await _userRepository.GetByIdAsync(id);
 
         if (user is null)
             return NotFound(new { error = "User not found", code = "USER_NOT_FOUND" });
 
         user.Status = dto.Status;
-        user.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _userRepository.UpdateAsync(user);
         return Ok(MapToDto(user));
     }
 

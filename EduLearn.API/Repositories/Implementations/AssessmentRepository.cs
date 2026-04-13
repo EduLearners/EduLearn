@@ -21,8 +21,24 @@ public class AssessmentRepository : IAssessmentRepository
     public async Task<Assessment?> GetByIdAsync(int assessmentId)
         => await _context.Assessments.FindAsync(assessmentId);
 
+    // Get by ID with Course and CreatedBy loaded — used when we need CourseName and CreatedByName
+    public async Task<Assessment?> GetByIdWithDetailsAsync(int assessmentId)
+        => await _context.Assessments
+            .Include(a => a.Course)
+            .Include(a => a.CreatedBy)
+            .FirstOrDefaultAsync(a => a.AssessmentID == assessmentId);
+
     public async Task<IEnumerable<Assessment>> GetByCourseIdAsync(int courseId)
         => await _context.Assessments.Where(a => a.CourseID == courseId).ToListAsync();
+
+    // Get by CourseID with Course and CreatedBy loaded — used for listing assessments with names
+    public async Task<IEnumerable<Assessment>> GetByCourseIdWithDetailsAsync(int courseId)
+        => await _context.Assessments
+            .AsNoTracking()
+            .Where(a => a.CourseID == courseId)
+            .Include(a => a.Course)
+            .Include(a => a.CreatedBy)
+            .ToListAsync();
 
     public async Task<IEnumerable<Assessment>> GetBySectionIdAsync(int sectionId)
         => await _context.Assessments.Where(a => a.SectionID == sectionId).ToListAsync();

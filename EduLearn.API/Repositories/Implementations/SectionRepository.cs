@@ -20,6 +20,11 @@ public class SectionRepository : ISectionRepository
     public async Task<Section?> GetByIdAsync(int sectionId)
         => await _context.Sections.FindAsync(sectionId);
 
+    public async Task<Section?> GetByIdWithCourseAsync(int sectionId)
+        => await _context.Sections
+            .Include(s => s.Course)
+            .FirstOrDefaultAsync(s => s.SectionID == sectionId);
+
     public async Task<IEnumerable<Section>> GetByCourseIdAsync(int courseId)
         => await _context.Sections.Where(s => s.CourseID == courseId).ToListAsync();
 
@@ -28,6 +33,11 @@ public class SectionRepository : ISectionRepository
 
     public async Task<IEnumerable<Section>> GetByTermAsync(string term)
         => await _context.Sections.Where(s => s.Term == term).ToListAsync();
+
+    public async Task<IEnumerable<Section>> GetByCourseAndTermAsync(int courseId, string term)
+        => await _context.Sections
+            .Where(s => s.CourseID == courseId && s.Term == term)
+            .ToListAsync();
 
     public async Task<Section> CreateAsync(Section section)
     {
@@ -54,4 +64,7 @@ public class SectionRepository : ISectionRepository
 
     public async Task<bool> ExistsAsync(int sectionId)
         => await _context.Sections.AnyAsync(s => s.SectionID == sectionId);
+
+    public async Task SaveChangesAsync()
+        => await _context.SaveChangesAsync();
 }
