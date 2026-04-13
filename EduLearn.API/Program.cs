@@ -95,6 +95,8 @@ builder.Services.AddScoped<ITranscriptRepository, TranscriptRepository>();
 builder.Services.AddScoped<IDiscussionRepository, DiscussionRepository>();
 builder.Services.AddScoped<IProgramRepository, ProgramRepository>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
+builder.Services.AddScoped<IFeeScheduleRepository, FeeScheduleRepository>();
+builder.Services.AddScoped<IScholarshipRepository, ScholarshipRepository>();
 
 // AUDIT CHANGE: Register audit log repository (append-only: create + read, no update/delete)
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
