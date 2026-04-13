@@ -1,14 +1,17 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
-using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Repositories.Interfaces;          // TEAMMATE: added for repository pattern
+using Microsoft.AspNetCore.Authorization;             // AUTH CHANGE: added for [Authorize]
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize] // AUTH CHANGE: All endpoints require a valid JWT token
 public class CoursesController : ControllerBase
 {
+    // TEAMMATE: Changed from AppDbContext to ICourseRepository
     private readonly ICourseRepository _courseRepository;
 
     public CoursesController(ICourseRepository courseRepository)
@@ -16,7 +19,9 @@ public class CoursesController : ControllerBase
         _courseRepository = courseRepository;
     }
 
+    // AUTH CHANGE: Only Instructor, DeptAdmin, ITAdmin can create courses
     [HttpPost]
+    [Authorize(Policy = "CourseManagerPolicy")]
     public async Task<ActionResult<CourseResponseDto>> CreateCourse(CreateCourseDto dto)
     {
         var existing = await _courseRepository.GetByCodeAsync(dto.Code);
@@ -38,14 +43,18 @@ public class CoursesController : ControllerBase
         return CreatedAtAction(nameof(GetCourse), new { id = course.CourseID }, MapToDto(course));
     }
 
+    // AUTH CHANGE: Any logged-in user can view courses
     [HttpGet]
+    [Authorize(Policy = "AllUsersPolicy")]
     public async Task<ActionResult<List<CourseResponseDto>>> GetCourses()
     {
         var courses = await _courseRepository.GetAllAsync();
         return Ok(courses.Select(c => MapToDto(c)).ToList());
     }
 
+    // AUTH CHANGE: Any logged-in user can view a single course
     [HttpGet("{id}")]
+    [Authorize(Policy = "AllUsersPolicy")]
     public async Task<ActionResult<CourseResponseDto>> GetCourse(int id)
     {
         var course = await _courseRepository.GetByIdAsync(id);
@@ -56,7 +65,9 @@ public class CoursesController : ControllerBase
         return Ok(MapToDto(course));
     }
 
+    // AUTH CHANGE: Only Instructor, DeptAdmin, ITAdmin can update courses
     [HttpPut("{id}")]
+    [Authorize(Policy = "CourseManagerPolicy")]
     public async Task<ActionResult<CourseResponseDto>> UpdateCourse(int id, CreateCourseDto dto)
     {
         var course = await _courseRepository.GetByIdAsync(id);
