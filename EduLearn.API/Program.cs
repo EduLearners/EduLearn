@@ -39,6 +39,7 @@ builder.Services.AddScoped<ISectionRepository, SectionRepository>();
 builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
 builder.Services.AddScoped<ITranscriptRepository, TranscriptRepository>();
 builder.Services.AddScoped<IDiscussionRepository, DiscussionRepository>();
+builder.Services.AddScoped<IProgramRepository, ProgramRepository>();
 
 var app = builder.Build();
 

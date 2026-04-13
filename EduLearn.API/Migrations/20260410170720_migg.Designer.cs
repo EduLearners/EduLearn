@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EduLearn.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260410070725_mig")]
-    partial class mig
+    [Migration("20260410170720_migg")]
+    partial class migg
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

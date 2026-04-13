@@ -20,6 +20,12 @@ public class SectionRepository : ISectionRepository
     public async Task<Section?> GetByIdAsync(int sectionId)
         => await _context.Sections.FindAsync(sectionId);
 
+    // Get section with Course loaded — used when we need Course.Title in enrollment responses
+    public async Task<Section?> GetByIdWithCourseAsync(int sectionId)
+        => await _context.Sections
+            .Include(s => s.Course)
+            .FirstOrDefaultAsync(s => s.SectionID == sectionId);
+
     public async Task<IEnumerable<Section>> GetByCourseIdAsync(int courseId)
         => await _context.Sections.Where(s => s.CourseID == courseId).ToListAsync();
 
@@ -54,4 +60,8 @@ public class SectionRepository : ISectionRepository
 
     public async Task<bool> ExistsAsync(int sectionId)
         => await _context.Sections.AnyAsync(s => s.SectionID == sectionId);
+
+    // Save changes — used in transaction scenarios where section.EnrolledCount is modified
+    public async Task SaveChangesAsync()
+        => await _context.SaveChangesAsync();
 }

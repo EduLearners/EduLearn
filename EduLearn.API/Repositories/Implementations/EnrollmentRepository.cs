@@ -58,4 +58,46 @@ public class EnrollmentRepository : IEnrollmentRepository
 
     public async Task<bool> ExistsAsync(int enrollId)
         => await _context.Enrollments.AnyAsync(e => e.EnrollID == enrollId);
+
+    // Check if student has an active (non-dropped) enrollment in a section
+    public async Task<bool> HasActiveEnrollmentAsync(int studentId, int sectionId)
+        => await _context.Enrollments.AnyAsync(
+            e => e.StudentID == studentId && e.SectionID == sectionId && e.Status != EnrollmentStatus.Dropped);
+
+    // Get the highest waitlist position for a section (returns 0 if no waitlisted students)
+    public async Task<int> GetMaxWaitlistPositionAsync(int sectionId)
+        => await _context.Enrollments
+            .Where(e => e.SectionID == sectionId && e.Status == EnrollmentStatus.Waitlisted)
+            .MaxAsync(e => (int?)e.WaitlistPosition) ?? 0;
+
+    // Get first waitlisted student in a section (lowest position number)
+    public async Task<Enrollment?> GetFirstWaitlistedAsync(int sectionId)
+        => await _context.Enrollments
+            .Where(e => e.SectionID == sectionId && e.Status == EnrollmentStatus.Waitlisted)
+            .OrderBy(e => e.WaitlistPosition)
+            .FirstOrDefaultAsync();
+
+    // Get enrollments by student with Student, Section → Course navigation loaded
+    public async Task<IEnumerable<Enrollment>> GetByStudentIdWithDetailsAsync(int studentId)
+        => await _context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.StudentID == studentId)
+            .Include(e => e.Student)
+            .Include(e => e.Section)
+                .ThenInclude(s => s.Course)
+            .ToListAsync();
+
+    // Get enrollments by section with Student, Section → Course navigation loaded
+    public async Task<IEnumerable<Enrollment>> GetBySectionIdWithDetailsAsync(int sectionId)
+        => await _context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.SectionID == sectionId)
+            .Include(e => e.Student)
+            .Include(e => e.Section)
+                .ThenInclude(s => s.Course)
+            .ToListAsync();
+
+    // Save changes — used in transaction scenarios where multiple entities are modified
+    public async Task SaveChangesAsync()
+        => await _context.SaveChangesAsync();
 }

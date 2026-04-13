@@ -1,8 +1,7 @@
-using EduLearn.API.Data;
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
+using EduLearn.API.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace EduLearn.API.Controllers;
 
@@ -10,20 +9,26 @@ namespace EduLearn.API.Controllers;
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    // Repository pattern: controller talks to repository interface, NOT AppDbContext directly
+    private readonly IUserRepository _userRepository;
 
-    public UsersController(AppDbContext context)
+    public UsersController(IUserRepository userRepository)
     {
-        _context = context;
+        _userRepository = userRepository;
     }
 
+    // ── POST /api/users — Create a new user ──
     [HttpPost]
-    public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto dto)
     {
-        if (await _context.Users.AnyAsync(u => u.Email == dto.Email, cancellationToken))
+        // Check duplicate email using repository
+        var existingByEmail = await _userRepository.GetByEmailAsync(dto.Email);
+        if (existingByEmail is not null)
             return Conflict(new { error = "Email already exists", code = "DUPLICATE_EMAIL" });
 
-        if (await _context.Users.AnyAsync(u => u.Username == dto.Username, cancellationToken))
+        // Check duplicate username using repository
+        var existingByUsername = await _userRepository.GetByUsernameAsync(dto.Username);
+        if (existingByUsername is not null)
             return Conflict(new { error = "Username already exists", code = "DUPLICATE_USERNAME" });
 
         var user = new User
@@ -36,42 +41,29 @@ public class UsersController : ControllerBase
             PasswordHash = dto.Password // Plain text for now — BCrypt later
         };
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync(cancellationToken);
+        // Repository handles Add + SaveChanges internally
+        await _userRepository.CreateAsync(user);
 
         var response = MapToDto(user);
         return CreatedAtAction(nameof(GetUser), new { id = user.UserID }, response);
     }
 
+    // ── GET /api/users — List all users ──
     [HttpGet]
-    public async Task<ActionResult<List<UserResponseDto>>> GetUsers(CancellationToken cancellationToken)
+    public async Task<ActionResult<List<UserResponseDto>>> GetUsers()
     {
-        var users = await _context.Users
-            .AsNoTracking()
-            .Select(u => new UserResponseDto
-            {
-                UserID = u.UserID,
-                Username = u.Username,
-                FullName = u.FullName,
-                Email = u.Email,
-                Phone = u.Phone,
-                Role = u.Role,
-                MFAEnabled = u.MFAEnabled,
-                Status = u.Status,
-                CreatedAt = u.CreatedAt,
-                UpdatedAt = u.UpdatedAt
-            })
-            .ToListAsync(cancellationToken);
+        // Repository returns all users
+        var users = await _userRepository.GetAllAsync();
 
-        return Ok(users);
+        var response = users.Select(u => MapToDto(u)).ToList();
+        return Ok(response);
     }
 
+    // ── GET /api/users/{id} — Get one user by ID ──
     [HttpGet("{id}")]
-    public async Task<ActionResult<UserResponseDto>> GetUser(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> GetUser(int id)
     {
-        var user = await _context.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.UserID == id, cancellationToken);
+        var user = await _userRepository.GetByIdAsync(id);
 
         if (user is null)
             return NotFound(new { error = "User not found", code = "USER_NOT_FOUND" });
@@ -79,10 +71,11 @@ public class UsersController : ControllerBase
         return Ok(MapToDto(user));
     }
 
+    // ── PUT /api/users/{id} — Update user profile ──
     [HttpPut("{id}")]
-    public async Task<ActionResult<UserResponseDto>> UpdateUser(int id, UpdateUserDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> UpdateUser(int id, UpdateUserDto dto)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == id, cancellationToken);
+        var user = await _userRepository.GetByIdAsync(id);
 
         if (user is null)
             return NotFound(new { error = "User not found", code = "USER_NOT_FOUND" });
@@ -90,27 +83,33 @@ public class UsersController : ControllerBase
         user.FullName = dto.FullName;
         user.Email = dto.Email;
         user.Phone = dto.Phone;
-        user.UpdatedAt = DateTime.UtcNow;
+        // UpdatedAt is set automatically inside UserRepository.UpdateAsync()
 
-        await _context.SaveChangesAsync(cancellationToken);
+        // Repository calls SaveChanges
+        await _userRepository.UpdateAsync(user);
+
         return Ok(MapToDto(user));
     }
 
+    // ── PUT /api/users/{id}/status — Activate/suspend/lock user ──
     [HttpPut("{id}/status")]
-    public async Task<ActionResult<UserResponseDto>> UpdateUserStatus(int id, UpdateStatusDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponseDto>> UpdateUserStatus(int id, UpdateStatusDto dto)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == id, cancellationToken);
+        var user = await _userRepository.GetByIdAsync(id);
 
         if (user is null)
             return NotFound(new { error = "User not found", code = "USER_NOT_FOUND" });
 
         user.Status = dto.Status;
-        user.UpdatedAt = DateTime.UtcNow;
+        // UpdatedAt is set automatically inside UserRepository.UpdateAsync()
 
-        await _context.SaveChangesAsync(cancellationToken);
+        // Repository calls SaveChanges
+        await _userRepository.UpdateAsync(user);
+
         return Ok(MapToDto(user));
     }
 
+    // Helper method that converts the entity to a response DTO (strips PasswordHash)
     private static UserResponseDto MapToDto(User user) => new()
     {
         UserID = user.UserID,
