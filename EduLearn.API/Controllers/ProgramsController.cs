@@ -36,7 +36,7 @@ public class ProgramsController : ControllerBase
             DurationTerms = dto.DurationTerms
         };
 
-        // Repository handles Add + SaveChanges internally
+        // _context.Programs.Add(program) + SaveChanges internally
         await _programRepository.CreateAsync(program);
 
         return CreatedAtAction(nameof(GetProgram), new { id = program.ProgramID }, MapToDto(program));

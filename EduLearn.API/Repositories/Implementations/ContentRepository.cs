@@ -14,14 +14,31 @@ public class ContentRepository : IContentRepository
         _context = context;
     }
 
+    // AsNoTracking for read-only list queries
     public async Task<IEnumerable<Content>> GetAllAsync()
-        => await _context.Contents.ToListAsync();
+        => await _context.Contents.AsNoTracking().ToListAsync();
 
     public async Task<Content?> GetByIdAsync(int contentId)
         => await _context.Contents.FindAsync(contentId);
 
+    // Get by ID with Course and UploadedBy loaded — used when we need CourseName and UploaderName
+    public async Task<Content?> GetByIdWithDetailsAsync(int contentId)
+        => await _context.Contents
+            .Include(c => c.Course)
+            .Include(c => c.UploadedBy)
+            .FirstOrDefaultAsync(c => c.ContentID == contentId);
+
     public async Task<IEnumerable<Content>> GetByCourseIdAsync(int courseId)
         => await _context.Contents.Where(c => c.CourseID == courseId).ToListAsync();
+
+    // Get by CourseID with Course and UploadedBy loaded — used for listing content with names
+    public async Task<IEnumerable<Content>> GetByCourseIdWithDetailsAsync(int courseId)
+        => await _context.Contents
+            .AsNoTracking()
+            .Where(c => c.CourseID == courseId)
+            .Include(c => c.Course)
+            .Include(c => c.UploadedBy)
+            .ToListAsync();
 
     public async Task<IEnumerable<Content>> GetByUploadedByAsync(int userId)
         => await _context.Contents.Where(c => c.UploadedByFK == userId).ToListAsync();
