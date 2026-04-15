@@ -2,6 +2,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
@@ -21,7 +22,7 @@ public class PaymentsController : ControllerBase
 
     // ── POST /api/payments — SFB-03: Record a payment ──
     [HttpPost]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<PaymentResponseDto>> Create(CreatePaymentDto dto, CancellationToken ct)
     {
         var invoice = await _invoiceRepository.GetByIdAsync(dto.InvoiceID);
@@ -60,7 +61,7 @@ public class PaymentsController : ControllerBase
     // ── GET /api/payments/invoice/{invoiceId} — SFB-03: List payments for invoice ──
     [HttpGet("invoice/{invoiceId}")]
     [ActionName("GetByInvoice")]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<PaymentResponseDto>>> GetByInvoice(int invoiceId, CancellationToken ct)
     {
         var exists = await _invoiceRepository.ExistsAsync(invoiceId);

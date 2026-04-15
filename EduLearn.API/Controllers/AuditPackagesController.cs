@@ -1,6 +1,7 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
@@ -20,7 +21,7 @@ public class AuditPackagesController : ControllerBase
 
     // ── POST /api/audit-packages/generate — Build an audit package for a date range ──
     [HttpPost("generate")]
-    // [Authorize(Roles = "Auditor,ITAdmin")]
+    [Authorize(Roles = "Auditor,ITAdmin")]
     public async Task<ActionResult<AuditPackageResponseDto>> Generate(GenerateAuditPackageDto dto, CancellationToken ct)
     {
         if (dto.PeriodEnd < dto.PeriodStart)
@@ -55,7 +56,7 @@ public class AuditPackagesController : ControllerBase
 
     // ── GET /api/audit-packages/{id}/download — Retrieve an audit package by ID ──
     [HttpGet("{id}/download")]
-    // [Authorize(Roles = "Auditor,ITAdmin")]
+    [Authorize(Roles = "Auditor,ITAdmin")]
     public async Task<ActionResult<AuditPackageResponseDto>> Download(int id, CancellationToken ct)
     {
         var package = await _reportRepository.GetAuditPackageByIdAsync(id, ct);

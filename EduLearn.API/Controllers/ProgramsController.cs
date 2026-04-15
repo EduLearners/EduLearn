@@ -1,11 +1,13 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ProgramsController : ControllerBase
 {
     // Repository pattern: controller talks to repository interface, NOT AppDbContext directly

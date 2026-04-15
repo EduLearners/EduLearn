@@ -11,6 +11,7 @@ Monolithic REST API • Repository Pattern • 25 Entities • 9 Modules • 7 R
 | Architecture | Monolithic REST API with Repository Pattern |
 | Backend | ASP.NET Core 8.0 + EF Core 8.0 |
 | Database | SQL Server LocalDB — 25 Entities — Single AppDbContext |
+| Authentication | JWT Bearer + BCrypt + 8 Role-Based Policies |
 | Interim Milestone | April 24, 2026 |
 | Final Deadline | June 16, 2026 |
 | Program | Cognizant ADM DotNet FSE — INTDE26DFSR002 |
@@ -21,18 +22,16 @@ Monolithic REST API • Repository Pattern • 25 Entities • 9 Modules • 7 R
 
 ### Prerequisites
 
-Before you begin, make sure you have the following installed:
-
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) — run `dotnet --version` to verify (should show `8.0.x`)
-- [SQL Server LocalDB](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/sql-server-express-localdb) — comes with Visual Studio or can be installed separately
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) — run `dotnet --version` to verify
+- [SQL Server LocalDB](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/sql-server-express-localdb) — included with Visual Studio
 - [dotnet-ef global tool](https://learn.microsoft.com/en-us/ef/core/cli/dotnet) — install with `dotnet tool install --global dotnet-ef`
-- [Git](https://git-scm.com/) — for version control
+- [Git](https://git-scm.com/)
 
-### Clone & Setup
+### Setup & Run
 
 ```bash
 # 1. Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/EduLearners/EduLearn.git
 cd EduLearn
 
 # 2. Switch to the Development branch
@@ -41,27 +40,23 @@ git checkout Development
 # 3. Restore NuGet packages
 dotnet restore
 
-# 4. Apply database migrations (creates EduLearnDb on LocalDB)
+# 4. Apply database migrations
 .\migrate-database.bat
-# Or manually:
-dotnet ef database update --project EduLearn.API --startup-project EduLearn.API
+# Or: dotnet ef database update --project EduLearn.API --startup-project EduLearn.API
 
 # 5. Run the API
 dotnet run --project EduLearn.API
 
-# 6. Open Swagger in your browser
+# 6. Open Swagger
 # https://localhost:5001/swagger
 ```
 
 ### Verify Setup
 
-After running the API, hit the health check endpoint:
-
 ```
 GET https://localhost:5001/api/health
 ```
-
-You should see:
+Expected response:
 ```json
 {
   "status": "Healthy",
@@ -71,13 +66,14 @@ You should see:
 }
 ```
 
-**Reset DB (if needed):**
-```sql
-USE master;
-ALTER DATABASE EduLearnDb SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-DROP DATABASE EduLearnDb;
-```
-Then re-run `.\migrate-database.bat`.
+### Authentication Flow
+
+All endpoints (except `/api/auth/*` and `/api/health`) require JWT authentication:
+
+1. Register: `POST /api/auth/register` with username, password, email, role
+2. Login: `POST /api/auth/login` with username + password → returns JWT token
+3. In Swagger, click the 🔒 **Authorize** button → paste the token
+4. Access protected endpoints based on your role
 
 ---
 
@@ -85,78 +81,63 @@ Then re-run `.\migrate-database.bat`.
 
 ```
 EduLearn/
-├── EduLearn.slnx                    # Solution file
-├── EduLearn.API/                    # Single monolithic API project
-│   ├── Controllers/                 # One file per resource (10 active controllers)
+├── EduLearn.slnx                        # Solution file
+├── EduLearn.API/                        # Single monolithic API project
+│   ├── Controllers/                     # 21 controllers (one per resource)
 │   ├── Data/
-│   │   └── AppDbContext.cs          # All 25 DbSets, FK configs, HasConversion calls
-│   ├── DTOs/                        # Request and response DTOs per controller
-│   ├── Models/                      # 25 entity classes
-│   │   └── Enums/                   # 10 enum files
+│   │   └── AppDbContext.cs              # All 25 DbSets, FK configs, HasConversion
+│   ├── DTOs/                            # 45 request/response DTOs
+│   ├── Models/                          # 25 entity classes
+│   │   └── Enums/                       # 10 enum files
 │   ├── Repositories/
-│   │   ├── Interfaces/              # 16 IXxxRepository interfaces
-│   │   └── Implementations/         # 16 XxxRepository classes
-│   ├── Migrations/                  # EF Core generated migrations
-│   ├── Program.cs                   # DI, Swagger, CORS, JsonStringEnumConverter
-│   ├── appsettings.json             # Connection string, logging config
-│   └── appsettings.Development.json # Dev overrides
-├── docs/
-│   ├── ARCHITECTURE-REFERENCE.md    # Full entity table, endpoint map, module ownership
-│   └── EduLearn-PRD-v1.0.2.doc      # Product Requirements Document
-├── add-migrations.bat               # Shortcut: dotnet ef migrations add <n>
-├── migrate-database.bat             # Shortcut: dotnet ef database update
-└── README.md                        # This file
+│   │   ├── Interfaces/                  # 20 IXxxRepository interfaces
+│   │   └── Implementations/             # 20 XxxRepository classes
+│   ├── Services/                        # Business logic (TokenService, AuthService, AuditLogService)
+│   ├── Migrations/                      # EF Core generated migrations
+│   ├── Program.cs                       # DI, JWT Auth, Swagger, CORS, Policies
+│   ├── appsettings.json                 # Connection string, JWT config
+│   └── appsettings.Development.json     # Dev overrides
+├── docs/                                # PRD, architecture reference
+├── add-migrations.bat                   # Shortcut: dotnet ef migrations add
+├── migrate-database.bat                 # Shortcut: dotnet ef database update
+└── README.md                            # This file
 ```
-
-Data flow: `Controller → IRepository → Repository → AppDbContext → SQL Server`
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology | Version |
-|---|---|---|
-| Backend | ASP.NET Core | 8.0 LTS |
-| ORM | Entity Framework Core | 8.0 |
-| Database | SQL Server (LocalDB) | 2022 |
-| Pattern | Repository Pattern | 16 interface + implementation pairs |
-| API Docs | Swagger (Swashbuckle) | 6.6.2 |
-| Frontend | React + TypeScript | 18 (planned) |
+| Layer | Technology | Version | Purpose |
+|---|---|---|---|
+| Backend | ASP.NET Core | 8.0 LTS | Monolithic REST API |
+| ORM | Entity Framework Core | 8.0 | Code-first migrations, LINQ queries |
+| Database | SQL Server (LocalDB) | 2022 | 25 entity tables, ACID compliant |
+| Auth | JWT Bearer + BCrypt | 8.0.11 / 4.0.3 | Stateless JWT (60 min), password hashing |
+| Pattern | Repository Pattern | — | 20 interface + implementation pairs |
+| API Docs | Swagger (Swashbuckle) | 6.6.2 | Interactive API explorer with JWT support |
 
 ---
 
 ## Database
 
-- **Database Name:** EduLearnDb
-- **Server:** `(localdb)\MSSQLLocalDB`
-- **Connection String:** See `appsettings.json`
-- **Total Tables:** 25
-- **All FKs:** `DeleteBehavior.NoAction`
-- **All Enums:** Stored as `nvarchar` strings via `HasConversion<string>()`
-- **Unique Indexes:** Users.Username, Users.Email, Students.UserID, Students.MRN, Courses.Code
+| Property | Value |
+|---|---|
+| Name | EduLearnDb |
+| Server | `(localdb)\MSSQLLocalDB` |
+| Tables | 25 |
+| FK Strategy | `DeleteBehavior.NoAction` on all FKs |
+| Enum Storage | `nvarchar` strings via `HasConversion<string>()` |
+| Unique Indexes | Users.Username, Users.Email, Students.UserID, Students.MRN, Courses.Code |
 
 ### Migration Commands
 
 ```bash
-# Generate a new migration after model changes
+# Generate a new migration
 .\add-migrations.bat <MigrationName>
-# Or: dotnet ef migrations add <n> --project EduLearn.API --startup-project EduLearn.API
 
-# Apply pending migrations to the database
+# Apply pending migrations
 .\migrate-database.bat
-# Or: dotnet ef database update --project EduLearn.API --startup-project EduLearn.API
 ```
-
-### Entities by Owner
-
-| Owner | Entities |
-|---|---|
-| Ashish (IAM) | User, AuditLog |
-| Saurav (SRA+ETS) | Student, Applicant, Transcript, Section, Enrollment, Room |
-| Vikash (CCM+LMS+AGI) | Course, Program, Syllabus, Content, Discussion, Assessment, Submission, GradeChange |
-| Utkarsh (RKA) | Report, KPI, AuditPackage |
-| Tanya (SFB) | FeeSchedule, Invoice, Payment, Scholarship |
-| Swarna (NHT) | Notification, Ticket |
 
 ---
 
@@ -173,191 +154,237 @@ Data flow: `Controller → IRepository → Repository → AppDbContext → SQL S
 
 ---
 
-## Repositories
+## Currently Implemented Endpoints (55+)
 
-| Interface | Implementation | Entity | Owner |
-|---|---|---|---|
-| IUserRepository | UserRepository | User | Ashish |
-| ICourseRepository | CourseRepository | Course | Vikash |
-| IProgramRepository | ProgramRepository | Program | Vikash |
-| IEnrollmentRepository | EnrollmentRepository | Enrollment | Saurav |
-| IStudentRepository | StudentRepository | Student | Saurav |
-| IApplicantRepository | ApplicantRepository | Applicant | Saurav |
-| IRoomRepository | RoomRepository | Room | Saurav |
-| ISectionRepository | SectionRepository | Section | Saurav |
-| ITranscriptRepository | TranscriptRepository | Transcript | Saurav |
-| IAssessmentRepository | AssessmentRepository | Assessment | Vikash |
-| ISubmissionRepository | SubmissionRepository | Submission | Vikash |
-| IContentRepository | ContentRepository | Content | Vikash |
-| IDiscussionRepository | DiscussionRepository | Discussion | Vikash |
-| IPaymentRepository | PaymentRepository | Payment | Tanya |
-| IInvoiceRepository | InvoiceRepository | Invoice | Tanya |
-| INotificationRepository | NotificationRepository | Notification | Swarna |
+### Authentication (IAM-01) — Open (no JWT required)
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/register` | Register new user (BCrypt hashed) |
+| POST | `/api/auth/login` | Login → returns JWT token |
+
+### Users (IAM-02) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/users` | Create user |
+| GET | `/api/users` | List all users |
+| GET | `/api/users/{id}` | Get user by ID |
+| PUT | `/api/users/{id}` | Update user profile |
+| PUT | `/api/users/{id}/status` | Activate/suspend/lock |
+
+### Audit Log (IAM-04) — Secured (Auditor + ITAdmin)
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/audit-log` | Query audit trail (filters: userId, action, resourceType, dateRange) |
+
+### Applicants (SRA-01) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/applicants` | Submit application |
+| GET | `/api/applicants` | List applicants |
+| GET | `/api/applicants/{id}` | Get applicant |
+| PUT | `/api/applicants/{id}/status` | Accept/reject/waitlist |
+
+### Students (SRA-02) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/students` | Create student record |
+| GET | `/api/students` | List students |
+| GET | `/api/students/{id}` | Get student |
+| PUT | `/api/students/{id}` | Update student |
+
+### Courses (CCM-01) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/courses` | Create course |
+| GET | `/api/courses` | List courses |
+| GET | `/api/courses/{id}` | Get course |
+| PUT | `/api/courses/{id}` | Update course |
+
+### Programs (CCM-01) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/programs` | Create degree program |
+| GET | `/api/programs` | List programs |
+| GET | `/api/programs/{id}` | Get program |
+| PUT | `/api/programs/{id}` | Update program |
+
+### Sections (ETS-02) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/sections` | Create section |
+| GET | `/api/sections/{id}` | Get section |
+| GET | `/api/sections/course/{courseId}/term/{term}` | Sections by course + term |
+
+### Rooms (ETS-02) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/rooms` | Create room |
+| GET | `/api/rooms` | List rooms |
+| GET | `/api/rooms/{id}` | Get room |
+
+### Enrollments (ETS-01) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/enrollment/enroll` | Enroll (capacity + waitlist) |
+| DELETE | `/api/enrollment/{id}/drop` | Drop (auto-promote waitlist) |
+| GET | `/api/enrollment/student/{studentId}` | Student's enrollments |
+| GET | `/api/enrollment/section/{sectionId}` | Section roster |
+
+### Assessments (AGI-01) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/assessments` | Create assessment (Draft) |
+| GET | `/api/assessments/course/{courseId}` | List by course |
+| PUT | `/api/assessments/{id}` | Update (Draft only) |
+| PUT | `/api/assessments/{id}/publish` | Publish/close |
+
+### Submissions & Grading (AGI-02) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/submissions` | Submit work |
+| GET | `/api/submissions/assessment/{assessmentId}` | List by assessment |
+| POST | `/api/submissions/{id}/grade` | Grade submission |
+| GET | `/api/submissions/student/{studentId}` | Student's submissions |
+
+### Content (LMS-01) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/content/upload` | Upload learning material |
+| GET | `/api/content/course/{courseId}` | List course content |
+| GET | `/api/content/{id}` | Get content item |
+| PUT | `/api/content/{id}/version` | Upload new version |
+
+### Fee Schedules (SFB-01) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/fees` | Create fee schedule |
+| GET | `/api/fees/program/{programId}/term/{term}` | Get fee schedule |
+| PUT | `/api/fees/{id}` | Update fee schedule |
+
+### Invoices (SFB-02) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/invoices/generate` | Generate invoice |
+| GET | `/api/invoices/student/{studentId}` | Student's invoices |
+| GET | `/api/invoices/{id}` | Get invoice |
+
+### Payments (SFB-03) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/payments` | Record payment |
+| GET | `/api/payments/invoice/{invoiceId}` | Payments for invoice |
+
+### Scholarships (SFB-04) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/scholarships` | Award scholarship |
+| GET | `/api/scholarships/student/{studentId}` | Student's scholarships |
+| PUT | `/api/scholarships/{id}` | Update/revoke |
+
+### Reports (RKA-01) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/reports/generate` | Generate report |
+| GET | `/api/reports` | List reports |
+| GET | `/api/reports/{id}/download` | Download report |
+
+### KPIs (RKA-02) — Secured (recalculate/seed: ITAdmin + Auditor)
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/kpis` | List KPI values |
+| POST | `/api/kpis/recalculate` | Recalculate all KPIs |
+| POST | `/api/kpis/seed` | Seed default KPI definitions |
+
+### Audit Packages (RKA-03) — Secured (Auditor + ITAdmin)
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/audit-packages/generate` | Generate audit package |
+| GET | `/api/audit-packages/{id}/download` | Download package |
+
+### Health Check — Open
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/health` | API + database health check |
 
 ---
 
 ## Git Branching Strategy
 
 ```
-main                          ← Production-ready code
-└── Development               ← Integration branch (all features merge here)
-    ├── IAM_Ashish             ← Ashish's feature branch
-    ├── SRA_ETS_Saurav         ← Saurav's feature branch
-    ├── CCM_Viksh              ← Vikash's CCM feature branch
-    ├── AGI_Vikash             ← Vikash's AGI feature branch
-    ├── SFB_Tanya              ← Tanya's feature branch
-    ├── RKA_Utkarsh            ← Utkarsh's feature branch
-    └── NHT_Swarna             ← Swarna's feature branch
+main                              ← Production-ready code
+└── Development                   ← Integration branch (all features merge here)
+    ├── Auth_Ashish                ← IAM module (JWT, Auth, Audit Log)
+    ├── Saurav                     ← SRA + ETS modules
+    ├── AGI_Vikash                 ← CCM + LMS + AGI modules
+    ├── CCM_Viksh                  ← Earlier CCM work
+    ├── SFB_Tanya                  ← SFB module
+    ├── RKA_Utkarsh                ← RKA module
+    └── (NHT_Swarna)               ← NHT module (pending)
 ```
 
-### How to Work on Your Feature
+### Workflow
 
 ```bash
-# 1. Always start from latest Development
+# Start from latest Development
 git checkout Development
 git pull origin Development
 
-# 2. Create your feature branch (or switch to existing one)
+# Create or switch to your branch
 git checkout -b <ModuleCode>_<YourName>
-# Example: git checkout -b SFB_Tanya
 
-# 3. Do your work — add controllers, DTOs, update repositories, etc.
+# Work on your feature...
 
-# 4. Stage, commit, and push
+# Commit and push
 git add .
-git commit -m "feat(<Module>): <short description of what you built>"
-git push origin <your-branch-name>
+git commit -m "feat(<Module>): <description>"
+git push origin <your-branch>
 
-# 5. When feature is complete, merge into Development
+# Merge into Development when ready
 git checkout Development
 git pull origin Development
-git merge <your-branch-name>
+git merge <your-branch>
 git push origin Development
 ```
 
 ### Commit Message Format
 
 ```
-feat(<Module>): <what you did>
-
-Examples:
-  feat(IAM): implement JWT login and register endpoints
-  feat(SRA): add applicant intake and student CRUD
-  feat(CCM): add Program CRUD with repository pattern
-  feat(AGI): implement assessment creation and publish workflow
-  feat(SFB): add fee schedule and invoice generation
-  fix(ETS): fix waitlist auto-promote on enrollment drop
-  docs: update README with setup instructions
+feat(<Module>): <what you did>       ← New feature
+fix(<Module>): <what you fixed>      ← Bug fix
+docs: <what you updated>             ← Documentation
+refactor(<Module>): <what changed>   ← Code restructure
 ```
-
----
-
-## Currently Implemented Endpoints
-
-### Health Check
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/health` | Database connectivity check |
-
-### Users (IAM-02) — Ashish
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/users` | Create new user |
-| GET | `/api/users` | List all users |
-| GET | `/api/users/{id}` | Get user by ID |
-| PUT | `/api/users/{id}` | Update user profile |
-| PUT | `/api/users/{id}/status` | Activate/suspend/lock user |
-
-### Courses (CCM-01) — Vikash
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/courses` | Create course in catalog |
-| GET | `/api/courses` | List all courses |
-| GET | `/api/courses/{id}` | Get course details |
-| PUT | `/api/courses/{id}` | Update course |
-
-### Programs (CCM-01) — Vikash
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/programs` | Create degree program |
-| GET | `/api/programs` | List all programs |
-| GET | `/api/programs/{id}` | Get program with curriculum |
-| PUT | `/api/programs/{id}` | Update program |
-
-### Assessments (AGI-01) — Vikash
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/assessments` | Create assessment (starts as Draft) |
-| GET | `/api/assessments/course/{courseId}` | List assessments for course |
-| PUT | `/api/assessments/{id}` | Update assessment (Draft only) |
-| PUT | `/api/assessments/{id}/publish` | Publish or close assessment |
-
-### Enrollments (ETS-01) — Saurav
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/enrollment/enroll` | Enroll in section (capacity + waitlist) |
-| DELETE | `/api/enrollment/{id}/drop` | Drop enrollment (auto-promote waitlist) |
-| GET | `/api/enrollment/student/{studentId}` | Student's enrollments |
-| GET | `/api/enrollment/section/{sectionId}` | Section roster |
-
-### Applicants (SRA-01) — Saurav
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/applicants` | Create applicant |
-| GET | `/api/applicants` | List applicants |
-| PUT | `/api/applicants/{id}/status` | Update application status |
-
-### Students (SRA-02) — Saurav
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/students` | List students |
-| GET | `/api/students/{id}` | Get student |
-| PUT | `/api/students/{id}` | Update student |
-
-### Sections (ETS-02) — Saurav
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/sections` | Create section |
-| GET | `/api/sections/course/{courseId}/term/{term}` | Get sections by course & term |
-
-### Rooms (ETS-02) — Saurav
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/rooms` | Create room |
-| GET | `/api/rooms` | List rooms |
 
 ---
 
 ## Architecture Patterns
 
 ### Repository Pattern
-
-All controllers use repository interfaces for data access (not AppDbContext directly). This enables unit testing with mocks and separates concerns.
-
+All controllers use repository interfaces — not AppDbContext directly. This enables testability and separation of concerns.
 ```
-Controller → IXxxRepository (interface) → XxxRepository (implementation) → AppDbContext → SQL Server
+Controller → IXxxRepository → XxxRepository → AppDbContext → SQL Server
 ```
 
-**Exception:** `EnrollmentsController` uses `IEnrollmentRepository.BeginTransactionAsync()` for transactional enrollment/drop operations. All data reads/writes still go through repositories.
-
-**Exception:** `HealthController` uses `AppDbContext` directly for raw SQL health check — no entity involved.
+### JWT Authentication
+Stateless JWT tokens with 60-minute expiry. 8 role-based authorization policies defined in Program.cs. Custom 401/403 JSON responses.
 
 ### DTO Pattern
-
-Every endpoint uses DTOs (Data Transfer Objects) for request and response shapes. Controllers never expose raw entity models to the API consumer.
-
-- `CreateXxxDto` — POST request body (no ID, no Status)
-- `UpdateXxxDto` — PUT request body (where different from Create)
-- `XxxResponseDto` — Response shape (includes ID, Status, computed fields)
+Every endpoint uses DTOs. Controllers never expose raw entity models. `CreateXxxDto` for POST, `XxxResponseDto` for responses, `UpdateXxxDto` for PUT where different.
 
 ### Enum Serialization
+All enums serialize as readable strings (`"Active"`, `"Published"`, `"Enrolled"`) — not integers. Configured via `JsonStringEnumConverter` in Program.cs.
 
-All enums serialize as readable strings in JSON (not integers). This is configured in `Program.cs` with `JsonStringEnumConverter` and in Swagger with `EnumSchemaFilter`.
+---
 
-```json
-{ "status": "Active" }     // ✅ What the API returns
-{ "status": 0 }            // ❌ NOT this
-```
+## Important Notes for Team Members
+
+1. **Always pull Development before starting work** — avoid merge conflicts
+2. **All endpoints require JWT** — register → login → use token in Swagger 🔒
+3. **Follow repository pattern** — inject `IXxxRepository`, not `AppDbContext`
+4. **Use DTOs** — never return raw entity models from controllers
+5. **Enums as strings** — use types from `Models/Enums/`, not magic strings
+6. **Error format** — always return `{ error: "message", code: "MACHINE_CODE" }`
+7. **Check `docs/ARCHITECTURE-REFERENCE.md`** — full endpoint map for all 30 features
 
 ---
 
@@ -365,32 +392,8 @@ All enums serialize as readable strings in JSON (not integers). This is configur
 
 | Milestone | Date | Requirement |
 |---|---|---|
-| Interim | April 24, 2026 | ≥50% backend complete per team member |
+| Interim | April 24, 2026 | ≥50% backend per team member |
 | Final | June 16, 2026 | Full project + React frontend + Viva |
-
-### Interim Checklist by Team Member
-
-| Member | Must Complete by April 24 |
-|---|---|
-| Ashish | IAM-01 (Auth+JWT), IAM-02 (RBAC), IAM-04 (Audit Log) |
-| Saurav | SRA-01 (Admissions), SRA-02 (Student CRUD), ETS-01 (Enrollment), ETS-02 (Sections) |
-| Vikash | CCM-01 (Courses+Programs) ✅, AGI-01 (Assessments) ✅, LMS-01 (Content), AGI-02 (Submissions) |
-| Utkarsh | RKA-01 (Reports), RKA-02 (KPI Dashboard) |
-| Tanya | SFB-01 (Fee Schedules), SFB-02 (Invoices), SFB-03 (Payments) |
-| Swarna | NHT-01 (Notifications+SignalR), NHT-03 (Tickets) |
-
----
-
-## Important Notes for All Team Members
-
-1. **Always pull Development before starting work** — avoid merge conflicts
-2. **Follow the repository pattern** — inject `IXxxRepository` in controllers, not `AppDbContext`
-3. **Use DTOs** — never return raw entity models from controllers
-4. **Enums as strings** — use the existing enum types from `Models/Enums/`, don't use magic strings
-5. **DeleteBehavior.NoAction** — all FK configurations must use this (already done in AppDbContext)
-6. **Error response format** — always return `{ error: "message", code: "MACHINE_CODE" }` for errors
-7. **No migration conflicts** — coordinate if your feature requires model/entity changes
-8. **Check `docs/ARCHITECTURE-REFERENCE.md`** — contains the full endpoint map for all 30 features
 
 ---
 
@@ -398,10 +401,10 @@ All enums serialize as readable strings in JSON (not integers). This is configur
 
 | Document | Location | Description |
 |---|---|---|
-| PRD v1.0.2 | `docs/EduLearn-PRD-v1.0.2.doc` | Full product requirements with all 30 features |
+| PRD v11.0 | `docs/EduLearnPRD-v11.0-Final.doc` | Full product requirements |
 | Architecture Reference | `docs/ARCHITECTURE-REFERENCE.md` | Entity table, endpoint map, module ownership |
-| This README | `README.md` | Setup guide, branching strategy, current status |
+| README | `README.md` | This file — setup, endpoints, branching |
 
 ---
 
-*EduLearn v11.0 • Cognizant ADM DotNet FSE — React Stage • Program: INTDE26DFSR002 • March 2026*
+*EduLearn v11.0 • Cognizant ADM DotNet FSE — React Stage • INTDE26DFSR002 • March 2026*

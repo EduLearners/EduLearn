@@ -2,6 +2,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
@@ -29,7 +30,7 @@ public class InvoicesController : ControllerBase
 
     // ── POST /api/invoices/generate — SFB-02: Generate invoice ──
     [HttpPost("generate")]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<InvoiceResponseDto>> Generate(GenerateInvoiceDto dto, CancellationToken ct)
     {
         var student = await _studentRepository.GetByIdAsync(dto.StudentID);
@@ -79,7 +80,7 @@ public class InvoicesController : ControllerBase
 
     // ── GET /api/invoices/student/{studentId} — SFB-02: List invoices for student ──
     [HttpGet("student/{studentId}")]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<InvoiceResponseDto>>> GetByStudent(int studentId, CancellationToken ct)
     {
         var invoices = await _invoiceRepository.GetByStudentIdAsync(studentId);
@@ -91,7 +92,7 @@ public class InvoicesController : ControllerBase
     // ── GET /api/invoices/{id} — SFB-02: Get invoice by ID ──
     [HttpGet("{id}")]
     [ActionName("GetById")]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<InvoiceResponseDto>> GetById(int id, CancellationToken ct)
     {
         var invoice = await _invoiceRepository.GetByIdAsync(id);

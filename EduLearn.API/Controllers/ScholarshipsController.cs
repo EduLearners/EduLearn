@@ -2,6 +2,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
@@ -19,7 +20,7 @@ public class ScholarshipsController : ControllerBase
 
     // ── POST /api/scholarships — SFB-04: Award scholarship ──
     [HttpPost]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<ScholarshipResponseDto>> Create(CreateScholarshipDto dto, CancellationToken ct)
     {
         if (dto.ValidFrom >= dto.ValidTo)
@@ -46,7 +47,7 @@ public class ScholarshipsController : ControllerBase
     // ── GET /api/scholarships/student/{studentId} — SFB-04: List scholarships for student ──
     [HttpGet("student/{studentId}")]
     [ActionName("GetByStudent")]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<ScholarshipResponseDto>>> GetByStudent(int studentId, CancellationToken ct)
     {
         var scholarships = await _scholarshipRepository.GetByStudentIdAsync(studentId, ct);
@@ -56,7 +57,7 @@ public class ScholarshipsController : ControllerBase
 
     // ── PUT /api/scholarships/{id} — SFB-04: Update/revoke scholarship ──
     [HttpPut("{id}")]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<ScholarshipResponseDto>> Update(int id, UpdateScholarshipDto dto, CancellationToken ct)
     {
         var existing = await _scholarshipRepository.GetByIdAsync(id, ct);

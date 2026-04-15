@@ -2,6 +2,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
@@ -19,7 +20,7 @@ public class FeesController : ControllerBase
 
     // ── POST /api/fees — SFB-01: Create fee schedule ──
     [HttpPost]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<FeeScheduleResponseDto>> Create(CreateFeeScheduleDto dto, CancellationToken ct)
     {
         if (dto.EffectiveFrom >= dto.EffectiveTo)
@@ -42,7 +43,7 @@ public class FeesController : ControllerBase
 
     // ── GET /api/fees/program/{programId}/term/{term} — SFB-01: Get fee schedule ──
     [HttpGet("program/{programId}/term/{term}")]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<FeeScheduleResponseDto>> GetByProgramAndTerm(int programId, string term, CancellationToken ct)
     {
         var fee = await _feeScheduleRepository.GetByProgramAndTermAsync(programId, term, ct);
@@ -55,7 +56,7 @@ public class FeesController : ControllerBase
 
     // ── PUT /api/fees/{id} — SFB-01: Update fee schedule ──
     [HttpPut("{id}")]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<FeeScheduleResponseDto>> Update(int id, UpdateFeeScheduleDto dto, CancellationToken ct)
     {
         var existing = await _feeScheduleRepository.GetByIdAsync(id, ct);

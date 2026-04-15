@@ -39,5 +39,11 @@ CLAUDE.local.md
 # MVP / personal planning docs
 docs/M4-UTKARSH-MVP-PLAN.md
 
+# Outdated PRD versions — ONLY use docs/EduLearn-PRD-v1.0_2.docx
+docs/EduLearn-PRD-v10.0*.docx
+docs/EduLearn-PRD-v10.1*.doc
+docs/EduLearnPRD-v11.0*.doc
+docs/write_prd_helper.py
+
 # Git worktrees
 .worktrees/
