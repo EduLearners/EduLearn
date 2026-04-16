@@ -66,11 +66,10 @@ public class StudentsController : ControllerBase
                 code = "PROGRAM_NOT_FOUND"
             });
 
-        // Auto-generate MRN (Medical Record Number / Student ID)
+        // Auto-generate MRN (Student Registration Number)
         // Format: STU-00001, STU-00002, etc.
-        var allStudents = await _studentRepo.GetAllAsync();
-        var nextNumber = allStudents.Count() + 1;
-        var mrn = $"STU-{nextNumber:D5}";
+        var count = await _studentRepo.GetCountAsync();
+        var mrn = $"STU-{count + 1:D5}";
 
         var student = new Student
         {

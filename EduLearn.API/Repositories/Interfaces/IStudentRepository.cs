@@ -15,4 +15,5 @@ public interface IStudentRepository
     Task<Student> UpdateAsync(Student student);
     Task<bool> DeleteAsync(int studentId);
     Task<bool> ExistsAsync(int studentId);
+    Task<int> GetCountAsync();
 }

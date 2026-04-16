@@ -698,6 +698,185 @@ Expected: `200` — login audit entries
 
 ---
 
+### SECTION 13 — Applicants (SRA-01)
+
+**13.1 Create applicant**
+```
+POST /api/applicants
+```
+```json
+{
+  "name": "Amit Verma",
+  "dob": "2005-03-10",
+  "nationalId": "AADHAAR-1234-5678",
+  "contactInfoJSON": "{\"email\": \"amit@gmail.com\", \"phone\": \"+91-9876543210\"}",
+  "programApplied": "B.Tech Computer Science",
+  "documentsURIJSON": null
+}
+```
+Expected: `201 Created`
+
+**13.2 List applicants**
+```
+GET /api/applicants
+```
+Expected: `200 OK` — returns applicant list
+
+**13.3 Get applicant by ID**
+```
+GET /api/applicants/1
+```
+Expected: `200 OK`
+
+**13.4 Update applicant status**
+```
+PUT /api/applicants/1/status
+```
+```json
+{ "status": "UnderReview" }
+```
+Expected: `200 OK` — status updated
+
+**13.5 Accept applicant**
+```
+PUT /api/applicants/1/status
+```
+```json
+{ "status": "Accepted" }
+```
+Expected: `200 OK`
+
+---
+
+### SECTION 14 — Reports (RKA-01)
+
+> Login as ITAdmin or Auditor to access these endpoints.
+
+**14.1 Generate report**
+```
+POST /api/reports/generate
+```
+```json
+{
+  "scope": "Enrollment",
+  "parametersJSON": "{\"term\": \"Fall 2026\"}",
+  "generatedByFK": 1
+}
+```
+Expected: `201 Created` — report record created with scope "Enrollment"
+
+**14.2 List all reports**
+```
+GET /api/reports
+```
+Expected: `200 OK` — returns report list
+
+**14.3 Download report**
+```
+GET /api/reports/1/download
+```
+Expected: `200 OK` — returns report data (PDF generation is post-interim TODO)
+
+**14.4 Negative test — invalid user**
+```
+POST /api/reports/generate
+```
+```json
+{
+  "scope": "Finance",
+  "parametersJSON": null,
+  "generatedByFK": 0
+}
+```
+Expected: `400` — `INVALID_USER_ID`
+
+---
+
+### SECTION 15 — KPIs (RKA-02)
+
+**15.1 Seed default KPIs**
+```
+POST /api/kpis/seed
+```
+Expected: `200 OK` — default KPIs created (idempotent — returns `409 Conflict` if already seeded)
+
+**15.2 List all KPIs**
+```
+GET /api/kpis
+```
+Expected: `200 OK` — returns list of KPIs with names, targets, current values
+
+**15.3 Recalculate KPIs**
+```
+POST /api/kpis/recalculate
+```
+Expected: `200 OK` — KPI values recomputed from current data
+
+---
+
+### SECTION 16 — Audit Packages (RKA-03)
+
+**16.1 Generate audit package**
+```
+POST /api/audit-packages/generate
+```
+```json
+{
+  "periodStart": "2026-01-01",
+  "periodEnd": "2026-06-30"
+}
+```
+Expected: `201 Created` — audit package with contents summary
+
+**16.2 Invalid date range**
+```
+POST /api/audit-packages/generate
+```
+```json
+{
+  "periodStart": "2026-12-31",
+  "periodEnd": "2026-01-01"
+}
+```
+Expected: `400` — `INVALID_DATE_RANGE`
+
+**16.3 Download audit package**
+```
+GET /api/audit-packages/1/download
+```
+Expected: `200 OK` — returns package data (ZIP generation is post-interim TODO)
+
+---
+
+### SECTION 17 — Assessment Archival (AGI-01 — New)
+
+**17.1 Close assessment first**
+```
+PUT /api/assessments/1/publish
+```
+```json
+{ "status": "Closed" }
+```
+Expected: `200 OK` — status "Closed"
+
+**17.2 Archive closed assessment**
+```
+PUT /api/assessments/1/publish
+```
+```json
+{ "status": "Archived" }
+```
+Expected: `200 OK` — status "Archived"
+
+**17.3 Cannot archive non-closed assessment**
+Create a new Draft assessment, then try to archive it directly:
+```json
+{ "status": "Archived" }
+```
+Expected: `400` — `INVALID_STATUS_TRANSITION`
+
+---
+
 ## Post-Test DB Integrity Check
 
 ```sql

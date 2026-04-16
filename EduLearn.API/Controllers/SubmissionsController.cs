@@ -1,5 +1,4 @@
-﻿using EduLearn.API.Data;
-using EduLearn.API.DTOs;
+﻿using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
@@ -19,21 +18,16 @@ public class SubmissionsController : ControllerBase
     private readonly IStudentRepository _studentRepository;
     private readonly IUserRepository _userRepository;
 
-    // AppDbContext only for GradeChange creation (no separate repo yet — will be added in AGI-03)
-    private readonly AppDbContext _context;
-
     public SubmissionsController(
         ISubmissionRepository submissionRepository,
         IAssessmentRepository assessmentRepository,
         IStudentRepository studentRepository,
-        IUserRepository userRepository,
-        AppDbContext context)
+        IUserRepository userRepository)
     {
         _submissionRepository = submissionRepository;
         _assessmentRepository = assessmentRepository;
         _studentRepository = studentRepository;
         _userRepository = userRepository;
-        _context = context;
     }
 
     // ── POST /api/submissions — Student submits work for an assessment ──
@@ -156,9 +150,8 @@ public class SubmissionsController : ControllerBase
                 AuditNote = $"Re-graded from {submission.Score.Value} to {dto.Score}"
             };
 
-            // Using AppDbContext directly for GradeChange (separate GradeChange repo will be added in AGI-03)
-            _context.GradeChanges.Add(gradeChange);
-            await _context.SaveChangesAsync();
+            // Create grade change record via repository pattern
+            await _submissionRepository.CreateGradeChangeAsync(gradeChange);
         }
 
         // Apply the grade

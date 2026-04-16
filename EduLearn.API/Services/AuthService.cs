@@ -40,17 +40,17 @@ public class AuthService
     // ════════════════════════════════════════
     // REGISTER — POST /api/auth/register
     // ════════════════════════════════════════
-    public async Task<object> RegisterAsync(RegisterDto dto)
+    public async Task<(bool Success, object Result)> RegisterAsync(RegisterDto dto)
     {
         // Check duplicate username
         var existingUser = await _userRepository.GetByUsernameAsync(dto.Username);
         if (existingUser != null)
-            return new { error = "Username already exists" };
+            return (false, new { error = "Username already exists" });
 
         // Check duplicate email
         var existingEmail = await _userRepository.GetByEmailAsync(dto.Email);
         if (existingEmail != null)
-            return new { error = "Email already exists" };
+            return (false, new { error = "Email already exists" });
 
         // BCrypt hash the password
         string hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password);
@@ -79,13 +79,13 @@ public class AuthService
             new { role = user.Role.ToString() }  // extra details
         );
 
-        return new
+        return (true, new
         {
             message  = "User registered successfully",
             userId   = user.UserID,
             username = user.Username,
             role     = user.Role.ToString()
-        };
+        });
     }
 
     // ════════════════════════════════════════

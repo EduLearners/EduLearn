@@ -25,6 +25,7 @@ public interface ISubmissionRepository
     Task<Submission?> GetByStudentAndAssessmentAsync(int studentId, int assessmentId);
     Task<Submission> CreateAsync(Submission submission);
     Task<Submission> UpdateAsync(Submission submission);
+    Task CreateGradeChangeAsync(GradeChange gradeChange);
     Task<bool> DeleteAsync(int submissionId);
     Task<bool> ExistsAsync(int submissionId);
 }

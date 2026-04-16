@@ -71,9 +71,17 @@ public class SubmissionRepository : ISubmissionRepository
 
     public async Task<Submission> UpdateAsync(Submission submission)
     {
-        _context.Submissions.Update(submission);
+        var entry = _context.Entry(submission);
+        if (entry.State == EntityState.Detached)
+            _context.Submissions.Update(submission);
         await _context.SaveChangesAsync();
         return submission;
+    }
+
+    public async Task CreateGradeChangeAsync(GradeChange gradeChange)
+    {
+        _context.GradeChanges.Add(gradeChange);
+        await _context.SaveChangesAsync();
     }
 
     public async Task<bool> DeleteAsync(int submissionId)

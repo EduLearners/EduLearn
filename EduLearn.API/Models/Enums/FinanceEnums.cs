@@ -12,7 +12,7 @@ public enum InvoiceStatus
 
 public enum PaymentStatus
 {
-    Completed, Failed, Refunded
+    Pending, Completed, Failed, Refunded
 }
 
 public enum PaymentMethod

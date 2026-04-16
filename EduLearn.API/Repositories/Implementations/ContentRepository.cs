@@ -52,7 +52,9 @@ public class ContentRepository : IContentRepository
 
     public async Task<Content> UpdateAsync(Content content)
     {
-        _context.Contents.Update(content);
+        var entry = _context.Entry(content);
+        if (entry.State == EntityState.Detached)
+            _context.Contents.Update(content);
         await _context.SaveChangesAsync();
         return content;
     }

@@ -31,15 +31,13 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
-    // AUTH CHANGE: POST /api/auth/register — BCrypt hashes password before saving
+    // POST /api/auth/register — BCrypt hashes password before saving
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
-        var result = await _authService.RegisterAsync(dto);
+        var (success, result) = await _authService.RegisterAsync(dto);
 
-        // AUTH CHANGE: If result has "error" property → registration failed (duplicate)
-        var errorProp = result.GetType().GetProperty("error");
-        if (errorProp != null)
+        if (!success)
             return BadRequest(result);
 
         return Ok(result);
