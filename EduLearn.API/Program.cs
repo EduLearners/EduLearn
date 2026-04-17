@@ -18,6 +18,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using EduLearn.API.Data;
+using EduLearn.API.Hubs;
 using EduLearn.API.Repositories.Implementations;
 using EduLearn.API.Repositories.Interfaces;
 using EduLearn.API.Services;
@@ -33,6 +34,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
+// NHT CHANGE (NHT-01): SignalR server. Reuse JsonStringEnumConverter so pushed payloads
+// match the REST payload shape (enums serialized as strings).
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+        options.PayloadSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
 // [EXISTING] Swagger + JWT lock icon
@@ -98,6 +106,9 @@ builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IFeeScheduleRepository, FeeScheduleRepository>();
 builder.Services.AddScoped<IScholarshipRepository, ScholarshipRepository>();
 
+// NHT CHANGE (NHT-03): Ticket repository.
+builder.Services.AddScoped<ITicketRepository, TicketRepository>();
+
 // AUDIT CHANGE: Register audit log repository (append-only: create + read, no update/delete)
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
@@ -107,6 +118,10 @@ builder.Services.AddScoped<AuthService>();
 
 // AUDIT CHANGE: Register AuditLogService — all teammates inject this to log actions
 builder.Services.AddScoped<AuditLogService>();
+
+// NHT CHANGE (NHT-01): Persist-then-push helper. Other modules inject INotificationService
+// and never need to know a SignalR hub exists.
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // [EXISTING] JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -127,6 +142,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
+            // NHT CHANGE (NHT-01): Browsers cannot set Authorization headers on WebSocket
+            // upgrade requests. Let SignalR clients pass the JWT as ?access_token=... when
+            // connecting to /notificationHub.
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    path.StartsWithSegments("/notificationHub"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            },
+
             // Custom 401 response
             OnChallenge = async context =>
             {
@@ -210,6 +240,11 @@ builder.Services.AddAuthorization(options =>
     // AUDIT CHANGE: Auditor + ITAdmin — view audit logs (PRD Section 6.1)
     options.AddPolicy("AuditViewPolicy", p => p.RequireRole(
         "Auditor", "ITAdmin"));
+
+    // NHT CHANGE (NHT-03): Ticket assign/resolve — ITAdmin only today. If a SupportStaff
+    // role is added later, widen here without touching controllers. Kept separate from
+    // AdminPolicy to avoid broadening that policy's scope.
+    options.AddPolicy("SupportStaffPolicy", p => p.RequireRole("ITAdmin"));
 });
 
 var app = builder.Build();
@@ -228,6 +263,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// NHT CHANGE (NHT-01): SignalR hub for real-time notifications.
+// Client connects via /notificationHub?access_token=<jwt>.
+app.MapHub<NotificationHub>("/notificationHub");
+
 app.Run();
 
 // [EXISTING] EnumSchemaFilter — no changes
