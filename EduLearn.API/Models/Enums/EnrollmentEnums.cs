@@ -7,5 +7,5 @@ public enum EnrollmentStatus
 
 public enum StudentLifecycleStatus
 {
-    Active, OnLeave, Graduated, Expelled
+    Active, Graduated, Withdrawn, Suspended
 }

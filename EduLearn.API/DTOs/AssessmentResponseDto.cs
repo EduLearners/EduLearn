@@ -6,7 +6,7 @@ namespace EduLearn.API.DTOs
     {
         public int AssessmentID { get; set; }
         public int CourseID { get; set; }
-        public string CourseName { get; set; } = null!;    // From Course.Title navigation
+        public string CourseName { get; set; } = null!;    
         public int? SectionID { get; set; }
         public string Title { get; set; } = null!;
         public AssessmentType Type { get; set; }            // Shows as "Assignment" / "Quiz" / "Exam" in JSON

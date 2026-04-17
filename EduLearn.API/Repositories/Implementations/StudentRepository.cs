@@ -58,4 +58,7 @@ public class StudentRepository : IStudentRepository
 
     public async Task<bool> ExistsAsync(int studentId)
         => await _context.Students.AnyAsync(s => s.StudentID == studentId);
+
+    public async Task<int> GetCountAsync()
+        => await _context.Students.CountAsync();
 }

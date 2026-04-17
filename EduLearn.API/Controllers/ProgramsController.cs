@@ -1,11 +1,13 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ProgramsController : ControllerBase
 {
     // Repository pattern: controller talks to repository interface, NOT AppDbContext directly
@@ -36,7 +38,7 @@ public class ProgramsController : ControllerBase
             DurationTerms = dto.DurationTerms
         };
 
-        // Repository handles Add + SaveChanges internally
+        // _context.Programs.Add(program) + SaveChanges internally
         await _programRepository.CreateAsync(program);
 
         return CreatedAtAction(nameof(GetProgram), new { id = program.ProgramID }, MapToDto(program));

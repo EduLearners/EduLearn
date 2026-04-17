@@ -2,12 +2,14 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class AssessmentsController : ControllerBase
 {
     // Repository pattern: controller talks to repository interfaces, NOT AppDbContext directly
@@ -186,18 +188,19 @@ public class AssessmentsController : ControllerBase
         if (assessment is null)
             return NotFound(new { error = "Assessment not found", code = "ASSESSMENT_NOT_FOUND" });
 
-        // Enforce valid status transitions: Draft → Published → Closed
+        // Enforce valid status transitions: Draft → Published → Closed → Archived
         var validTransition = (assessment.Status, dto.Status) switch
         {
             (AssessmentStatus.Draft, AssessmentStatus.Published) => true,
             (AssessmentStatus.Published, AssessmentStatus.Closed) => true,
+            (AssessmentStatus.Closed, AssessmentStatus.Archived) => true,
             _ => false
         };
 
         if (!validTransition)
             return BadRequest(new
             {
-                error = $"Cannot transition from {assessment.Status} to {dto.Status}. Valid: Draft → Published → Closed",
+                error = $"Cannot transition from {assessment.Status} to {dto.Status}. Valid: Draft → Published → Closed → Archived",
                 code = "INVALID_STATUS_TRANSITION"
             });
 

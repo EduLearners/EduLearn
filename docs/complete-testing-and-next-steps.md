@@ -1,19 +1,37 @@
-# EduLearn v1.0 — Testing Guide & Next Steps
+# EduLearn v1.0 — Complete Testing Guide & Next Steps
 
-## Current Status (April 10, 2026)
+> **PRD Reference:** `docs/EduLearn-PRD-v1.0_2.docx` — this is the ONLY authoritative PRD. All other versions are deprecated.
 
-### Completed
-- Monolith restructuring complete
-- 25 entities, 10 enum files, AppDbContext fully configured
-- 13 repository interfaces + implementations, all registered in DI
-- 3 controllers with 13 endpoints total
-- `InitialCreate` migration generated and applied — `EduLearnDb` exists with 25 tables
-- API runs on `http://localhost:5000`
+---
 
-### 13 Working Endpoints
-- `UsersController` — POST /api/users, GET /api/users, GET /api/users/{id}, PUT /api/users/{id}, PUT /api/users/{id}/status
-- `CoursesController` — POST /api/courses, GET /api/courses, GET /api/courses/{id}, PUT /api/courses/{id}
-- `EnrollmentsController` — POST /api/enrollment/enroll, DELETE /api/enrollment/{id}/drop, GET /api/enrollment/student/{studentId}, GET /api/enrollment/section/{sectionId}
+## Current Status (April 15, 2026)
+
+### Build Status: ✅ 0 errors, 0 warnings
+
+### Infrastructure
+- ASP.NET Core 8.0 + EF Core 8.0
+- SQL Server LocalDB — `EduLearnDb` with 25 tables
+- JWT Bearer authentication (60 min expiry) + BCrypt password hashing
+- 8 role-based authorization policies
+- Swagger with 🔒 Authorize button
+- 20 repository interfaces + 20 implementations
+- 3 services: TokenService, AuthService, AuditLogService
+- All controllers secured with `[Authorize]` (except Auth + Health)
+
+### 21 Controllers — 55+ Endpoints
+
+| Module | Owner | Controllers | Status |
+|---|---|---|---|
+| IAM | Ashish | AuthController, UsersController, AuditLogController | ✅ Done |
+| SRA | Saurav | ApplicantsController, StudentsController | ✅ Done |
+| ETS | Saurav | EnrollmentsController, SectionsController, RoomsController | ✅ Done |
+| CCM | Vikash | CoursesController, ProgramsController | ✅ Done |
+| AGI | Vikash | AssessmentsController, SubmissionsController | ✅ Done |
+| LMS | Vikash | ContentsController | ✅ Done |
+| SFB | Tanya | FeesController, InvoicesController, PaymentsController, ScholarshipsController | ✅ Done |
+| RKA | Utkarsh | ReportsController, KPIsController, AuditPackagesController | ✅ Done |
+| NHT | Swarna | — | ❌ Not started |
+| System | — | HealthController | ✅ Done |
 
 ---
 
@@ -23,11 +41,48 @@
 dotnet run --project EduLearn.API
 ```
 
-Open Swagger: `http://localhost:5000/swagger`
+Open Swagger: `https://localhost:5001/swagger`
 
 ---
 
-## DB Verification in SSMS
+## Authentication Flow (Must Do First)
+
+All endpoints except `/api/auth/*` and `/api/health` require a JWT token.
+
+**Step 1 — Register a user:**
+```
+POST /api/auth/register
+```
+```json
+{
+  "username": "ashish.admin",
+  "fullName": "Ashish Kumar",
+  "email": "ashish@edulearn.com",
+  "role": "ITAdmin",
+  "password": "Admin@123"
+}
+```
+
+**Step 2 — Login to get JWT:**
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "ashish.admin",
+  "password": "Admin@123"
+}
+```
+Response contains `"token": "eyJhbGciOiJIUzI1NiIs..."` — copy this.
+
+**Step 3 — Authorize in Swagger:**
+Click the 🔒 **Authorize** button at the top → paste the token → click Authorize.
+
+Now all subsequent requests will include the JWT. Token expires in 60 minutes.
+
+---
+
+## DB Verification
 
 Connect to `(localdb)\MSSQLLocalDB` → `EduLearnDb` and run:
 
@@ -38,7 +93,7 @@ SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';
 -- Must return 31
 SELECT COUNT(*) FROM sys.foreign_keys;
 
--- Must return 0
+-- Must return 0 (all FKs use NO_ACTION)
 SELECT COUNT(*) FROM sys.foreign_keys WHERE delete_referential_action_desc != 'NO_ACTION';
 
 -- All Status columns must be nvarchar, not int
@@ -48,13 +103,20 @@ FROM INFORMATION_SCHEMA.COLUMNS WHERE COLUMN_NAME = 'Status' ORDER BY TABLE_NAME
 
 ---
 
-## Swagger Test Sequence
+## Complete Swagger Test Sequence
 
 Run in order — each section depends on data from the previous one.
 
-### SECTION 1 — Users
+> **Important:** After registering and logging in (Section 0), click 🔒 Authorize in Swagger before testing any other endpoint.
 
-**1. Create admin user (POST /api/users)**
+---
+
+### SECTION 0 — Authentication (IAM-01)
+
+**0.1 Register ITAdmin**
+```
+POST /api/auth/register
+```
 ```json
 {
   "username": "ashish.admin",
@@ -64,9 +126,12 @@ Run in order — each section depends on data from the previous one.
   "password": "Admin@123"
 }
 ```
-Expected: `201`, `"userID": 1`
+Expected: `200 OK`
 
-**2. Create instructor (POST /api/users)**
+**0.2 Register Instructor**
+```
+POST /api/auth/register
+```
 ```json
 {
   "username": "dr.priya",
@@ -76,9 +141,12 @@ Expected: `201`, `"userID": 1`
   "password": "Inst@123"
 }
 ```
-Expected: `201`, `"userID": 2`
+Expected: `200 OK`
 
-**3. Create student 1 (POST /api/users)**
+**0.3 Register Student 1**
+```
+POST /api/auth/register
+```
 ```json
 {
   "username": "rahul.s",
@@ -88,9 +156,12 @@ Expected: `201`, `"userID": 2`
   "password": "Stud@123"
 }
 ```
-Expected: `201`, `"userID": 3`
+Expected: `200 OK`
 
-**4. Create student 2 (POST /api/users)**
+**0.4 Register Student 2**
+```
+POST /api/auth/register
+```
 ```json
 {
   "username": "sneha.s",
@@ -100,30 +171,72 @@ Expected: `201`, `"userID": 3`
   "password": "Stud@456"
 }
 ```
-Expected: `201`, `"userID": 4`
+Expected: `200 OK`
 
-**5. Duplicate email — negative test (POST /api/users)**
+**0.5 Register Finance Officer**
+```
+POST /api/auth/register
+```
 ```json
 {
-  "username": "someone.else",
-  "fullName": "Someone",
-  "email": "ashish@edulearn.com",
-  "role": "Student",
-  "password": "Test@123"
+  "username": "tanya.fin",
+  "fullName": "Tanya Singh",
+  "email": "tanya@edulearn.com",
+  "role": "Finance",
+  "password": "Fin@123"
 }
 ```
-Expected: `409`, `"code": "DUPLICATE_EMAIL"`
+Expected: `200 OK`
 
-**6. Get all users (GET /api/users)**
-Expected: `200`, array of 4 users. Verify `"role"` is a string e.g. `"ITAdmin"`, not an integer.
+**0.6 Login as ITAdmin (get JWT)**
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "ashish.admin",
+  "password": "Admin@123"
+}
+```
+Expected: `200 OK` with `"token": "eyJ..."` — **Copy this token and click 🔒 Authorize in Swagger.**
 
-**7. Get user by ID (GET /api/users/1)**
-Expected: `200`, Ashish Kumar
+**0.7 Test 401 — Access without token**
+Remove the token from Swagger Authorize, then try:
+```
+GET /api/users
+```
+Expected: `401 Unauthorized` — "Authentication required. Please login at POST /api/auth/login to get a JWT token."
 
-**8. Get non-existent user — negative test (GET /api/users/999)**
-Expected: `404`, `"code": "USER_NOT_FOUND"`
+Re-authorize with the token before continuing.
 
-**9. Update profile (PUT /api/users/3)**
+---
+
+### SECTION 1 — Users (IAM-02)
+
+> Note: Users were already created via `/api/auth/register`. These tests verify the CRUD endpoints.
+
+**1.1 List all users**
+```
+GET /api/users
+```
+Expected: `200 OK` — returns 5 users. Roles show as strings ("ITAdmin", "Instructor", "Student", "Finance").
+
+**1.2 Get user by ID**
+```
+GET /api/users/1
+```
+Expected: `200 OK` — Ashish Kumar
+
+**1.3 Get non-existent user**
+```
+GET /api/users/999
+```
+Expected: `404` — `USER_NOT_FOUND`
+
+**1.4 Update user profile**
+```
+PUT /api/users/3
+```
 ```json
 {
   "fullName": "Rahul Kumar Singh",
@@ -131,159 +244,636 @@ Expected: `404`, `"code": "USER_NOT_FOUND"`
   "phone": "+91-9999999999"
 }
 ```
-Expected: `200`, updated `fullName` and `email`, `"updatedAt"` is not null
+Expected: `200 OK` — name and email updated
 
-**10. Update status (PUT /api/users/4/status)**
+**1.5 Update user status**
+```
+PUT /api/users/4/status
+```
 ```json
 { "status": "Suspended" }
 ```
-Expected: `200`, `"status": "Suspended"`
+Expected: `200 OK` — status changed to "Suspended"
 
-> **Note on enum fields:** Swagger shows `role` and `status` as plain text boxes. Type the value exactly — case sensitive. Valid roles: `Student`, `Instructor`, `Registrar`, `DeptAdmin`, `Finance`, `ITAdmin`, `Auditor`. Valid statuses: `Active`, `Inactive`, `Suspended`, `Locked`.
+*(Revert for later tests:)*
+```json
+{ "status": "Active" }
+```
 
 ---
 
-### SECTION 2 — Courses
+### SECTION 2 — Programs (CCM-01)
 
-**11. Create course 1 (POST /api/courses)**
+**2.1 Create program**
+```
+POST /api/programs
+```
+```json
+{
+  "name": "B.Tech Computer Science",
+  "departmentID": 1,
+  "degreeType": "Bachelor",
+  "requiredCoursesJSON": "[1, 2]",
+  "electivesJSON": null,
+  "durationTerms": 8
+}
+```
+Expected: `201 Created` — `programID: 1`
+
+**2.2 List programs**
+```
+GET /api/programs
+```
+Expected: `200 OK` — 1 program
+
+**2.3 Get program**
+```
+GET /api/programs/1
+```
+Expected: `200 OK` — B.Tech CS, status "Active"
+
+**2.4 Update program**
+```
+PUT /api/programs/1
+```
+```json
+{
+  "name": "B.Tech Computer Science",
+  "departmentID": 1,
+  "degreeType": "Bachelor",
+  "requiredCoursesJSON": "[1, 2, 3]",
+  "electivesJSON": null,
+  "durationTerms": 10
+}
+```
+Expected: `200 OK` — durationTerms updated to 10
+
+---
+
+### SECTION 3 — Courses (CCM-01)
+
+**3.1 Create course 1**
+```
+POST /api/courses
+```
 ```json
 {
   "code": "CS101",
   "title": "Introduction to Computer Science",
+  "description": "Fundamentals of computing and programming",
   "credits": 3,
-  "level": "UG"
+  "departmentID": 1,
+  "level": "100-level",
+  "prerequisitesJSON": null
 }
 ```
-Expected: `201`, `"courseID": 1`, `"status": "Active"`
+Expected: `201 Created` — `courseID: 1`
 
-**12. Create course 2 (POST /api/courses)**
+**3.2 Create course 2**
+```
+POST /api/courses
+```
 ```json
 {
-  "code": "MATH201",
-  "title": "Linear Algebra",
+  "code": "CS201",
+  "title": "Data Structures and Algorithms",
   "credits": 4,
-  "level": "UG"
+  "departmentID": 1,
+  "level": "200-level",
+  "prerequisitesJSON": "[1]"
 }
 ```
-Expected: `201`, `"courseID": 2`
+Expected: `201 Created` — `courseID: 2`
 
-**13. Duplicate code — negative test (POST /api/courses)**
+**3.3 Duplicate code check**
+```
+POST /api/courses
+```
 ```json
-{
-  "code": "CS101",
-  "title": "Another CS Course",
-  "credits": 3
-}
+{ "code": "CS101", "title": "Duplicate", "credits": 3 }
 ```
-Expected: `409`, `"code": "DUPLICATE_COURSE_CODE"`
+Expected: `409 Conflict` — `DUPLICATE_COURSE_CODE`
 
-**14. Get all courses (GET /api/courses)**
-Expected: `200`, array of 2 courses, each with `"status": "Active"`
-
-**15. Get course by ID (GET /api/courses/1)**
-Expected: `200`, CS101
-
-**16. Get non-existent course — negative test (GET /api/courses/999)**
-Expected: `404`, `"code": "COURSE_NOT_FOUND"`
-
-**17. Update course (PUT /api/courses/1)**
-```json
-{
-  "code": "CS101",
-  "title": "Intro to CS — Updated",
-  "credits": 4,
-  "level": "UG"
-}
+**3.4 List courses**
 ```
-Expected: `200`, updated `title` and `credits`
+GET /api/courses
+```
+Expected: `200 OK` — 2 courses
 
 ---
 
-### SECTION 3 — Enrollment
+### SECTION 4 — Rooms (ETS-02)
 
-**Seed data required first.** Connect to `(localdb)\MSSQLLocalDB` → `EduLearnDb` in SSMS and run:
-
-```sql
--- Program
-INSERT INTO Programs (Name, DegreeType, DurationTerms, Status)
-VALUES ('B.Tech CS', 'Bachelor', 8, 'Active');
-
--- Room
-INSERT INTO Rooms (Building, RoomNumber, Capacity, Status)
-VALUES ('Block A', 'A101', 60, 'Available');
-
--- Students — use UserID 3 (Rahul) and UserID 4 (Sneha) created above
-INSERT INTO Students (UserID, MRN, Name, DOB, EnrollmentStatus, ProgramID, EntryTerm, CreatedAt)
-VALUES (3, 'STU2026001', 'Rahul Kumar', '2004-05-15', 'Active', 1, 'Fall 2026', GETUTCDATE());
-
-INSERT INTO Students (UserID, MRN, Name, DOB, EnrollmentStatus, ProgramID, EntryTerm, CreatedAt)
-VALUES (4, 'STU2026002', 'Sneha Gupta', '2004-08-22', 'Active', 1, 'Fall 2026', GETUTCDATE());
-
--- Section 1 — capacity 60 (normal enrollment testing)
-INSERT INTO Sections (CourseID, Term, InstructorID, RoomID, Capacity, EnrolledCount, Status)
-VALUES (1, 'Fall 2026', 2, 1, 60, 0, 'Open');
-
--- Section 2 — capacity 1 (waitlist testing)
-INSERT INTO Sections (CourseID, Term, InstructorID, RoomID, Capacity, EnrolledCount, Status)
-VALUES (1, 'Fall 2026', 2, 1, 1, 0, 'Open');
-
--- Verify seed data
-SELECT StudentID, MRN, Name FROM Students;
-SELECT SectionID, CourseID, Capacity, Status FROM Sections;
+**4.1 Create room**
 ```
+POST /api/rooms
+```
+```json
+{
+  "building": "Main Block",
+  "roomNumber": "A101",
+  "capacity": 60,
+  "resourcesJSON": "{\"projector\": true, \"whiteboard\": true}"
+}
+```
+Expected: `201 Created` — `roomID: 1`
 
-**18. Enroll student 1 in section 1 (POST /api/enrollment/enroll)**
+---
+
+### SECTION 5 — Students (SRA-02)
+
+**5.1 Create student 1 (linked to User 3 — Rahul)**
+```
+POST /api/students
+```
+```json
+{
+  "userID": 3,
+  "name": "Rahul Kumar",
+  "dob": "2004-05-15",
+  "gender": "Male",
+  "contactInfoJSON": "{\"phone\": \"+91-9876543211\"}",
+  "programID": 1,
+  "entryTerm": "Fall 2026",
+  "expectedGraduationTerm": "Spring 2030"
+}
+```
+Expected: `201 Created` — `studentID: 1`, auto-generated MRN like "STU-00001"
+
+**5.2 Create student 2 (linked to User 4 — Sneha)**
+```
+POST /api/students
+```
+```json
+{
+  "userID": 4,
+  "name": "Sneha Gupta",
+  "dob": "2004-08-22",
+  "gender": "Female",
+  "contactInfoJSON": null,
+  "programID": 1,
+  "entryTerm": "Fall 2026",
+  "expectedGraduationTerm": null
+}
+```
+Expected: `201 Created` — `studentID: 2`
+
+**5.3 List students**
+```
+GET /api/students
+```
+Expected: `200 OK` — 2 students
+
+---
+
+### SECTION 6 — Sections (ETS-02)
+
+**6.1 Create section (capacity 2 — for waitlist testing)**
+```
+POST /api/sections
+```
+```json
+{
+  "courseID": 1,
+  "term": "Fall 2026",
+  "instructorID": 2,
+  "roomID": 1,
+  "capacity": 2,
+  "scheduleJSON": "[{\"day\": \"Mon\", \"startTime\": \"09:00\", \"endTime\": \"10:30\"}]"
+}
+```
+Expected: `201 Created` — `sectionID: 1`, capacity 2
+
+**6.2 Create section (capacity 60)**
+```
+POST /api/sections
+```
+```json
+{
+  "courseID": 2,
+  "term": "Fall 2026",
+  "instructorID": 2,
+  "roomID": null,
+  "capacity": 60,
+  "scheduleJSON": null
+}
+```
+Expected: `201 Created` — `sectionID: 2`
+
+---
+
+### SECTION 7 — Enrollments (ETS-01)
+
+**7.1 Enroll Rahul in section 1**
+```
+POST /api/enrollment/enroll
+```
 ```json
 { "studentID": 1, "sectionID": 1 }
 ```
-Expected: `201`, `"status": "Enrolled"`, `"studentName": "Rahul Kumar"`, `"waitlistPosition": null`
+Expected: `201` — status "Enrolled"
 
-**19. Duplicate enrollment — negative test (POST /api/enrollment/enroll)**
-Same body again.
-Expected: `409`, `"code": "DUPLICATE_ENROLLMENT"`
-
-**20. Enroll student 2 in section 1 (POST /api/enrollment/enroll)**
+**7.2 Enroll Sneha in section 1 (fills capacity)**
 ```json
 { "studentID": 2, "sectionID": 1 }
 ```
-Expected: `201`, `"status": "Enrolled"`, `"studentName": "Sneha Gupta"`
+Expected: `201` — status "Enrolled" (section now 2/2)
 
-**21. Waitlist test — fill section 2 (POST /api/enrollment/enroll)**
+**7.3 Duplicate enrollment blocked**
 ```json
-{ "studentID": 1, "sectionID": 2 }
+{ "studentID": 1, "sectionID": 1 }
 ```
-Expected: `201`, `"status": "Enrolled"` (section 2 now full, capacity = 1)
+Expected: `409` — `DUPLICATE_ENROLLMENT`
 
-```json
-{ "studentID": 2, "sectionID": 2 }
+**7.4 Section roster**
 ```
-Expected: `201`, `"status": "Waitlisted"`, `"waitlistPosition": 1`
+GET /api/enrollment/section/1
+```
+Expected: `200` — 2 enrollments, both "Enrolled"
 
-**22. Get student 1 enrollments (GET /api/enrollment/student/1)**
-Expected: `200`, 2 enrollments — section 1 Enrolled, section 2 Enrolled.
-Note the `"enrollID"` for student 1's section 2 enrollment — needed for next test.
-
-**23. Drop enrollment and verify auto-promote (DELETE /api/enrollment/{enrollID}/drop)**
-Use the `enrollID` from test 22 for student 1 in section 2.
+**7.5 Drop Rahul (auto-promote if waitlisted students exist)**
+```
+DELETE /api/enrollment/1/drop
+```
 Expected: `204 No Content`
 
-**24. Verify auto-promote (GET /api/enrollment/section/2)**
-Expected: `200`, Sneha's record now shows `"status": "Enrolled"`, `"waitlistPosition": null`
+---
 
-**25. Get section 1 roster (GET /api/enrollment/section/1)**
-Expected: `200`, 2 students — Rahul and Sneha both `"status": "Enrolled"`
+### SECTION 8 — Assessments (AGI-01)
 
-**26. Invalid student — negative test (POST /api/enrollment/enroll)**
-```json
-{ "studentID": 999, "sectionID": 1 }
+**8.1 Create assessment (Draft)**
 ```
-Expected: `400`, `"code": "STUDENT_NOT_FOUND"`
-
-**27. Invalid section — negative test (POST /api/enrollment/enroll)**
-```json
-{ "studentID": 1, "sectionID": 999 }
+POST /api/assessments
 ```
-Expected: `400`, `"code": "SECTION_NOT_FOUND"`
+```json
+{
+  "courseID": 1,
+  "sectionID": null,
+  "title": "Quiz 1 - Programming Basics",
+  "type": "Quiz",
+  "dueAt": "2026-12-01T23:59:00Z",
+  "maxScore": 50.0,
+  "gradingRubricJSON": null,
+  "createdByFK": 2
+}
+```
+Expected: `201` — status "Draft"
+
+**8.2 Publish assessment**
+```
+PUT /api/assessments/1/publish
+```
+```json
+{ "status": "Published" }
+```
+Expected: `200` — status "Published"
+
+**8.3 Cannot update published assessment**
+```
+PUT /api/assessments/1
+```
+Expected: `400` — `ASSESSMENT_NOT_DRAFT`
+
+---
+
+### SECTION 9 — Content (LMS-01)
+
+**9.1 Upload content**
+```
+POST /api/content/upload
+```
+```json
+{
+  "courseID": 1,
+  "title": "Week 1 - Intro to Programming",
+  "type": "Document",
+  "uri": "https://blob.storage/edulearn/week1-notes.pdf",
+  "uploadedByFK": 2,
+  "metadataJSON": "{\"fileSize\": 2048576, \"mimeType\": \"application/pdf\"}"
+}
+```
+Expected: `201` — version 1, status "Active"
+
+**9.2 Version bump**
+```
+PUT /api/content/1/version
+```
+```json
+{
+  "uri": "https://blob.storage/edulearn/week1-notes-v2.pdf",
+  "metadataJSON": null
+}
+```
+Expected: `200` — version bumped to 2
+
+---
+
+### SECTION 10 — Submissions & Grading (AGI-02)
+
+**10.1 Submit work (Rahul)**
+```
+POST /api/submissions
+```
+```json
+{
+  "assessmentID": 1,
+  "studentID": 1,
+  "fileURI": "https://blob.storage/submissions/rahul-quiz1.pdf"
+}
+```
+Expected: `201` — status "Submitted"
+
+**10.2 Grade submission**
+```
+POST /api/submissions/1/grade
+```
+```json
+{
+  "score": 42.0,
+  "graderID": 2,
+  "reason": "Good work"
+}
+```
+Expected: `200` — status "Graded", score 42.0
+
+**10.3 Re-grade (auto-creates GradeChange)**
+```
+POST /api/submissions/1/grade
+```
+```json
+{
+  "score": 45.0,
+  "graderID": 2,
+  "reason": "Found partial credit on Q3"
+}
+```
+Expected: `200` — score updated to 45.0, GradeChange record auto-created in DB
+
+**10.4 Score exceeds max**
+```json
+{ "score": 999.0, "graderID": 2, "reason": "Test" }
+```
+Expected: `400` — `SCORE_EXCEEDS_MAX`
+
+---
+
+### SECTION 11 — Finance (SFB)
+
+> Login as Finance user first: `POST /api/auth/login` with `tanya.fin` / `Fin@123`, then re-authorize in Swagger.
+
+**11.1 Create fee schedule**
+```
+POST /api/fees
+```
+```json
+{
+  "programID": 1,
+  "term": "Fall 2026",
+  "feeItemsJSON": "[{\"item\": \"Tuition\", \"amount\": 50000}, {\"item\": \"Lab Fee\", \"amount\": 5000}]",
+  "effectiveFrom": "2026-06-01",
+  "effectiveTo": "2026-12-31"
+}
+```
+Expected: `201` — status "Draft"
+
+**11.2 Award scholarship**
+```
+POST /api/scholarships
+```
+```json
+{
+  "studentID": 1,
+  "awardType": "Merit",
+  "amount": 10000.00,
+  "validFrom": "2026-06-01",
+  "validTo": "2026-12-31"
+}
+```
+Expected: `201`
+
+**11.3 Generate invoice (auto-deducts scholarship)**
+```
+POST /api/invoices/generate
+```
+```json
+{
+  "studentID": 1,
+  "term": "Fall 2026",
+  "dueDate": "2026-08-15"
+}
+```
+Expected: `201` — amountDue = 45000 (55000 - 10000 scholarship)
+
+**11.4 Record payment**
+```
+POST /api/payments
+```
+```json
+{
+  "invoiceID": 1,
+  "amount": 45000.00,
+  "method": "BankTransfer",
+  "reference": "TXN-2026-001"
+}
+```
+Expected: `201` — invoice status auto-updates to "Paid"
+
+---
+
+### SECTION 12 — Audit Log (IAM-04)
+
+> Login as ITAdmin or Auditor to access this endpoint.
+
+**12.1 Query audit logs**
+```
+GET /api/audit-log
+```
+Expected: `200` — returns recent audit log entries
+
+**12.2 Filter by action**
+```
+GET /api/audit-log?action=LoginSuccess
+```
+Expected: `200` — login audit entries
+
+---
+
+### SECTION 13 — Applicants (SRA-01)
+
+**13.1 Create applicant**
+```
+POST /api/applicants
+```
+```json
+{
+  "name": "Amit Verma",
+  "dob": "2005-03-10",
+  "nationalId": "AADHAAR-1234-5678",
+  "contactInfoJSON": "{\"email\": \"amit@gmail.com\", \"phone\": \"+91-9876543210\"}",
+  "programApplied": "B.Tech Computer Science",
+  "documentsURIJSON": null
+}
+```
+Expected: `201 Created`
+
+**13.2 List applicants**
+```
+GET /api/applicants
+```
+Expected: `200 OK` — returns applicant list
+
+**13.3 Get applicant by ID**
+```
+GET /api/applicants/1
+```
+Expected: `200 OK`
+
+**13.4 Update applicant status**
+```
+PUT /api/applicants/1/status
+```
+```json
+{ "status": "UnderReview" }
+```
+Expected: `200 OK` — status updated
+
+**13.5 Accept applicant**
+```
+PUT /api/applicants/1/status
+```
+```json
+{ "status": "Accepted" }
+```
+Expected: `200 OK`
+
+---
+
+### SECTION 14 — Reports (RKA-01)
+
+> Login as ITAdmin or Auditor to access these endpoints.
+
+**14.1 Generate report**
+```
+POST /api/reports/generate
+```
+```json
+{
+  "scope": "Enrollment",
+  "parametersJSON": "{\"term\": \"Fall 2026\"}",
+  "generatedByFK": 1
+}
+```
+Expected: `201 Created` — report record created with scope "Enrollment"
+
+**14.2 List all reports**
+```
+GET /api/reports
+```
+Expected: `200 OK` — returns report list
+
+**14.3 Download report**
+```
+GET /api/reports/1/download
+```
+Expected: `200 OK` — returns report data (PDF generation is post-interim TODO)
+
+**14.4 Negative test — invalid user**
+```
+POST /api/reports/generate
+```
+```json
+{
+  "scope": "Finance",
+  "parametersJSON": null,
+  "generatedByFK": 0
+}
+```
+Expected: `400` — `INVALID_USER_ID`
+
+---
+
+### SECTION 15 — KPIs (RKA-02)
+
+**15.1 Seed default KPIs**
+```
+POST /api/kpis/seed
+```
+Expected: `200 OK` — default KPIs created (idempotent — returns `409 Conflict` if already seeded)
+
+**15.2 List all KPIs**
+```
+GET /api/kpis
+```
+Expected: `200 OK` — returns list of KPIs with names, targets, current values
+
+**15.3 Recalculate KPIs**
+```
+POST /api/kpis/recalculate
+```
+Expected: `200 OK` — KPI values recomputed from current data
+
+---
+
+### SECTION 16 — Audit Packages (RKA-03)
+
+**16.1 Generate audit package**
+```
+POST /api/audit-packages/generate
+```
+```json
+{
+  "periodStart": "2026-01-01",
+  "periodEnd": "2026-06-30"
+}
+```
+Expected: `201 Created` — audit package with contents summary
+
+**16.2 Invalid date range**
+```
+POST /api/audit-packages/generate
+```
+```json
+{
+  "periodStart": "2026-12-31",
+  "periodEnd": "2026-01-01"
+}
+```
+Expected: `400` — `INVALID_DATE_RANGE`
+
+**16.3 Download audit package**
+```
+GET /api/audit-packages/1/download
+```
+Expected: `200 OK` — returns package data (ZIP generation is post-interim TODO)
+
+---
+
+### SECTION 17 — Assessment Archival (AGI-01 — New)
+
+**17.1 Close assessment first**
+```
+PUT /api/assessments/1/publish
+```
+```json
+{ "status": "Closed" }
+```
+Expected: `200 OK` — status "Closed"
+
+**17.2 Archive closed assessment**
+```
+PUT /api/assessments/1/publish
+```
+```json
+{ "status": "Archived" }
+```
+Expected: `200 OK` — status "Archived"
+
+**17.3 Cannot archive non-closed assessment**
+Create a new Draft assessment, then try to archive it directly:
+```json
+{ "status": "Archived" }
+```
+Expected: `400` — `INVALID_STATUS_TRANSITION`
 
 ---
 
@@ -295,40 +885,53 @@ SELECT UserID, Username, Role, Status FROM Users ORDER BY UserID;
 
 -- Section enrolled counts updated correctly by API
 SELECT SectionID, Capacity, EnrolledCount FROM Sections;
--- Section 1: EnrolledCount = 2
--- Section 2: EnrolledCount = 1 (Sneha promoted)
 
 -- Enrollment statuses stored as strings
 SELECT EnrollID, StudentID, SectionID, Status, WaitlistPosition
 FROM Enrollments ORDER BY EnrollID;
--- Status values must be 'Enrolled', 'Waitlisted', or 'Dropped' — never integers
+
+-- GradeChange audit trail (from re-grading)
+SELECT * FROM GradeChanges;
 ```
 
 ---
 
-## Commit and Push
+## What's Remaining — Post-Interim Features (by June 16)
 
-```bash
-git add .
-git commit -m "chore: restructure to monolith, add repository pattern, fix SIS enum conversions"
-git push
-```
-
----
-
-## Interim Milestone (April 24, 2026) — What Each Member Builds Next
-
-| Member | Features | Controllers to Build |
+### Vikash (CCM + LMS + AGI)
+| Feature | Endpoints | Status |
 |---|---|---|
-| Ashish | IAM-01, IAM-02, IAM-04 | AuthController, AuditLogController |
-| Saurav | SRA-01, SRA-02, ETS-01, ETS-02 | ApplicantsController, StudentsController, SectionsController, RoomsController |
-| Vikash | CCM-01, LMS-01, AGI-01, AGI-02 | ProgramsController, ContentsController, AssessmentsController, SubmissionsController |
-| Utkarsh | RKA-01, RKA-02 | ReportsController, KPIsController |
-| Tanya | SFB-01, SFB-02, SFB-03 | FeesController, InvoicesController, PaymentsController |
-| Swarna | NHT-01, NHT-03 | NotificationsController, TicketsController |
+| CCM-02 (Syllabus Versioning) | 4 | ❌ Not started |
+| CCM-03 (Prerequisite Engine) | 1 | ❌ Not started |
+| LMS-02 (Discussion Forums) | 4 | ❌ Not started |
+| AGI-03 (Grade Change Audit Trail) | 2 | ❌ Not started |
+| AGI-04 (Plagiarism Tracking) | 2 | ❌ Not started |
 
-### Rules When Building a New Controller
-1. Inject the relevant repository interface — never `AppDbContext` directly
-2. Create request/response DTOs in `EduLearn.API/DTOs/`
-3. All 13 existing repos are already registered in `Program.cs` — no changes needed for those
-4. If you need a repo that doesn't exist yet (e.g. `IApplicantRepository`, `IRoomRepository`, `IProgramRepository`), create the interface in `Repositories/Interfaces/`, the implementation in `Repositories/Implementations/`, and add one `AddScoped` line to `Program.cs`
+### Swarna (NHT)
+| Feature | Endpoints | Status |
+|---|---|---|
+| NHT-01 (Notifications + SignalR) | 5 | ❌ Not started |
+| NHT-03 (Helpdesk Tickets) | 5 | ❌ Not started |
+
+### All Team Members
+| Task | Status |
+|---|---|
+| React 18 Frontend | ❌ Not started |
+| EduLearn.Tests project (NUnit + Moq) | ❌ Not started |
+| Azure deployment | ❌ Not started |
+
+---
+
+## Rules When Building New Features
+
+1. **Inject repository interfaces** — never `AppDbContext` directly in controllers
+2. **Add `[Authorize]`** to every new controller (except public endpoints)
+3. **Create DTOs** — `CreateXxxDto`, `XxxResponseDto`, `UpdateXxxDto` as needed
+4. **Use `{ error, code }` format** for all error responses
+5. **Use strongly-typed enums** from `Models/Enums/` — no magic strings
+6. **Test via Swagger** — login first, authorize with JWT, then test endpoints
+7. **Reference PRD:** `docs/EduLearn-PRD-v1.0_2.docx` — the ONLY authoritative PRD document
+
+---
+
+*Last updated: April 15, 2026 • EduLearn v1.0*

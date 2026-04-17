@@ -1,22 +1,25 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
-using EduLearn.API.Repositories.Interfaces;          // TEAMMATE: added for repository pattern
-using Microsoft.AspNetCore.Authorization;             // AUTH CHANGE: added for [Authorize]
+using EduLearn.API.Models.Enums;
+using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize] // AUTH CHANGE: All endpoints require a valid JWT token
+[Authorize]
 public class UsersController : ControllerBase
 {
-    // TEAMMATE: Changed from AppDbContext to IUserRepository
     private readonly IUserRepository _userRepository;
+    private readonly AuditLogService _auditLogService;
 
-    public UsersController(IUserRepository userRepository)
+    public UsersController(IUserRepository userRepository, AuditLogService auditLogService)
     {
         _userRepository = userRepository;
+        _auditLogService = auditLogService;
     }
 
     // AUTH CHANGE: Only ITAdmin can create users directly (others use /api/auth/register)
@@ -39,11 +42,14 @@ public class UsersController : ControllerBase
             Email = dto.Email,
             Phone = dto.Phone,
             Role = dto.Role,
-            // AUTH CHANGE: BCrypt hash the password instead of saving plain text
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            Status = UserStatus.Active,
+            CreatedAt = DateTime.UtcNow
         };
 
         await _userRepository.CreateAsync(user);
+        await _auditLogService.LogAsync(user.UserID, "UserCreatedByAdmin", "User", user.UserID,
+            new { role = user.Role.ToString() });
 
         var response = MapToDto(user);
         return CreatedAtAction(nameof(GetUser), new { id = user.UserID }, response);

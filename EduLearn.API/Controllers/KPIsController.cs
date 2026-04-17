@@ -2,6 +2,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
@@ -21,7 +22,7 @@ public class KPIsController : ControllerBase
 
     // ── GET /api/kpis — List all KPIs ──
     [HttpGet]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<KPIResponseDto>>> GetAllKPIs(CancellationToken ct)
     {
         var kpis = await _reportRepository.GetAllKPIsAsync(ct);
@@ -30,7 +31,7 @@ public class KPIsController : ControllerBase
 
     // ── POST /api/kpis/recalculate — Recalculate all KPI current values ──
     [HttpPost("recalculate")]
-    // [Authorize(Roles = "ITAdmin,Auditor")]
+    [Authorize(Roles = "ITAdmin,Auditor")]
     public async Task<ActionResult<RecalculateResponseDto>> Recalculate(CancellationToken ct)
     {
         var recalculatedAt = DateTime.UtcNow;
@@ -49,7 +50,7 @@ public class KPIsController : ControllerBase
 
     // ── POST /api/kpis/seed — Seed default KPI definitions (idempotent guard) ──
     [HttpPost("seed")]
-    // [Authorize(Roles = "ITAdmin")]
+    [Authorize(Roles = "ITAdmin")]
     public async Task<IActionResult> SeedKPIs(CancellationToken ct)
     {
         var alreadySeeded = await _reportRepository.AnyKPIsExistAsync(ct);

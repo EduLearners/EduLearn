@@ -2,7 +2,7 @@ namespace EduLearn.API.Models.Enums;
 
 public enum AssessmentStatus
 {
-    Draft, Published, Closed
+    Draft, Published, Closed, Archived
 }
 
 public enum AssessmentType
@@ -12,5 +12,5 @@ public enum AssessmentType
 
 public enum SubmissionStatus
 {
-    Submitted, Graded, Late, Plagiarised
+    Submitted, Graded, Returned, Late, Plagiarised
 }

@@ -2,6 +2,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
@@ -21,7 +22,7 @@ public class ReportsController : ControllerBase
 
     // ── POST /api/reports/generate — Create a new report record ──
     [HttpPost("generate")]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<ReportResponseDto>> GenerateReport(GenerateReportDto dto, CancellationToken ct)
     {
         if (dto.GeneratedByFK <= 0)
@@ -44,7 +45,7 @@ public class ReportsController : ControllerBase
 
     // ── GET /api/reports — List all reports ──
     [HttpGet]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<ReportResponseDto>>> GetAllReports(CancellationToken ct)
     {
         var reports = await _reportRepository.GetAllReportsAsync(ct);
@@ -53,7 +54,7 @@ public class ReportsController : ControllerBase
 
     // ── GET /api/reports/{id}/download — Get a single report by ID ──
     [HttpGet("{id}/download")]
-    // [Authorize]
+    [Authorize]
     public async Task<ActionResult<ReportResponseDto>> Download(int id, CancellationToken ct)
     {
         var report = await _reportRepository.GetReportByIdAsync(id, ct);

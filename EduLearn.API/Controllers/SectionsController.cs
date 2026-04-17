@@ -1,12 +1,14 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class SectionsController : ControllerBase
 {
     private readonly ISectionRepository _sectionRepo;
