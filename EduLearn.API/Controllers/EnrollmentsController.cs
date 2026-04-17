@@ -142,6 +142,16 @@ public class EnrollmentsController : ControllerBase
                         nextInLine.WaitlistPosition = null;
                         await _enrollRepo.UpdateAsync(nextInLine);
                         section.EnrolledCount++;
+
+                        // Shift remaining waitlist positions (2,3,4... → 1,2,3...)
+                        var remainingWaitlisted = await _enrollRepo.GetWaitlistedBySectionAsync(enrollment.SectionID);
+                        var newPosition = 1;
+                        foreach (var waitlisted in remainingWaitlisted)
+                        {
+                            waitlisted.WaitlistPosition = newPosition;
+                            await _enrollRepo.UpdateAsync(waitlisted);
+                            newPosition++;
+                        }
                     }
 
                     await _sectionRepo.UpdateAsync(section);

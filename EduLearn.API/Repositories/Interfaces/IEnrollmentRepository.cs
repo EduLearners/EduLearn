@@ -16,6 +16,7 @@ public interface IEnrollmentRepository
     Task<bool> HasActiveEnrollmentAsync(int studentId, int sectionId);
     Task<int> GetMaxWaitlistPositionAsync(int sectionId);
     Task<Enrollment?> GetFirstWaitlistedAsync(int sectionId);
+    Task<IEnumerable<Enrollment>> GetWaitlistedBySectionAsync(int sectionId);
     Task<IEnumerable<Enrollment>> GetByStudentIdWithDetailsAsync(int studentId);
     Task<IEnumerable<Enrollment>> GetBySectionIdWithDetailsAsync(int sectionId);
     Task<Enrollment> CreateAsync(Enrollment enrollment);

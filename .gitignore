@@ -25,15 +25,9 @@ packages/
 Thumbs.db
 .DS_Store
 
-# Claude Code
-.claude/
-CLAUDE.md
-CLAUDE.local.md
-.claudeignore
-*.claude.*
+# IDE / tool config
 .mcp.json
 .interface-design/
-.claude-memory/
 .planning/
 
 # MVP / personal planning docs

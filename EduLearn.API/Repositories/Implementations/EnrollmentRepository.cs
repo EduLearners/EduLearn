@@ -70,6 +70,12 @@ public class EnrollmentRepository : IEnrollmentRepository
             .OrderBy(e => e.WaitlistPosition)
             .FirstOrDefaultAsync();
 
+    public async Task<IEnumerable<Enrollment>> GetWaitlistedBySectionAsync(int sectionId)
+        => await _context.Enrollments
+            .Where(e => e.SectionID == sectionId && e.Status == EnrollmentStatus.Waitlisted)
+            .OrderBy(e => e.WaitlistPosition)
+            .ToListAsync();
+
     public async Task<IEnumerable<Enrollment>> GetByStudentIdWithDetailsAsync(int studentId)
         => await _context.Enrollments
             .AsNoTracking()
