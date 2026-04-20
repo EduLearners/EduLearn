@@ -236,6 +236,33 @@ var app = builder.Build();
 // [EXISTING] Swagger UI
 if (app.Environment.IsDevelopment())
 {
+    // Pin the OpenAPI version string in the emitted document to 3.0.1. Microsoft.OpenApi 2.4.1
+    // defaults to "3.0.4" which some Swagger UI copies (older caches, VS-embedded viewers)
+    // don't recognise, producing a "does not specify a valid version field" render error.
+    // 3.0.1 is the lowest 3.0 patch every Swagger UI since 2018 accepts.
+    app.Use(async (context, next) =>
+    {
+        var path = context.Request.Path.Value;
+        if (path != null && path.StartsWith("/swagger/", StringComparison.OrdinalIgnoreCase) && path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            var originalBody = context.Response.Body;
+            using var buffer = new MemoryStream();
+            context.Response.Body = buffer;
+            await next();
+            buffer.Position = 0;
+            var json = await new StreamReader(buffer, System.Text.Encoding.UTF8).ReadToEndAsync();
+            json = System.Text.RegularExpressions.Regex.Replace(
+                json,
+                "\"openapi\"\\s*:\\s*\"3\\.0\\.[0-9]+\"",
+                "\"openapi\": \"3.0.1\"");
+            context.Response.Body = originalBody;
+            context.Response.ContentLength = System.Text.Encoding.UTF8.GetByteCount(json);
+            await context.Response.WriteAsync(json);
+            return;
+        }
+        await next();
+    });
+
     app.UseSwagger();
     app.UseSwaggerUI();
 }
