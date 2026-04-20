@@ -2,7 +2,7 @@
 
 **University Learning Management & Student Information System**
 
-Monolithic REST API • Repository Pattern • 25 Entities • 9 Modules • 7 Roles • 30 Features
+Monolithic REST API • Repository Pattern • 25 Entities • 9 Modules • 7 Roles • 32 Features
 
 | Attribute | Value |
 |---|---|
@@ -83,21 +83,22 @@ All endpoints (except `/api/auth/*` and `/api/health`) require JWT authenticatio
 EduLearn/
 ├── EduLearn.slnx                        # Solution file
 ├── EduLearn.API/                        # Single monolithic API project
-│   ├── Controllers/                     # 21 controllers (one per resource)
+│   ├── Controllers/                     # 23 controllers (one per resource)
 │   ├── Data/
 │   │   └── AppDbContext.cs              # All 25 DbSets, FK configs, HasConversion
-│   ├── DTOs/                            # 45 request/response DTOs
+│   ├── DTOs/                            # 50+ request/response DTOs
 │   ├── Models/                          # 25 entity classes
 │   │   └── Enums/                       # 10 enum files
 │   ├── Repositories/
 │   │   ├── Interfaces/                  # 20 IXxxRepository interfaces
 │   │   └── Implementations/             # 20 XxxRepository classes
-│   ├── Services/                        # Business logic (TokenService, AuthService, AuditLogService)
+│   ├── Services/                        # Business logic (TokenService, AuthService, AuditLogService, NotificationService)
 │   ├── Migrations/                      # EF Core generated migrations
 │   ├── Program.cs                       # DI, JWT Auth, Swagger, CORS, Policies
 │   ├── appsettings.json                 # Connection string, JWT config
 │   └── appsettings.Development.json     # Dev overrides
-├── docs/                                # PRD, architecture reference
+├── docs/                                # PRD, architecture reference, code-review verification
+├── tests/smoke/                         # Bash smoke suite (205 PASS · 0 FAIL; run-all.sh)
 ├── add-migrations.bat                   # Shortcut: dotnet ef migrations add
 ├── migrate-database.bat                 # Shortcut: dotnet ef database update
 └── README.md                            # This file
@@ -114,7 +115,7 @@ EduLearn/
 | Database | SQL Server (LocalDB) | 2022 | 25 entity tables, ACID compliant |
 | Auth | JWT Bearer + BCrypt | 8.0.11 / 4.0.3 | Stateless JWT (60 min), password hashing |
 | Pattern | Repository Pattern | — | 20 interface + implementation pairs |
-| API Docs | Swagger (Swashbuckle) | 6.6.2 | Interactive API explorer with JWT support |
+| API Docs | Swagger (Swashbuckle) | 10.1.7 | Interactive API explorer with JWT support |
 
 ---
 
@@ -127,7 +128,7 @@ EduLearn/
 | Tables | 25 |
 | FK Strategy | `DeleteBehavior.NoAction` on all FKs |
 | Enum Storage | `nvarchar` strings via `HasConversion<string>()` |
-| Unique Indexes | Users.Username, Users.Email, Students.UserID, Students.MRN, Courses.Code |
+| Unique Indexes | Users.Username, Users.Email, Students.UserID, Students.MRN, Courses.Code, Enrollments(StudentID+SectionID) |
 
 ### Migration Commands
 
@@ -150,11 +151,11 @@ EduLearn/
 | M3 | Vikash | CCM + LMS + AGI | CCM-01 to CCM-03, LMS-01 to LMS-02, AGI-01 to AGI-04 | Course, Program, Syllabus, Content, Discussion, Assessment, Submission, GradeChange |
 | M4 | Utkarsh | RKA | RKA-01 to RKA-03 | Report, KPI, AuditPackage |
 | M5 | Tanya | SFB | SFB-01 to SFB-04 | FeeSchedule, Invoice, Payment, Scholarship |
-| M6 | Swarna | NHT | NHT-01 to NHT-03 | Notification, Ticket |
+| M6 | Priyanshu | NHT | NHT-01 to NHT-02 | Notification, Ticket |
 
 ---
 
-## Currently Implemented Endpoints (55+)
+## Currently Implemented Endpoints (65+)
 
 ### Authentication (IAM-01) — Open (no JWT required)
 | Method | Endpoint | Description |
@@ -301,6 +302,23 @@ EduLearn/
 | POST | `/api/audit-packages/generate` | Generate audit package |
 | GET | `/api/audit-packages/{id}/download` | Download package |
 
+### Notifications (NHT-01) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/notifications` | Create notification (cross-module producers) |
+| GET | `/api/notifications/user/{userId}` | Get notifications for user |
+| PUT | `/api/notifications/{id}/read` | Mark as read |
+| GET | `/api/notifications/user/{userId}/unread-count` | Unread count |
+
+### Helpdesk Tickets (NHT-02) — Secured
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/tickets` | Submit support ticket |
+| GET | `/api/tickets` | List tickets (ITAdmin: all; Student: own) |
+| GET | `/api/tickets/{id}` | Get ticket |
+| PUT | `/api/tickets/{id}/assign` | Assign ticket (ITAdmin) |
+| PUT | `/api/tickets/{id}/resolve` | Resolve ticket (ITAdmin) |
+
 ### Health Check — Open
 | Method | Endpoint | Description |
 |---|---|---|
@@ -319,7 +337,7 @@ main                              ← Production-ready code
     ├── CCM_Viksh                  ← Earlier CCM work
     ├── SFB_Tanya                  ← SFB module
     ├── RKA_Utkarsh                ← RKA module
-    └── (NHT_Swarna)               ← NHT module (pending)
+    └── NHT_Priyanshu              ← NHT module (Notifications + Helpdesk)
 ```
 
 ### Workflow
@@ -403,6 +421,9 @@ All enums serialize as readable strings (`"Active"`, `"Published"`, `"Enrolled"`
 |---|---|---|
 | PRD v11.0 | `docs/EduLearnPRD-v11.0-Final.doc` | Full product requirements |
 | Architecture Reference | `docs/ARCHITECTURE-REFERENCE.md` | Entity table, endpoint map, module ownership |
+| PRD Discrepancies | `docs/PRD-DISCREPANCIES.md` | Tracked deviations from PRD with justifications |
+| Code Review Verification | `docs/CODE-REVIEW-VERIFICATION.md` | Security findings + resolution status |
+| Smoke Test Suite | `tests/smoke/README.md` | Prerequisites, run modes, troubleshooting |
 | README | `README.md` | This file — setup, endpoints, branching |
 
 ---
