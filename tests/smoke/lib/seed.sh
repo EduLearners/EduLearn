@@ -38,6 +38,16 @@ _login() {
   jget token
 }
 
+# HARDENING (C-26): POST /api/auth/register now forces Role=Student server-side (anonymous
+# users cannot self-elevate). Our smoke harness needs privileged users for role-gated tests,
+# so we bootstrap them via SQL — register gives Student, then we UPDATE the role in-place,
+# then we re-login to get a JWT with the new role claim baked in.
+_promote() {
+  local user="$1" role="$2"
+  sqlcmd -S '(localdb)\MSSQLLocalDB' -d EduLearnDb -h -1 -W \
+    -Q "SET NOCOUNT ON; UPDATE Users SET Role='$role' WHERE Username='$user';" >/dev/null 2>&1
+}
+
 seed_users() {
   log_section "Seeding test users (SEED_TS=$SEED_TS)"
   _register "$U_ITADMIN"    ITAdmin    || return 1
@@ -48,6 +58,15 @@ seed_users() {
   _register "$U_AUDITOR"    Auditor    || return 1
   _register "$U_STUDENT1"   Student    || return 1
   _register "$U_STUDENT2"   Student    || return 1
+
+  # C-26 forces all registrations to Student. Promote the 6 privileged accounts via SQL,
+  # then re-login so the JWT carries the correct Role claim.
+  _promote "$U_ITADMIN"    ITAdmin
+  _promote "$U_INSTRUCTOR" Instructor
+  _promote "$U_REGISTRAR"  Registrar
+  _promote "$U_DEPTADMIN"  DeptAdmin
+  _promote "$U_FINANCE"    Finance
+  _promote "$U_AUDITOR"    Auditor
 
   export TOKEN_ITADMIN=$(_login "$U_ITADMIN")
   export TOKEN_INSTRUCTOR=$(_login "$U_INSTRUCTOR")

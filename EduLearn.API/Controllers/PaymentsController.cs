@@ -1,4 +1,5 @@
 using EduLearn.API.DTOs;
+using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
@@ -13,16 +14,21 @@ public class PaymentsController : ControllerBase
 {
     private readonly IPaymentRepository _paymentRepository;
     private readonly IInvoiceRepository _invoiceRepository;
+    private readonly IStudentRepository _studentRepository;
 
-    public PaymentsController(IPaymentRepository paymentRepository, IInvoiceRepository invoiceRepository)
+    public PaymentsController(
+        IPaymentRepository paymentRepository,
+        IInvoiceRepository invoiceRepository,
+        IStudentRepository studentRepository)
     {
         _paymentRepository = paymentRepository;
         _invoiceRepository = invoiceRepository;
+        _studentRepository = studentRepository;
     }
 
     // ── POST /api/payments — SFB-03: Record a payment ──
     [HttpPost]
-    [Authorize]
+    [Authorize(Policy = "FinancePolicy")]   // HARDENING (C-1.C): PRD requires Finance role
     public async Task<ActionResult<PaymentResponseDto>> Create(CreatePaymentDto dto, CancellationToken ct)
     {
         var invoice = await _invoiceRepository.GetByIdAsync(dto.InvoiceID);
@@ -64,10 +70,18 @@ public class PaymentsController : ControllerBase
     [Authorize]
     public async Task<ActionResult<IEnumerable<PaymentResponseDto>>> GetByInvoice(int invoiceId, CancellationToken ct)
     {
-        var exists = await _invoiceRepository.ExistsAsync(invoiceId);
-
-        if (!exists)
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId);
+        if (invoice is null)
             return NotFound(new { error = "Invoice not found", code = "INVOICE_NOT_FOUND" });
+
+        // HARDENING (C-19): Student role may only read payments against their own invoice.
+        var callerRole = User.GetUserRole();
+        if (callerRole == "Student")
+        {
+            var student = await _studentRepository.GetByIdAsync(invoice.StudentID);
+            if (student?.UserID != User.GetUserId())
+                return StatusCode(403, new { error = "You may only view payments on your own invoices", code = "PAYMENT_FORBIDDEN" });
+        }
 
         var payments = await _paymentRepository.GetByInvoiceIdAsync(invoiceId);
 

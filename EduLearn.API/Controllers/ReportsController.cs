@@ -1,4 +1,5 @@
 using EduLearn.API.DTOs;
+using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
@@ -22,19 +23,18 @@ public class ReportsController : ControllerBase
 
     // ── POST /api/reports/generate — Create a new report record ──
     [HttpPost("generate")]
-    [Authorize]
+    [Authorize(Roles = "Auditor,ITAdmin")]   // HARDENING (C-2): PRD §6.8 RKA-01
     public async Task<ActionResult<ReportResponseDto>> GenerateReport(GenerateReportDto dto, CancellationToken ct)
     {
-        if (dto.GeneratedByFK <= 0)
-            return BadRequest(new { error = "GeneratedByFK must be a positive integer", code = "INVALID_USER_ID" });
-
-        // TODO: replace GeneratedByFK with JWT claim after IAM-01 merges
+        // HARDENING (H-3): GeneratedByFK comes from the JWT, not the body.
+        // dto.GeneratedByFK is ignored — previously allowed attribution forgery.
+        var callerId = User.GetUserId();
 
         var report = new Report
         {
             Scope = dto.Scope,
             ParametersJSON = dto.ParametersJSON,
-            GeneratedByFK = dto.GeneratedByFK
+            GeneratedByFK = callerId
         };
 
         var created = await _reportRepository.CreateReportAsync(report, ct);
@@ -45,7 +45,7 @@ public class ReportsController : ControllerBase
 
     // ── GET /api/reports — List all reports ──
     [HttpGet]
-    [Authorize]
+    [Authorize(Roles = "Auditor,ITAdmin")]   // HARDENING (C-2)
     public async Task<ActionResult<IEnumerable<ReportResponseDto>>> GetAllReports(CancellationToken ct)
     {
         var reports = await _reportRepository.GetAllReportsAsync(ct);
@@ -54,7 +54,7 @@ public class ReportsController : ControllerBase
 
     // ── GET /api/reports/{id}/download — Get a single report by ID ──
     [HttpGet("{id}/download")]
-    [Authorize]
+    [Authorize(Roles = "Auditor,ITAdmin")]   // HARDENING (C-2)
     public async Task<ActionResult<ReportResponseDto>> Download(int id, CancellationToken ct)
     {
         var report = await _reportRepository.GetReportByIdAsync(id, ct);

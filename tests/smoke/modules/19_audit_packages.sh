@@ -5,7 +5,7 @@ ROLE=Auditor
 body='{"periodStart":"2026-01-01","periodEnd":"2026-06-30"}'
 http_post /api/audit-packages/generate "$TOKEN_AUDITOR" "$body" >/dev/null
 assert_status 201 "$LAST_STATUS" "POST /api/audit-packages/generate → 201"
-export PACKAGE_ID=$(jget auditPackageID)
+export PACKAGE_ID=$(jget packageID)
 
 # Invalid date range
 body='{"periodStart":"2026-12-31","periodEnd":"2026-01-01"}'

@@ -12,17 +12,25 @@ namespace EduLearn.API.Controllers;
 public class ScholarshipsController : ControllerBase
 {
     private readonly IScholarshipRepository _scholarshipRepository;
+    private readonly IStudentRepository _studentRepository;
 
-    public ScholarshipsController(IScholarshipRepository scholarshipRepository)
+    public ScholarshipsController(
+        IScholarshipRepository scholarshipRepository,
+        IStudentRepository studentRepository)
     {
         _scholarshipRepository = scholarshipRepository;
+        _studentRepository = studentRepository;
     }
 
     // ── POST /api/scholarships — SFB-04: Award scholarship ──
     [HttpPost]
-    [Authorize]
+    [Authorize(Policy = "FinancePolicy")]   // HARDENING (C-1.A): PRD requires Finance role
     public async Task<ActionResult<ScholarshipResponseDto>> Create(CreateScholarshipDto dto, CancellationToken ct)
     {
+        // HARDENING (M-12): validate StudentID existence → 400 with code, not DbUpdateException 500.
+        if (!await _studentRepository.ExistsAsync(dto.StudentID))
+            return BadRequest(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
+
         if (dto.ValidFrom >= dto.ValidTo)
             return BadRequest(new { error = "ValidFrom must be before ValidTo", code = "INVALID_DATE_RANGE" });
 
@@ -47,7 +55,7 @@ public class ScholarshipsController : ControllerBase
     // ── GET /api/scholarships/student/{studentId} — SFB-04: List scholarships for student ──
     [HttpGet("student/{studentId}")]
     [ActionName("GetByStudent")]
-    [Authorize]
+    [Authorize(Policy = "FinancePolicy")]   // HARDENING (C-1.A)
     public async Task<ActionResult<IEnumerable<ScholarshipResponseDto>>> GetByStudent(int studentId, CancellationToken ct)
     {
         var scholarships = await _scholarshipRepository.GetByStudentIdAsync(studentId, ct);
@@ -57,13 +65,17 @@ public class ScholarshipsController : ControllerBase
 
     // ── PUT /api/scholarships/{id} — SFB-04: Update/revoke scholarship ──
     [HttpPut("{id}")]
-    [Authorize]
+    [Authorize(Policy = "FinancePolicy")]   // HARDENING (C-1.A)
     public async Task<ActionResult<ScholarshipResponseDto>> Update(int id, UpdateScholarshipDto dto, CancellationToken ct)
     {
         var existing = await _scholarshipRepository.GetByIdAsync(id, ct);
 
         if (existing is null)
             return NotFound(new { error = "Scholarship not found", code = "SCHOLARSHIP_NOT_FOUND" });
+
+        // HARDENING (M-13): Revoked is terminal — cannot be reactivated/expired.
+        if (existing.Status == ScholarshipStatus.Revoked && dto.Status != ScholarshipStatus.Revoked)
+            return BadRequest(new { error = "Revoked scholarships cannot be re-activated", code = "INVALID_STATUS_TRANSITION" });
 
         existing.Status = dto.Status;
 

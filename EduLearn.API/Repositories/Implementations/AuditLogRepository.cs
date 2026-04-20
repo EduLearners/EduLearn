@@ -33,6 +33,14 @@ public class AuditLogRepository : IAuditLogRepository
         return log;
     }
 
+    // AUDIT (HARDENING M-2): Return an IQueryable<AuditLog> so the service layer
+    // can AND-compose .Where(...) filters before the query is materialized.
+    // .AsNoTracking() is applied here so all callers inherit the perf benefit.
+    public IQueryable<AuditLog> GetQueryable()
+    {
+        return _context.AuditLogs.AsNoTracking();
+    }
+
     // AUDIT: Get recent logs (default last 100, newest first)
     public async Task<IEnumerable<AuditLog>> GetAllAsync(int limit = 100)
     {

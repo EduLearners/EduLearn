@@ -153,6 +153,14 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
         });
 
+        // HARDENING (C-23): Composite unique index prevents duplicate enrollments at the DB level.
+        // The controller-side IsAlreadyEnrolledAsync check is insufficient under concurrent POST
+        // requests; this index is the real guard.
+        modelBuilder.Entity<Enrollment>()
+            .HasIndex(e => new { e.StudentID, e.SectionID })
+            .IsUnique()
+            .HasDatabaseName("IX_Enrollments_StudentID_SectionID");
+
         // ════════════════════════════════════════
         // LMS entities
         // ════════════════════════════════════════

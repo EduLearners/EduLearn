@@ -28,6 +28,7 @@
 using System.Text.Json;
 using EduLearn.API.Models;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace EduLearn.API.Services;
 
@@ -123,5 +124,57 @@ public class AuditLogService
     public async Task<IEnumerable<AuditLog>> GetByDateRangeAsync(DateTime from, DateTime to)
     {
         return await _auditLogRepository.GetByDateRangeAsync(from, to);
+    }
+
+    // ════════════════════════════════════════
+    // AUDIT (HARDENING M-2 + U-2): Composable query method
+    // ════════════════════════════════════════
+    //
+    // M-2 FIX: The previous controller used a first-match if/else chain, so
+    //   ?userId=1&action=Login silently ignored `action`. This method AND-composes
+    //   every non-null/non-empty filter into a single IQueryable before it is
+    //   materialized, so every provided filter is honored.
+    //
+    // U-2 FIX: `limit` is clamped to [1, 1000] to block attackers passing
+    //   limit=int.MaxValue (which would exhaust memory / DB resources).
+    //
+    public async Task<IEnumerable<AuditLog>> QueryAsync(
+        int? userId,
+        string? action,
+        string? resourceType,
+        int? resourceId,
+        DateTime? from,
+        DateTime? to,
+        int limit)
+    {
+        // AUDIT (M-2): Start from an IQueryable so filters compose into one SQL query
+        var query = _auditLogRepository.GetQueryable();
+
+        // AUDIT (M-2): AND-compose each filter only when the parameter is supplied
+        if (userId.HasValue)
+            query = query.Where(a => a.UserID == userId.Value);
+
+        if (!string.IsNullOrEmpty(action))
+            query = query.Where(a => a.Action == action);
+
+        if (!string.IsNullOrEmpty(resourceType))
+            query = query.Where(a => a.ResourceType == resourceType);
+
+        if (resourceId.HasValue)
+            query = query.Where(a => a.ResourceID == resourceId.Value);
+
+        if (from.HasValue)
+            query = query.Where(a => a.Timestamp >= from.Value);
+
+        if (to.HasValue)
+            query = query.Where(a => a.Timestamp <= to.Value);
+
+        // AUDIT (U-2): Clamp `limit` to [1, 1000] to prevent resource-exhaustion
+        var safeLimit = Math.Clamp(limit, 1, 1000);
+
+        return await query
+            .OrderByDescending(l => l.Timestamp)
+            .Take(safeLimit)
+            .ToListAsync();
     }
 }

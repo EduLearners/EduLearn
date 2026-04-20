@@ -109,10 +109,14 @@ fi
 body="{\"score\":40.0,\"graderID\":$ID_STUDENT1,\"reason\":\"forgery test\"}"
 http_post "/api/submissions/$SUBMISSION_ID/grade" "$TOKEN_INSTRUCTOR" "$body" >/dev/null
 if [[ "$LAST_STATUS" == "200" ]]; then
-  # We need to read the stored record to know if forgery succeeded.
-  # Until the server returns the effective grader in its response, flag as
-  # a manual-verify item and warn rather than fail.
-  log_warn "[Forgery] Instructor posted graderID=Student1 in body — manual DB verify needed. If GradeChange.ChangedBy == Student1, forgery still accepted. Fix: strip body.GraderID and use JWT sub."
+  # Verify via DB: ChangedByFK must be Instructor's ID, NOT Student1's forged ID.
+  stored_changer=$(sqlcmd -S "(localdb)\MSSQLLocalDB" -d EduLearnDb -h -1 -W \
+    -Q "SET NOCOUNT ON; SELECT TOP 1 ChangedByFK FROM GradeChanges ORDER BY GradeChangeID DESC;" 2>/dev/null | tr -d '[:space:]')
+  if [[ "$stored_changer" == "$ID_INSTRUCTOR" ]]; then
+    log_pass "[H-3] Attribution forgery blocked — GradeChange.ChangedByFK=$stored_changer (Instructor, not Student1)"
+  else
+    log_fail "[H-3] Attribution forgery ACCEPTED — GradeChange.ChangedByFK=$stored_changer (expected Instructor=$ID_INSTRUCTOR, got Student1=$ID_STUDENT1). Fix: use User.GetUserId() not body.graderID."
+  fi
 else
-  log_info "Forgery grade call returned status=$LAST_STATUS (unexpected — expected 200 for Instructor)."
+  log_fail "[H-3] Grade call returned status=$LAST_STATUS — expected 200 for Instructor JWT."
 fi

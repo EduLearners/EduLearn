@@ -1,9 +1,12 @@
 using EduLearn.API.DTOs;
+using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace EduLearn.API.Controllers;
 
@@ -27,7 +30,9 @@ public class StudentsController : ControllerBase
     }
 
     // POST /api/students — Create a new student after applicant is accepted
+    // HARDENING C-8: PRD §6.2 SRA-02 requires Registrar (or ITAdmin) for student writes.
     [HttpPost]
+    [Authorize(Roles = "Registrar,ITAdmin")]
     public async Task<ActionResult<StudentResponseDto>> CreateStudent(
         CreateStudentDto dto, CancellationToken cancellationToken)
     {
@@ -84,13 +89,32 @@ public class StudentsController : ControllerBase
             ExpectedGraduationTerm = dto.ExpectedGraduationTerm
         };
 
-        var created = await _studentRepo.CreateAsync(student);
-        return CreatedAtAction(nameof(GetStudent),
-            new { id = created.StudentID }, MapToDto(created));
+        // HARDENING M-3: MRN is generated from count+1, which races under concurrent
+        // POSTs and can violate the unique index on Students.MRN. Catch the SQL unique
+        // constraint violation (2601 = unique index, 2627 = unique constraint) and
+        // return 409 so the client can retry, instead of bubbling up as a 500.
+        try
+        {
+            var created = await _studentRepo.CreateAsync(student);
+            return CreatedAtAction(nameof(GetStudent),
+                new { id = created.StudentID }, MapToDto(created));
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx
+            && (sqlEx.Number == 2601 || sqlEx.Number == 2627))
+        {
+            return Conflict(new
+            {
+                error = "MRN collision — please retry",
+                code = "DUPLICATE_MRN"
+            });
+        }
     }
 
     // GET /api/students
+    // HARDENING C-8: PRD line 1826 — list access restricted to staff roles.
+    // Students must never enumerate peers (PII leak).
     [HttpGet]
+    [Authorize(Roles = "Registrar,Instructor,ITAdmin")]
     public async Task<ActionResult<IEnumerable<StudentResponseDto>>> GetStudents(
         CancellationToken cancellationToken)
     {
@@ -112,10 +136,22 @@ public class StudentsController : ControllerBase
                 code = "STUDENT_NOT_FOUND"
             });
 
+        // HARDENING C-8: Students may only read their own record — prevents
+        // cross-student PII reads by id enumeration. Staff roles (Registrar,
+        // Instructor, ITAdmin) fall through unchecked.
+        if (User.GetUserRole() == "Student" && student.UserID != User.GetUserId())
+            return StatusCode(403, new
+            {
+                error = "You may only view your own student record",
+                code = "STUDENT_FORBIDDEN"
+            });
+
         return Ok(MapToDto(student));
     }
 
     // PUT /api/students/{id}
+    // HARDENING C-8: PRD §6.2 SRA-02 — only Registrar (or ITAdmin) may mutate students.
+    [Authorize(Roles = "Registrar,ITAdmin")]
     [HttpPut("{id}")]
     public async Task<ActionResult<StudentResponseDto>> UpdateStudent(
         int id, UpdateStudentDto dto, CancellationToken cancellationToken)

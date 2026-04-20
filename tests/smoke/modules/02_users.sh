@@ -24,12 +24,28 @@ http_get "/api/users/9999999" "$TOKEN_ITADMIN" >/dev/null
 assert_status 404 "$LAST_STATUS" "GET /api/users/{bad} → 404"
 assert_body_contains USER_NOT_FOUND "error code USER_NOT_FOUND"
 
-# AdminPolicy: only ITAdmin may UPDATE users / status
-body="{\"fullName\":\"Updated Name $SEED_TS\",\"email\":\"updated_$SEED_TS@test.edu\"}"
-http_put "/api/users/$ID_STUDENT1" "$TOKEN_STUDENT1" "$body" >/dev/null
-assert_status 403 "$LAST_STATUS" "PUT user as Student → 403 (AdminPolicy)"
+# HARDENING (F-1): Student can read OWN profile, not another student's
+ROLE=Student
+http_get "/api/users/$ID_STUDENT1" "$TOKEN_STUDENT1" >/dev/null
+assert_status 200 "$LAST_STATUS" "GET own user (Student) → 200 [F-1]"
 
-http_put "/api/users/$ID_STUDENT1" "$TOKEN_ITADMIN" "$body" >/dev/null
+http_get "/api/users/$ID_STUDENT2" "$TOKEN_STUDENT1" >/dev/null
+assert_status 403 "$LAST_STATUS" "GET other user (Student) → 403 [F-1]"
+
+# HARDENING (F-2): PRD says any user may update OWN profile; only ITAdmin may update others.
+body="{\"fullName\":\"Self Updated $SEED_TS\",\"email\":\"self_$SEED_TS@test.edu\",\"phone\":null}"
+http_put "/api/users/$ID_STUDENT1" "$TOKEN_STUDENT1" "$body" >/dev/null
+assert_status 200 "$LAST_STATUS" "PUT own user (Student) → 200 [F-2]"
+
+# Student cannot update someone else's profile
+body2="{\"fullName\":\"hijack\",\"email\":\"hijack_$SEED_TS@test.edu\",\"phone\":null}"
+http_put "/api/users/$ID_STUDENT2" "$TOKEN_STUDENT1" "$body2" >/dev/null
+assert_status 403 "$LAST_STATUS" "PUT other user (Student) → 403 [F-2]"
+assert_body_contains USER_FORBIDDEN "error code USER_FORBIDDEN"
+
+# ITAdmin can update anyone
+body3="{\"fullName\":\"Admin Edit $SEED_TS\",\"email\":\"adm_$SEED_TS@test.edu\",\"phone\":null}"
+http_put "/api/users/$ID_STUDENT1" "$TOKEN_ITADMIN" "$body3" >/dev/null
 assert_status 200 "$LAST_STATUS" "PUT user as ITAdmin → 200"
 
 # Status update

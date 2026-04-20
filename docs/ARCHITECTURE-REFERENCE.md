@@ -12,21 +12,23 @@ Single `EduLearn.API` project. Single `AppDbContext`. Single port (5000/5001).
 
 ```
 EduLearn.API/
-├── Controllers/          One file per resource (27 controllers)
+├── Controllers/          One file per resource (25 controllers)
 ├── Data/
 │   └── AppDbContext.cs   All 25 entities, all FK configs, all HasConversion calls
 ├── DTOs/                 Request and response DTOs per controller
+├── Extensions/
+│   └── ClaimsPrincipalExtensions.cs  GetUserId(), GetUserRole(), IsITAdmin() helpers
 ├── Models/               25 entity classes
 │   └── Enums/            10 enum files
 ├── Repositories/
-│   ├── Interfaces/       20 IXxxRepository interfaces
-│   └── Implementations/  20 XxxRepository classes
-├── Services/             Business logic services (TokenService, AuthService, AuditLogService, etc.)
-├── Hubs/
-│   └── NotificationHub.cs  SignalR WebSocket hub
+│   ├── Interfaces/       21 IXxxRepository interfaces
+│   └── Implementations/  21 XxxRepository classes
+├── Services/             Business logic services (TokenService, AuthService, AuditLogService, NotificationService)
 ├── Migrations/           EF Core generated migrations
 └── Program.cs            DI, Swagger, CORS, JWT Auth, JsonStringEnumConverter
 ```
+
+> **2026-04-20:** `Hubs/NotificationHub.cs` removed — SignalR/WebSocket is out of syllabus per mentor clarification. NHT-01 is REST-only. Logged in `docs/PRD-DISCREPANCIES.md`.
 
 ---
 
@@ -66,13 +68,14 @@ All FK constraints use `DeleteBehavior.NoAction`. All enum columns stored as nva
 
 ## Unique Indexes
 
-| Table | Column |
-|---|---|
-| Users | Username |
-| Users | Email |
-| Students | UserID |
-| Students | MRN |
-| Courses | Code |
+| Table | Column(s) | Note |
+|---|---|---|
+| Users | Username | — |
+| Users | Email | — |
+| Students | UserID | — |
+| Students | MRN | — |
+| Courses | Code | — |
+| Enrollments | (StudentID, SectionID) | C-23 hardening — prevents duplicate enrollment at DB level |
 
 ---
 
@@ -108,7 +111,7 @@ Or use the batch files: `.\add-migrations.bat <n>` and `.\migrate-database.bat`
 | Assessment, Grading & Integrity | AGI | Vikash | AGI-01, AGI-02 |
 | Student Finance & Billing | SFB | Tanya | SFB-01, SFB-02, SFB-03 |
 | Reporting, KPIs & Audit | RKA | Utkarsh | RKA-01, RKA-02 |
-| Notifications & Helpdesk | NHT | Swarna | NHT-01, NHT-03 |
+| Notifications & Helpdesk | NHT | Priyanshu | NHT-01, NHT-03 |
 
 ---
 
@@ -213,16 +216,18 @@ Or use the batch files: `.\add-migrations.bat <n>` and `.\migrate-database.bat`
 | RKA-03 | POST | /api/audit-packages/generate |
 | RKA-03 | GET | /api/audit-packages/{id}/download |
 
-### NHT (Swarna)
-| Feature | Method | Endpoint |
-|---|---|---|
-| NHT-01 | GET | /api/notifications |
-| NHT-01 | PUT | /api/notifications/{id}/read |
-| NHT-01 | PUT | /api/notifications/read-all |
-| NHT-01 | GET | /api/notifications/unread-count |
-| NHT-01 | WS | /notificationHub |
-| NHT-03 | POST | /api/tickets |
-| NHT-03 | GET | /api/tickets |
-| NHT-03 | GET | /api/tickets/{id} |
-| NHT-03 | PUT | /api/tickets/{id}/assign |
-| NHT-03 | PUT | /api/tickets/{id}/resolve |
+### NHT (Priyanshu)
+| Feature | Method | Endpoint | Notes |
+|---|---|---|---|
+| NHT-01 | GET | /api/notifications | `?page=N&pageSize=N&unreadOnly=true` |
+| NHT-01 | GET | /api/notifications/unread-count | — |
+| NHT-01 | PUT | /api/notifications/{id}/read | 204 own, 403 other user, 404 not found |
+| NHT-01 | PUT | /api/notifications/read-all | — |
+| NHT-01 | POST | /api/notifications/test | AdminPolicy only — seed/test endpoint |
+| NHT-03 | POST | /api/tickets | Any authenticated user |
+| NHT-03 | GET | /api/tickets | ITAdmin sees all; others see own |
+| NHT-03 | GET | /api/tickets/{id} | Creator/assignee/ITAdmin only |
+| NHT-03 | PUT | /api/tickets/{id}/assign | SupportStaffPolicy |
+| NHT-03 | PUT | /api/tickets/{id}/resolve | SupportStaffPolicy |
+
+> **NHT-02 (WebSocket push):** Removed — out of syllabus per mentor. See `docs/PRD-DISCREPANCIES.md`.

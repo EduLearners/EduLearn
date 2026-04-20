@@ -1,4 +1,5 @@
 using EduLearn.API.DTOs;
+using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
@@ -32,6 +33,7 @@ public class AssessmentsController : ControllerBase
 
     // ── POST /api/assessments — Create a new assessment (always starts as Draft) ──
     [HttpPost]
+    [Authorize(Roles = "Instructor,ITAdmin")]   // HARDENING (C-11): PRD §6.6 AGI-01
     public async Task<ActionResult<AssessmentResponseDto>> CreateAssessment(CreateAssessmentDto dto)
     {
         // Validate that the course exists using course repository
@@ -49,8 +51,10 @@ public class AssessmentsController : ControllerBase
                 return BadRequest(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
         }
 
-        // Validate that the creator (instructor) exists using user repository
-        var creator = await _userRepository.GetByIdAsync(dto.CreatedByFK);
+        // HARDENING (H-3): CreatedByFK comes from the JWT, not the body.
+        // dto.CreatedByFK is IGNORED — previously allowed attribution forgery.
+        var callerId = User.GetUserId();
+        var creator = await _userRepository.GetByIdAsync(callerId);
 
         if (creator is null)
             return BadRequest(new { error = "Creator user not found", code = "USER_NOT_FOUND" });
@@ -65,7 +69,7 @@ public class AssessmentsController : ControllerBase
             DueAt = dto.DueAt,
             MaxScore = dto.MaxScore,
             GradingRubricJSON = dto.GradingRubricJSON,
-            CreatedByFK = dto.CreatedByFK
+            CreatedByFK = callerId   // HARDENING (H-3): JWT subject, not dto.CreatedByFK
         };
 
         // Repository handles Add + SaveChanges internally
@@ -126,8 +130,12 @@ public class AssessmentsController : ControllerBase
     }
 
     // ── PUT /api/assessments/{id} — Update assessment details (only if still in Draft) ──
+    // HARDENING (M-1): accepts UpdateAssessmentDto (no CourseID, no CreatedByFK) instead
+    // of CreateAssessmentDto. Previously an update could re-parent the assessment to a
+    // different course or forge the creator.
     [HttpPut("{id}")]
-    public async Task<ActionResult<AssessmentResponseDto>> UpdateAssessment(int id, CreateAssessmentDto dto)
+    [Authorize(Roles = "Instructor,ITAdmin")]   // HARDENING (C-11): PRD §6.6 AGI-01
+    public async Task<ActionResult<AssessmentResponseDto>> UpdateAssessment(int id, UpdateAssessmentDto dto)
     {
         // Repository returns assessment with Course and CreatedBy loaded (for response DTO)
         var assessment = await _assessmentRepository.GetByIdWithDetailsAsync(id);
@@ -148,8 +156,8 @@ public class AssessmentsController : ControllerBase
                 return BadRequest(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
         }
 
-        // Update fields from DTO
-        assessment.CourseID = dto.CourseID;
+        // HARDENING (M-1): CourseID and CreatedByFK are NOT in UpdateAssessmentDto and
+        // are deliberately preserved. Previously both were mutable via CreateAssessmentDto.
         assessment.SectionID = dto.SectionID;
         assessment.Title = dto.Title;
         assessment.Type = dto.Type;
@@ -180,6 +188,7 @@ public class AssessmentsController : ControllerBase
 
     // ── PUT /api/assessments/{id}/publish — Change status: Draft → Published → Closed ──
     [HttpPut("{id}/publish")]
+    [Authorize(Roles = "Instructor,ITAdmin")]   // HARDENING (C-11): PRD §6.6 AGI-01
     public async Task<ActionResult<AssessmentResponseDto>> PublishAssessment(int id, UpdateAssessmentStatusDto dto)
     {
         // Repository returns assessment with Course and CreatedBy loaded

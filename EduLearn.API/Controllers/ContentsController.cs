@@ -1,4 +1,5 @@
 ﻿using EduLearn.API.DTOs;
+using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
@@ -29,6 +30,7 @@ public class ContentsController : ControllerBase
 
     // ── POST /api/content/upload — Instructor uploads new learning material ──
     [HttpPost("upload")]
+    [Authorize(Roles = "Instructor,ITAdmin")]   // HARDENING (C-12): PRD §6.5 LMS-01
     public async Task<ActionResult<ContentResponseDto>> UploadContent(CreateContentDto dto)
     {
         // Validate that the course exists
@@ -37,8 +39,9 @@ public class ContentsController : ControllerBase
         if (course is null)
             return BadRequest(new { error = "Course not found", code = "COURSE_NOT_FOUND" });
 
-        // Validate that the uploader (instructor) exists
-        var uploader = await _userRepository.GetByIdAsync(dto.UploadedByFK);
+        // HARDENING (C-13): UploadedByFK comes from the JWT, not the body. dto.UploadedByFK is ignored.
+        var callerId = User.GetUserId();
+        var uploader = await _userRepository.GetByIdAsync(callerId);
 
         if (uploader is null)
             return BadRequest(new { error = "Uploader user not found", code = "USER_NOT_FOUND" });
@@ -50,7 +53,7 @@ public class ContentsController : ControllerBase
             Title = dto.Title,
             Type = dto.Type,
             URI = dto.URI,
-            UploadedByFK = dto.UploadedByFK,
+            UploadedByFK = callerId,  // HARDENING (C-13): JWT subject, not dto.UploadedByFK
             MetadataJSON = dto.MetadataJSON
         };
 
@@ -109,6 +112,7 @@ public class ContentsController : ControllerBase
 
     // ── PUT /api/content/{id}/version — Upload a new version of existing content ──
     [HttpPut("{id}/version")]
+    [Authorize(Roles = "Instructor,ITAdmin")]   // HARDENING (C-12): PRD §6.5 LMS-01
     public async Task<ActionResult<ContentResponseDto>> UpdateVersion(int id, UpdateContentVersionDto dto)
     {
         // Get content with navigation properties loaded (for response)

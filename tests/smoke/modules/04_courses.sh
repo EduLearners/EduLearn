@@ -43,6 +43,6 @@ assert_body_contains COURSE_NOT_FOUND "error code COURSE_NOT_FOUND"
 
 # Update (CourseManagerPolicy)
 ROLE=ITAdmin
-body="{\"code\":\"$CODE1\",\"title\":\"Intro to CS — Updated\",\"credits\":3}"
+body="{\"code\":\"$CODE1\",\"title\":\"Intro to CS - Updated\",\"credits\":3}"
 http_put "/api/courses/$COURSE_ID_1" "$TOKEN_ITADMIN" "$body" >/dev/null
 assert_status 200 "$LAST_STATUS" "PUT /api/courses/{id} (ITAdmin) → 200"

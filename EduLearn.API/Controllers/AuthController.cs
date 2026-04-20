@@ -13,6 +13,7 @@
 //   5. Access protected endpoints based on role
 // ============================================================
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using EduLearn.API.DTOs;
 using EduLearn.API.Services;
@@ -33,6 +34,7 @@ public class AuthController : ControllerBase
 
     // POST /api/auth/register — BCrypt hashes password before saving
     [HttpPost("register")]
+    [AllowAnonymous]  // HARDENING (C-25): explicit opt-out from FallbackPolicy
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
         var (success, result) = await _authService.RegisterAsync(dto);
@@ -45,6 +47,7 @@ public class AuthController : ControllerBase
 
     // AUTH CHANGE: POST /api/auth/login — validates password → returns JWT
     [HttpPost("login")]
+    [AllowAnonymous]  // HARDENING (C-25): explicit opt-out from FallbackPolicy
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
         var result = await _authService.LoginAsync(dto);

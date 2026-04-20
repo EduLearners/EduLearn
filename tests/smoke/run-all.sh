@@ -13,7 +13,16 @@
 
 set -u
 
-SMOKE_ROOT="$(cd "$(dirname "$0")" && pwd)"
+# Use Windows-style path via cygpath so Node (which doesn't understand MSYS /c/...)
+# and Git Bash's curl can both read the same file. Falls back to raw pwd on Linux.
+_smoke_root_bash="$(cd "$(dirname "$0")" && pwd)"
+if command -v cygpath >/dev/null 2>&1; then
+  # -m gives mixed-style (C:/Users/...) which Node on Windows accepts AND avoids
+  # backslash-escape interpretation when interpolated into "node -e '...'" strings.
+  SMOKE_ROOT="$(cygpath -m "$_smoke_root_bash")"
+else
+  SMOKE_ROOT="$_smoke_root_bash"
+fi
 export SMOKE_ROOT
 export SMOKE_RUN_DIR="$SMOKE_ROOT/run"
 
@@ -49,14 +58,15 @@ echo "========================================================================"
 printf "  \033[1mEduLearn smoke tests\033[0m  mode=%s  api=%s\n" "$MODE" "$API_BASE"
 echo "========================================================================"
 
-# Connectivity probe
-probe=$(curl -sk -o /dev/null -w "%{http_code}" -m 5 "$API_BASE/api/health" 2>/dev/null || echo 000)
+# Connectivity probe. Use Swagger JSON since it's public in Dev, and
+# /api/health now requires ITAdmin (N-1 hardening) so it can't be an anon probe.
+probe=$(curl -sk -o /dev/null -w "%{http_code}" -m 5 "$API_BASE/swagger/v1/swagger.json" 2>/dev/null || echo 000)
 if [[ "$probe" != "200" ]]; then
-  log_fail "API not reachable at $API_BASE/api/health (status=$probe). Is the API running?"
+  log_fail "API not reachable at $API_BASE/swagger (status=$probe). Is the API running?"
   render_report "$STARTED" "$(date -Iseconds)"
   exit 3
 fi
-log_pass "API reachable (GET /api/health = 200)"
+log_pass "API reachable (GET /swagger = 200)"
 
 # Seed — required unless running a single module that doesn't need it
 seed_users || { render_report "$STARTED" "$(date -Iseconds)"; exit 4; }
@@ -90,22 +100,17 @@ else
 
   if [[ "$MODE" != "no-security" ]]; then
     . "$SMOKE_ROOT/security/finance_bypass.sh" || true
+    . "$SMOKE_ROOT/security/anonymous_elevation.sh" || true
+    . "$SMOKE_ROOT/security/authz_full_sweep.sh" || true
   fi
 fi
 
 ENDED=$(date -Iseconds)
 render_report "$STARTED" "$ENDED"
 
-# Exit code: non-zero only on functional failures or PRD-HARD SLA misses.
-# (Security regression failures are reported but don't fail the build until
-# the fixes land — otherwise CI is stuck red for a week.)
+# Any failure — functional or security — now fails the build. The
+# pre-hardening carve-out was removed once all C-* fixes landed.
 if (( FAIL > 0 )); then
-  # How many failures are PRD HARD SLA?  Those count as build failures;
-  # security-regression failures are expected pre-fix.
-  hard=$(grep -c 'SLA HARD' "$RESULTS_LOG" 2>/dev/null || echo 0)
-  func=$(grep -cvE 'SLA (HARD|WARN)|\[C-[0-9]' "$RESULTS_LOG" 2>/dev/null || echo 0)
-  if (( hard > 0 )) || (( func > 0 )); then
-    exit 1
-  fi
+  exit 1
 fi
 exit 0

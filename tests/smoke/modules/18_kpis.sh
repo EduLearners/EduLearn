@@ -13,12 +13,20 @@ fi
 http_get /api/kpis "$TOKEN_ITADMIN" >/dev/null
 assert_status 200 "$LAST_STATUS" "GET /api/kpis → 200"
 
+# HARDENING (C-20): Auditor can read KPIs
+http_get /api/kpis "$TOKEN_AUDITOR" >/dev/null
+assert_status 200 "$LAST_STATUS" "GET /api/kpis (Auditor) → 200"
+
+# HARDENING (C-20): Student denied on KPI reads
+http_get /api/kpis "$TOKEN_STUDENT1" >/dev/null
+assert_status 403 "$LAST_STATUS" "GET /api/kpis (Student) → 403 [C-20]"
+
 http_post /api/kpis/recalculate "$TOKEN_ITADMIN" "" >/dev/null
 assert_status 200 "$LAST_STATUS" "POST /api/kpis/recalculate → 200"
 
-# Auditor can recalculate (policy allows ITAdmin,Auditor)
+# HARDENING (F-5): Auditor is read-only and can no longer trigger recalculation
 http_post /api/kpis/recalculate "$TOKEN_AUDITOR" "" >/dev/null
-assert_status 200 "$LAST_STATUS" "POST /api/kpis/recalculate (Auditor) → 200"
+assert_status 403 "$LAST_STATUS" "POST /api/kpis/recalculate (Auditor) → 403 [F-5]"
 
 # Student denied
 http_post /api/kpis/recalculate "$TOKEN_STUDENT1" "" >/dev/null

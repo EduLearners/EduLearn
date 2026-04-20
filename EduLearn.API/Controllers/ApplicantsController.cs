@@ -8,7 +8,9 @@ namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// HARDENING (C-7): PRD §6.2 SRA-01 requires Registrar (or ITAdmin) for applicant CRUD.
+// Previously bare [Authorize] meant any Student could list/read/accept applicants (PII leak).
+[Authorize(Roles = "Registrar,ITAdmin")]
 public class ApplicantsController : ControllerBase
 {
     private readonly IApplicantRepository _applicantRepo;

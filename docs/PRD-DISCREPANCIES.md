@@ -78,15 +78,15 @@
 | IAssessmentRepository | Assessment, Submission, GradeChange | ✅ IAssessmentRepository + **ISubmissionRepository** (split) |
 | IFinanceRepository | FeeSchedule, Invoice, Payment, Scholarship | **IFeeScheduleRepository + IInvoiceRepository + IPaymentRepository + IScholarshipRepository** (split into 4) |
 | IReportRepository | Report, KPI, AuditPackage | ✅ IReportRepository (kept as composite) |
-| INotificationRepository | Notification, Ticket | ✅ INotificationRepository |
+| INotificationRepository | Notification, Ticket | **INotificationRepository + ITicketRepository** (split — 2026-04-20) |
 
-**PRD total: 13 interfaces. Actual total: 20 interfaces.**
+**PRD total: 13 interfaces. Actual total: 21 interfaces.**
 
-The implementation chose to split composite repositories into focused single-entity repos. This is actually better design (single responsibility), but the PRD's Section 4.3 table and Section 4.5 project structure both say "13".
+The implementation chose to split composite repositories into focused single-entity repos. This is actually better design (single responsibility), but the PRD's Section 4.3 table and Section 4.5 project structure both say "13". Additionally, `INotificationRepository` and `ITicketRepository` were further split on 2026-04-20 (NHT implementation).
 
-**Impact:** Documentation references to "13 repositories" are inaccurate. New team members reading the PRD will expect 13 files, find 20.
+**Impact:** Documentation references to "13 repositories" are inaccurate. New team members reading the PRD will expect 13 files, find 21.
 
-**Resolution needed:** Update PRD Section 4.3 and 4.5 to reflect 20 repositories, or add a note that composite repos were split during implementation.
+**Resolution needed:** Update PRD Section 4.3 and 4.5 to reflect 21 repositories, or add a note that composite repos were split during implementation.
 
 ---
 

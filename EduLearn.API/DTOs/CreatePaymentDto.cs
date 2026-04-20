@@ -9,6 +9,7 @@ public class CreatePaymentDto
     public int InvoiceID { get; set; }
 
     [Required]
+    [Range(0.01, 99999999.99)]   // HARDENING (D-4): block negative / zero / overflow at validation layer
     public decimal Amount { get; set; }
 
     [Required]

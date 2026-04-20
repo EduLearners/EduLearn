@@ -19,6 +19,10 @@ public interface IAuditLogRepository
     // AUDIT: Write a new log entry (append-only — this is the only write operation)
     Task<AuditLog> CreateAsync(AuditLog log);
 
+    // AUDIT (HARDENING M-2): Expose an IQueryable so the service layer can AND-compose
+    // filters in a single SQL round-trip instead of routing to a first-match helper.
+    IQueryable<AuditLog> GetQueryable();
+
     // AUDIT: Get all logs (with optional limit for performance)
     Task<IEnumerable<AuditLog>> GetAllAsync(int limit = 100);
 

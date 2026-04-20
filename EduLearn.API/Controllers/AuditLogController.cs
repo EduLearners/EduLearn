@@ -51,38 +51,22 @@ public class AuditLogController : ControllerBase
         [FromQuery] DateTime? to,
         [FromQuery] int limit = 100)
     {
-        // AUDIT: Apply filters based on which query parameters were provided
+        // AUDIT (HARDENING M-2): Delegate to QueryAsync which AND-composes every
+        // supplied filter into a single IQueryable. This replaces the previous
+        // first-match if/else chain that silently ignored secondary filters
+        // (e.g. ?userId=1&action=Login only honored userId before).
+        //
+        // AUDIT (HARDENING U-2): `limit` is clamped to [1, 1000] inside
+        // QueryAsync to block attackers passing limit=int.MaxValue.
+        var logs = await _auditLogService.QueryAsync(
+            userId,
+            action,
+            resourceType,
+            resourceId,
+            from,
+            to,
+            limit);
 
-        // Filter by user — "show me everything user #1 did"
-        if (userId.HasValue)
-        {
-            var logs = await _auditLogService.GetByUserIdAsync(userId.Value);
-            return Ok(logs);
-        }
-
-        // Filter by action — "show me all login attempts"
-        if (!string.IsNullOrEmpty(action))
-        {
-            var logs = await _auditLogService.GetByActionAsync(action);
-            return Ok(logs);
-        }
-
-        // Filter by resource — "show me everything that happened to Enrollment #5"
-        if (!string.IsNullOrEmpty(resourceType) && resourceId.HasValue)
-        {
-            var logs = await _auditLogService.GetByResourceAsync(resourceType, resourceId.Value);
-            return Ok(logs);
-        }
-
-        // Filter by date range — "show me everything from April 1-13"
-        if (from.HasValue && to.HasValue)
-        {
-            var logs = await _auditLogService.GetByDateRangeAsync(from.Value, to.Value);
-            return Ok(logs);
-        }
-
-        // No filters — return recent logs (default last 100)
-        var allLogs = await _auditLogService.GetAllAsync(limit);
-        return Ok(allLogs);
+        return Ok(logs);
     }
 }

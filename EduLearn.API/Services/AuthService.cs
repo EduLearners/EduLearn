@@ -62,7 +62,10 @@ public class AuthService
             Email        = dto.Email,
             FullName     = dto.FullName,
             Phone        = dto.Phone,
-            Role         = dto.Role,
+            // HARDENING (C-26): Public registration cannot choose a privileged role.
+            // dto.Role is deliberately IGNORED; server forces Student. Privileged accounts
+            // are minted via POST /api/users (AdminPolicy-gated — ITAdmin only).
+            Role         = UserRole.Student,
             PasswordHash = hashedPassword,
             Status       = UserStatus.Active,
             CreatedAt    = DateTime.UtcNow
@@ -88,6 +91,13 @@ public class AuthService
         });
     }
 
+    // HARDENING (C-24): Dummy hash neutralizes the timing side-channel that previously
+    // let attackers enumerate valid usernames by comparing login response times. Computed
+    // once at class-load; BCrypt.Verify against it runs the full work factor (~300ms),
+    // matching the time to verify a real user's password.
+    private static readonly string DummyHash =
+        BCrypt.Net.BCrypt.HashPassword("dummy-hash-for-timing-consistency-never-a-real-password");
+
     // ════════════════════════════════════════
     // LOGIN — POST /api/auth/login
     // ════════════════════════════════════════
@@ -96,22 +106,27 @@ public class AuthService
         // Find user by username
         var user = await _userRepository.GetByUsernameAsync(dto.Username);
 
-        if (user == null)
-            return null;
+        // HARDENING (C-24): Always run BCrypt.Verify — against a dummy hash when the user
+        // does not exist — so response time for "user not found" matches "wrong password".
+        // Without this, valid usernames respond ~300ms slower than invalid ones, leaking
+        // account existence to probing attackers.
+        var hashToCheck = user?.PasswordHash ?? DummyHash;
+        bool isPasswordCorrect = BCrypt.Net.BCrypt.Verify(dto.Password, hashToCheck);
 
-        // BCrypt verify password
-        bool isPasswordCorrect = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
-
-        if (!isPasswordCorrect)
+        if (user == null || !isPasswordCorrect)
         {
-            // AUDIT CHANGE: Log failed login attempt
-            await _auditLogService.LogAsync(
-                user.UserID,                               // who tried
-                "LoginFailed",                             // what happened
-                "User",                                    // entity type
-                user.UserID,                               // entity id
-                new { reason = "Invalid password" }        // why it failed
-            );
+            if (user != null)
+            {
+                // AUDIT CHANGE: Log failed login attempt. We only log for real users;
+                // probing non-existent usernames creates no audit row (log-pollution guard).
+                await _auditLogService.LogAsync(
+                    user.UserID,                               // who tried
+                    "LoginFailed",                             // what happened
+                    "User",                                    // entity type
+                    user.UserID,                               // entity id
+                    new { reason = "Invalid password" }        // why it failed
+                );
+            }
             return null;
         }
 

@@ -20,6 +20,7 @@ public class ProgramsController : ControllerBase
 
     // ── POST /api/programs — Create a new degree program ──
     [HttpPost]
+    [Authorize(Policy = "DeptAdminPolicy")]   // HARDENING (C-6): PRD §6.4 CCM-01 requires DeptAdmin
     public async Task<ActionResult<ProgramResponseDto>> CreateProgram(CreateProgramDto dto)
     {
         // Check duplicate using repository method
@@ -69,6 +70,7 @@ public class ProgramsController : ControllerBase
 
     // ── PUT /api/programs/{id} — Update a program ──
     [HttpPut("{id}")]
+    [Authorize(Policy = "DeptAdminPolicy")]   // HARDENING (C-6): PRD §6.4 CCM-01
     public async Task<ActionResult<ProgramResponseDto>> UpdateProgram(int id, CreateProgramDto dto)
     {
         var program = await _programRepository.GetByIdAsync(id);

@@ -30,6 +30,7 @@ public class SectionsController : ControllerBase
 
     // POST /api/sections
     [HttpPost]
+    [Authorize(Roles = "Registrar,DeptAdmin,ITAdmin")]   // HARDENING (C-9): PRD §6.3 ETS-02
     public async Task<ActionResult<SectionResponseDto>> CreateSection(
         CreateSectionDto dto, CancellationToken cancellationToken)
     {

@@ -1,4 +1,5 @@
 using EduLearn.API.DTOs;
+using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
@@ -64,28 +65,47 @@ public class UsersController : ControllerBase
         return Ok(users.Select(u => MapToDto(u)).ToList());
     }
 
-    // AUTH CHANGE: ITAdmin and Registrar can view any user profile
+    // HARDENING (F-1): PRD §6.1 line 1779 says GET /api/users/{id} is '*' (any auth user).
+    // Non-privileged roles may view only their own profile; ITAdmin/Registrar may view any.
     [HttpGet("{id}")]
-    [Authorize(Policy = "UserViewPolicy")]
     public async Task<ActionResult<UserResponseDto>> GetUser(int id)
     {
-        var user = await _userRepository.GetByIdAsync(id);
+        var callerId = User.GetUserId();
+        var callerRole = User.GetUserRole();
+        var isPrivileged = callerRole == "ITAdmin" || callerRole == "Registrar";
 
+        if (!isPrivileged && id != callerId)
+            return StatusCode(403, new { error = "You may only view your own profile", code = "USER_FORBIDDEN" });
+
+        var user = await _userRepository.GetByIdAsync(id);
         if (user is null)
             return NotFound(new { error = "User not found", code = "USER_NOT_FOUND" });
 
         return Ok(MapToDto(user));
     }
 
-    // AUTH CHANGE: Only ITAdmin can update user profiles
+    // HARDENING (F-2): PRD §6.1 line 1784 — any user may update their OWN profile.
+    // HARDENING (H-9): pre-check email collision instead of letting DbUpdateException bubble as 500.
     [HttpPut("{id}")]
-    [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<UserResponseDto>> UpdateUser(int id, UpdateUserDto dto)
     {
-        var user = await _userRepository.GetByIdAsync(id);
+        var callerId = User.GetUserId();
+        var isAdmin = User.IsITAdmin();
 
+        if (!isAdmin && id != callerId)
+            return StatusCode(403, new { error = "You may only update your own profile", code = "USER_FORBIDDEN" });
+
+        var user = await _userRepository.GetByIdAsync(id);
         if (user is null)
             return NotFound(new { error = "User not found", code = "USER_NOT_FOUND" });
+
+        // HARDENING (H-9): only check for collision if the email actually changed
+        if (!string.Equals(user.Email, dto.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            var collider = await _userRepository.GetByEmailAsync(dto.Email);
+            if (collider is not null && collider.UserID != id)
+                return Conflict(new { error = "Email already in use", code = "DUPLICATE_EMAIL" });
+        }
 
         user.FullName = dto.FullName;
         user.Email = dto.Email;

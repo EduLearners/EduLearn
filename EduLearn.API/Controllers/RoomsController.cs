@@ -20,6 +20,7 @@ public class RoomsController : ControllerBase
 
     // POST /api/rooms
     [HttpPost]
+    [Authorize(Policy = "DeptAdminPolicy")]   // HARDENING (C-10): PRD §6.3 ETS-02 requires DeptAdmin
     public async Task<ActionResult<RoomResponseDto>> CreateRoom(
         CreateRoomDto dto, CancellationToken cancellationToken)
     {

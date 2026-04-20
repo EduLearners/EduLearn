@@ -22,7 +22,7 @@ public class KPIsController : ControllerBase
 
     // ── GET /api/kpis — List all KPIs ──
     [HttpGet]
-    [Authorize]
+    [Authorize(Roles = "Auditor,ITAdmin")]   // HARDENING (C-20): PRD §6.8 RKA-02
     public async Task<ActionResult<IEnumerable<KPIResponseDto>>> GetAllKPIs(CancellationToken ct)
     {
         var kpis = await _reportRepository.GetAllKPIsAsync(ct);
@@ -31,7 +31,7 @@ public class KPIsController : ControllerBase
 
     // ── POST /api/kpis/recalculate — Recalculate all KPI current values ──
     [HttpPost("recalculate")]
-    [Authorize(Roles = "ITAdmin,Auditor")]
+    [Authorize(Roles = "ITAdmin")]   // HARDENING (F-5): PRD says Admin only; Auditor is read-only
     public async Task<ActionResult<RecalculateResponseDto>> Recalculate(CancellationToken ct)
     {
         var recalculatedAt = DateTime.UtcNow;
