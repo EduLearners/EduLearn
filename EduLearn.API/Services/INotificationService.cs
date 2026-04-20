@@ -3,14 +3,14 @@ using EduLearn.API.Models.Enums;
 
 namespace EduLearn.API.Services;
 
-// NHT-01 — persist-then-push helper.
+// NHT-01 — persist-only helper (REST-only after 2026-04-20 restructure; SignalR removed).
 //
-// Other modules (Enrollment, Grading, Finance, Tickets) depend on this interface
-// instead of SignalR directly, so they never need to know a hub exists.
+// Producer modules (Enrollment, Submissions, Invoices, Tickets) inject this interface
+// and call NotifyAsync after their primary action commits. Clients read via REST.
 public interface INotificationService
 {
-    // Creates a Notification row, then best-effort pushes it via SignalR.
-    // A failed push never rolls back the persisted notification.
+    // Creates a Notification row. No push side-effect.
+    // Throws only on DB failure — placement rule: call AFTER primary transaction commit.
     Task<NotificationResponseDto> NotifyAsync(
         int userId,
         NotificationCategory category,
@@ -18,14 +18,12 @@ public interface INotificationService
         string message,
         int? entityId = null);
 
-    Task<PaginatedResponseDto<NotificationResponseDto>> GetForUserAsync(int userId, int page, int pageSize);
+    Task<PaginatedResponseDto<NotificationResponseDto>> GetForUserAsync(
+        int userId, int page, int pageSize, bool unreadOnly = false);
 
     Task<int> GetUnreadCountAsync(int userId);
 
-    // Returns:
-    //   true  — marked read
-    //   false — notification not found
-    // Throws nothing for ownership mismatch; caller gets a 3-state result via a second method.
+    // Returns a 3-state result so controller maps to 204 / 404 / 403.
     Task<MarkReadResult> MarkReadAsync(int notificationId, int userId);
 
     Task MarkAllReadAsync(int userId);

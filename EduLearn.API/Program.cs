@@ -18,14 +18,13 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using EduLearn.API.Data;
-using EduLearn.API.Hubs;
 using EduLearn.API.Repositories.Implementations;
 using EduLearn.API.Repositories.Interfaces;
 using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,13 +33,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(
-            new System.Text.Json.Serialization.JsonStringEnumConverter()));
-
-// NHT CHANGE (NHT-01): SignalR server. Reuse JsonStringEnumConverter so pushed payloads
-// match the REST payload shape (enums serialized as strings).
-builder.Services.AddSignalR()
-    .AddJsonProtocol(options =>
-        options.PayloadSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
 // [EXISTING] Swagger + JWT lock icon
@@ -60,18 +52,11 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Paste your JWT token here (from /api/auth/login response)"
     });
 
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    options.AddSecurityRequirement(doc => new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
+            new OpenApiSecuritySchemeReference("Bearer", doc),
+            new List<string>()
         }
     });
 });
@@ -119,8 +104,8 @@ builder.Services.AddScoped<AuthService>();
 // AUDIT CHANGE: Register AuditLogService — all teammates inject this to log actions
 builder.Services.AddScoped<AuditLogService>();
 
-// NHT CHANGE (NHT-01): Persist-then-push helper. Other modules inject INotificationService
-// and never need to know a SignalR hub exists.
+// NHT CHANGE (NHT-01, 2026-04-20 restructure): persist-only REST notification service.
+// SignalR removed — out of syllabus. React polls /api/notifications + /unread-count.
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // [EXISTING] JWT Authentication
@@ -142,21 +127,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
-            // NHT CHANGE (NHT-01): Browsers cannot set Authorization headers on WebSocket
-            // upgrade requests. Let SignalR clients pass the JWT as ?access_token=... when
-            // connecting to /notificationHub.
-            OnMessageReceived = context =>
-            {
-                var accessToken = context.Request.Query["access_token"];
-                var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) &&
-                    path.StartsWithSegments("/notificationHub"))
-                {
-                    context.Token = accessToken;
-                }
-                return Task.CompletedTask;
-            },
-
             // Custom 401 response
             OnChallenge = async context =>
             {
@@ -245,6 +215,20 @@ builder.Services.AddAuthorization(options =>
     // role is added later, widen here without touching controllers. Kept separate from
     // AdminPolicy to avoid broadening that policy's scope.
     options.AddPolicy("SupportStaffPolicy", p => p.RequireRole("ITAdmin"));
+
+    // HARDENING (C-1): Finance + ITAdmin — mutate SFB resources (fees, invoices, payments, scholarships)
+    options.AddPolicy("FinancePolicy", p => p.RequireRole("Finance", "ITAdmin"));
+
+    // HARDENING (C-6, C-10): DeptAdmin + ITAdmin — manage degree programs and rooms
+    options.AddPolicy("DeptAdminPolicy", p => p.RequireRole("DeptAdmin", "ITAdmin"));
+
+    // HARDENING (C-25): FallbackPolicy — any endpoint without an explicit authorization
+    // attribute defaults to requiring authentication. Prevents accidental anonymous exposure
+    // if a future controller forgets [Authorize]. Endpoints that must remain anonymous
+    // (AuthController.Register/Login, HealthController if public) must use [AllowAnonymous].
+    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
 });
 
 var app = builder.Build();
@@ -264,24 +248,21 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// NHT CHANGE (NHT-01): SignalR hub for real-time notifications.
-// Client connects via /notificationHub?access_token=<jwt>.
-app.MapHub<NotificationHub>("/notificationHub");
-
 app.Run();
 
 // [EXISTING] EnumSchemaFilter — no changes
 public class EnumSchemaFilter : ISchemaFilter
 {
-    public void Apply(Microsoft.OpenApi.Models.OpenApiSchema schema, SchemaFilterContext context)
+    public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
     {
-        if (context.Type.IsEnum)
+        if (context.Type.IsEnum && schema is OpenApiSchema openApiSchema)
         {
-            schema.Enum.Clear();
+            openApiSchema.Enum ??= new List<System.Text.Json.Nodes.JsonNode>();
+            openApiSchema.Enum.Clear();
             foreach (var name in Enum.GetNames(context.Type))
-                schema.Enum.Add(new Microsoft.OpenApi.Any.OpenApiString(name));
-            schema.Type = "string";
-            schema.Format = null;
+                openApiSchema.Enum.Add(System.Text.Json.Nodes.JsonValue.Create(name)!);
+            openApiSchema.Type = JsonSchemaType.String;
+            openApiSchema.Format = null;
         }
     }
 }

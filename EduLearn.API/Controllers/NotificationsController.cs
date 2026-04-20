@@ -6,10 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
 
-// NHT-01 — Notifications REST surface.
+// NHT-01 — REST-only notifications controller.
 //
-// Real-time push flows through SignalR (/notificationHub); this controller is
-// the fallback + history + read-state management REST layer.
+// 2026-04-20 restructure: SignalR removed per mentor instruction (out of syllabus).
+// React polls GET /api/notifications/unread-count + GET /api/notifications as needed.
 //
 // Error handling: follows project convention in docs/CODEBASE-AUDIT-REPORT.md §9a
 // (pre-validate-then-act, no try/catch, `new { error, code }` shape).
@@ -25,14 +25,16 @@ public class NotificationsController : ControllerBase
         _notificationService = notificationService;
     }
 
-    // ── GET /api/notifications?page=&pageSize= — caller's own notifications, newest first ──
+    // ── GET /api/notifications?page=&pageSize=&unreadOnly= — caller's own notifications, newest first ──
+    // unreadOnly=true filters to unread rows only (bell-icon "unread list" UX).
     [HttpGet]
     public async Task<ActionResult<PaginatedResponseDto<NotificationResponseDto>>> GetMine(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20,
+        [FromQuery] bool unreadOnly = false)
     {
         var userId = GetCurrentUserId();
-        var result = await _notificationService.GetForUserAsync(userId, page, pageSize);
+        var result = await _notificationService.GetForUserAsync(userId, page, pageSize, unreadOnly);
         return Ok(result);
     }
 
@@ -78,11 +80,11 @@ public class NotificationsController : ControllerBase
         return NoContent();
     }
 
-    // ── POST /api/notifications/test — ITAdmin-only seed endpoint for smoke-testing SignalR ──
+    // ── POST /api/notifications/test — ITAdmin-only seed endpoint ──
     //
-    // Persists a row via NotificationService.NotifyAsync → same persist-then-push flow as
-    // production callers, so a SignalR client connected as the target user should receive
-    // a `ReceiveNotification` event in real time.
+    // Persists a row via NotificationService.NotifyAsync. Same persist path as production
+    // producers (Enrollment, Submissions, Invoices, Tickets). Used by smoke tests to seed
+    // notifications without triggering real domain events.
     [HttpPost("test")]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<NotificationResponseDto>> CreateTest(CreateNotificationDto dto)

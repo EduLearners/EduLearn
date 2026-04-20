@@ -1,7 +1,9 @@
 using EduLearn.API.DTOs;
+using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;          // TEAMMATE: added for repository pattern
+using EduLearn.API.Services;                          // NHT-01: INotificationService
 using Microsoft.AspNetCore.Authorization;             // AUTH CHANGE: added for [Authorize]
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,15 +18,18 @@ public class EnrollmentsController : ControllerBase
     private readonly IEnrollmentRepository _enrollRepo;
     private readonly IStudentRepository _studentRepo;
     private readonly ISectionRepository _sectionRepo;
+    private readonly INotificationService _notificationService;
 
     public EnrollmentsController(
         IEnrollmentRepository enrollRepo,
         IStudentRepository studentRepo,
-        ISectionRepository sectionRepo)
+        ISectionRepository sectionRepo,
+        INotificationService notificationService)
     {
         _enrollRepo = enrollRepo;
         _studentRepo = studentRepo;
         _sectionRepo = sectionRepo;
+        _notificationService = notificationService;
     }
 
     // AUTH CHANGE: Student, Registrar, ITAdmin can enroll
@@ -36,6 +41,12 @@ public class EnrollmentsController : ControllerBase
         var student = await _studentRepo.GetByIdAsync(dto.StudentID);
         if (student is null)
             return BadRequest(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
+
+        // HARDENING (C-22): If caller is a Student, dto.StudentID must equal caller's own record.
+        // Registrar/ITAdmin may pass any StudentID (they're doing bulk enrollment).
+        var callerRole = User.GetUserRole();
+        if (callerRole == "Student" && student.UserID != User.GetUserId())
+            return StatusCode(403, new { error = "Students may only enroll themselves", code = "ENROLLMENT_FORBIDDEN" });
 
         using var transaction = await _enrollRepo.BeginTransactionAsync();
         try
@@ -100,6 +111,14 @@ public class EnrollmentsController : ControllerBase
                 EnrolledAt = enrollment.EnrolledAt
             };
 
+            // NHT-01: notify the student. After commit so a failed notify doesn't undo enrollment.
+            var msg = status == EnrollmentStatus.Waitlisted
+                ? $"Added to waitlist for {section.Course.Title} ({section.Term}) — position #{waitlistPosition}."
+                : $"Enrolled in {section.Course.Title} ({section.Term}).";
+            await _notificationService.NotifyAsync(
+                student.UserID, NotificationCategory.Enrollment, NotificationSeverity.Info,
+                msg, enrollment.EnrollID);
+
             return StatusCode(StatusCodes.Status201Created, response);
         }
         catch
@@ -122,6 +141,19 @@ public class EnrollmentsController : ControllerBase
             {
                 await transaction.RollbackAsync(cancellationToken);
                 return NotFound(new { error = "Enrollment not found", code = "ENROLLMENT_NOT_FOUND" });
+            }
+
+            // HARDENING (C-21): If caller is a Student, enrollment must belong to them.
+            // Registrar/ITAdmin may drop any enrollment.
+            var callerRole = User.GetUserRole();
+            if (callerRole == "Student")
+            {
+                var owner = await _studentRepo.GetByIdAsync(enrollment.StudentID);
+                if (owner?.UserID != User.GetUserId())
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return StatusCode(403, new { error = "You may only drop your own enrollments", code = "ENROLLMENT_FORBIDDEN" });
+                }
             }
 
             var wasEnrolled = enrollment.Status == EnrollmentStatus.Enrolled;
@@ -159,6 +191,19 @@ public class EnrollmentsController : ControllerBase
             }
 
             await transaction.CommitAsync(cancellationToken);
+
+            // NHT-01: notify the student their enrollment was dropped (Warning severity).
+            var droppedStudent = await _studentRepo.GetByIdAsync(enrollment.StudentID);
+            if (droppedStudent is not null)
+            {
+                var droppedSection = await _sectionRepo.GetByIdWithCourseAsync(enrollment.SectionID);
+                var courseTitle = droppedSection?.Course.Title ?? $"Section #{enrollment.SectionID}";
+                var term = droppedSection?.Term ?? string.Empty;
+                await _notificationService.NotifyAsync(
+                    droppedStudent.UserID, NotificationCategory.Enrollment, NotificationSeverity.Warning,
+                    $"Dropped from {courseTitle} ({term}).", enrollment.EnrollID);
+            }
+
             return NoContent();
         }
         catch
@@ -174,6 +219,15 @@ public class EnrollmentsController : ControllerBase
     public async Task<ActionResult<IEnumerable<EnrollmentResponseDto>>> GetByStudent(
         int studentId, CancellationToken cancellationToken)
     {
+        // HARDENING (C-14/F-4): Student role may only read their own enrollments.
+        var callerRole = User.GetUserRole();
+        if (callerRole == "Student")
+        {
+            var target = await _studentRepo.GetByIdAsync(studentId);
+            if (target?.UserID != User.GetUserId())
+                return StatusCode(403, new { error = "You may only view your own enrollments", code = "ENROLLMENT_FORBIDDEN" });
+        }
+
         var enrollments = await _enrollRepo.GetByStudentIdAsync(studentId);
 
         var result = enrollments.Select(e => new EnrollmentResponseDto

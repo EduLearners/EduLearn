@@ -157,7 +157,7 @@ public class TicketsController : ControllerBase
         // NHT-03 ↔ NHT-01: notify the new assignee in real time.
         await _notificationService.NotifyAsync(
             dto.AssignedToUserId,
-            NotificationCategory.System,
+            NotificationCategory.IT,
             NotificationSeverity.Info,
             $"Ticket #{ticket.TicketID} '{ticket.Subject}' has been assigned to you.",
             ticket.TicketID);
@@ -204,7 +204,7 @@ public class TicketsController : ControllerBase
         // NHT-03 ↔ NHT-01: notify the ticket creator that their ticket is resolved.
         await _notificationService.NotifyAsync(
             ticket.CreatedByFK,
-            NotificationCategory.System,
+            NotificationCategory.IT,
             NotificationSeverity.Info,
             $"Your ticket #{ticket.TicketID} '{ticket.Subject}' has been resolved.",
             ticket.TicketID);

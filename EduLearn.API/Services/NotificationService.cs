@@ -1,28 +1,25 @@
 using EduLearn.API.DTOs;
-using EduLearn.API.Hubs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
-using Microsoft.AspNetCore.SignalR;
 
 namespace EduLearn.API.Services;
 
-// NHT-01 — see INotificationService.
+// NHT-01 — REST-only notification service.
+//
+// 2026-04-20 restructure: SignalR push removed (out of syllabus). NotifyAsync now
+// persists a row and returns; clients (React, Swagger, smoke tests) read via
+// GET /api/notifications and GET /api/notifications/unread-count.
 public class NotificationService : INotificationService
 {
     private readonly INotificationRepository _repository;
-    private readonly IHubContext<NotificationHub> _hubContext;
     private readonly ILogger<NotificationService> _logger;
-
-    private const string ClientEventName = "ReceiveNotification";
 
     public NotificationService(
         INotificationRepository repository,
-        IHubContext<NotificationHub> hubContext,
         ILogger<NotificationService> logger)
     {
         _repository = repository;
-        _hubContext = hubContext;
         _logger = logger;
     }
 
@@ -45,36 +42,26 @@ public class NotificationService : INotificationService
         };
 
         var created = await _repository.CreateAsync(entity);
-        var dto = MapToDto(created);
 
-        // Best-effort push. If the WebSocket is unhealthy we still keep the row —
-        // the client will pick it up via GET /api/notifications on next poll/reload.
-        try
-        {
-            await _hubContext.Clients
-                .User(userId.ToString())
-                .SendAsync(ClientEventName, dto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex,
-                "SignalR push failed for NotificationID={NotificationId} UserID={UserId}. " +
-                "Row persisted; client will see it on next REST fetch.",
-                created.NotificationID, userId);
-        }
+        _logger.LogInformation(
+            "Notification persisted: NotificationID={NotificationId} UserID={UserId} Category={Category}",
+            created.NotificationID, userId, category);
 
-        return dto;
+        return MapToDto(created);
     }
 
-    public async Task<PaginatedResponseDto<NotificationResponseDto>> GetForUserAsync(int userId, int page, int pageSize)
+    public async Task<PaginatedResponseDto<NotificationResponseDto>> GetForUserAsync(
+        int userId, int page, int pageSize, bool unreadOnly = false)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 20;
         if (pageSize > 100) pageSize = 100;
 
-        var all = (await _repository.GetByUserIdAsync(userId))
-            .OrderByDescending(n => n.CreatedAt)
-            .ToList();
+        var source = unreadOnly
+            ? await _repository.GetUnreadByUserIdAsync(userId)
+            : await _repository.GetByUserIdAsync(userId);
+
+        var all = source.OrderByDescending(n => n.CreatedAt).ToList();
 
         var totalCount = all.Count;
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);

@@ -4,7 +4,8 @@ using EduLearn.API.Models.Enums;
 namespace EduLearn.API.DTOs;
 
 // Used only by the ITAdmin-only POST /api/notifications/test seed endpoint.
-// Lets you smoke-test SignalR pushes without having to wire other modules in yet.
+// Seeds a notification row via the same persist path as production producers
+// (Enrollment/Submissions/Invoices/Tickets). REST-only post 2026-04-20 restructure.
 public class CreateNotificationDto
 {
     [Required]

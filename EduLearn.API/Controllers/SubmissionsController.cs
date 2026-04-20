@@ -1,7 +1,9 @@
 ﻿using EduLearn.API.DTOs;
+using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,17 +19,20 @@ public class SubmissionsController : ControllerBase
     private readonly IAssessmentRepository _assessmentRepository;
     private readonly IStudentRepository _studentRepository;
     private readonly IUserRepository _userRepository;
+    private readonly INotificationService _notificationService;
 
     public SubmissionsController(
         ISubmissionRepository submissionRepository,
         IAssessmentRepository assessmentRepository,
         IStudentRepository studentRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        INotificationService notificationService)
     {
         _submissionRepository = submissionRepository;
         _assessmentRepository = assessmentRepository;
         _studentRepository = studentRepository;
         _userRepository = userRepository;
+        _notificationService = notificationService;
     }
 
     // ── POST /api/submissions — Student submits work for an assessment ──
@@ -48,6 +53,12 @@ public class SubmissionsController : ControllerBase
 
         if (student is null)
             return BadRequest(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
+
+        // HARDENING (C-16): If caller is a Student, dto.StudentID must equal caller's own record.
+        // Registrar/ITAdmin may submit on behalf of students (rare admin case).
+        var callerRole = User.GetUserRole();
+        if (callerRole == "Student" && student.UserID != User.GetUserId())
+            return StatusCode(403, new { error = "Students may only submit their own work", code = "SUBMISSION_FORBIDDEN" });
 
         // Check for duplicate submission (same student + same assessment)
         var existingSubmission = await _submissionRepository.GetByStudentAndAssessmentAsync(dto.StudentID, dto.AssessmentID);
@@ -98,6 +109,7 @@ public class SubmissionsController : ControllerBase
 
     // ── GET /api/submissions/assessment/{assessmentId} — List all submissions for an assessment ──
     [HttpGet("assessment/{assessmentId}")]
+    [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<List<SubmissionResponseDto>>> GetByAssessment(int assessmentId)
     {
         // Validate assessment exists
@@ -115,6 +127,7 @@ public class SubmissionsController : ControllerBase
 
     // ── POST /api/submissions/{id}/grade — Instructor grades a submission ──
     [HttpPost("{id}/grade")]
+    [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<SubmissionResponseDto>> GradeSubmission(int id, GradeSubmissionDto dto)
     {
         // Get submission with navigation properties loaded
@@ -123,11 +136,20 @@ public class SubmissionsController : ControllerBase
         if (submission is null)
             return NotFound(new { error = "Submission not found", code = "SUBMISSION_NOT_FOUND" });
 
-        // Validate the grader (instructor) exists
-        var grader = await _userRepository.GetByIdAsync(dto.GraderID);
+        // HARDENING (M-17): Grading only permitted on Published assessments.
+        if (submission.Assessment.Status != AssessmentStatus.Published)
+            return BadRequest(new { error = "Cannot grade a submission whose assessment is not Published", code = "ASSESSMENT_NOT_OPEN_FOR_GRADING" });
 
+        // HARDENING (C-5): grader identity comes from JWT, not body. dto.GraderID is ignored.
+        var callerId = User.GetUserId();
+        var grader = await _userRepository.GetByIdAsync(callerId);
         if (grader is null)
             return BadRequest(new { error = "Grader user not found", code = "GRADER_NOT_FOUND" });
+
+        // HARDENING (M-16): Verify grader has Instructor or ITAdmin role (defense-in-depth,
+        // in addition to the method-level [Authorize(Roles=...)] attribute).
+        if (grader.Role != UserRole.Instructor && grader.Role != UserRole.ITAdmin)
+            return StatusCode(403, new { error = "Only Instructors may grade submissions", code = "NOT_INSTRUCTOR" });
 
         // Validate score doesn't exceed assessment max score
         if (dto.Score > submission.Assessment.MaxScore)
@@ -145,7 +167,8 @@ public class SubmissionsController : ControllerBase
                 SubmissionID = submission.SubmissionID,
                 OldScore = submission.Score.Value,
                 NewScore = dto.Score,
-                ChangedByFK = dto.GraderID,
+                // HARDENING (C-17): audit record's ChangedByFK comes from JWT, not body.
+                ChangedByFK = callerId,
                 Reason = dto.Reason ?? "Grade updated by instructor",
                 AuditNote = $"Re-graded from {submission.Score.Value} to {dto.Score}"
             };
@@ -156,12 +179,21 @@ public class SubmissionsController : ControllerBase
 
         // Apply the grade
         submission.Score = dto.Score;
-        submission.GraderID = dto.GraderID;
+        // HARDENING (C-5): stored GraderID comes from JWT, not body.
+        submission.GraderID = callerId;
         submission.GradedAt = DateTime.UtcNow;
         submission.Status = SubmissionStatus.Graded;
 
         // Repository saves the updated submission
         await _submissionRepository.UpdateAsync(submission);
+
+        // NHT-01: notify the student their grade was posted (Assessment category per PRD §6.9).
+        await _notificationService.NotifyAsync(
+            submission.Student.UserID,
+            NotificationCategory.Assessment,
+            NotificationSeverity.Info,
+            $"Grade posted for {submission.Assessment.Title}: {dto.Score}/{submission.Assessment.MaxScore}.",
+            submission.SubmissionID);
 
         // Build response with grader name
         var response = MapToDto(submission);
@@ -175,10 +207,14 @@ public class SubmissionsController : ControllerBase
     public async Task<ActionResult<List<SubmissionResponseDto>>> GetByStudent(int studentId)
     {
         // Validate student exists
-        var studentExists = await _studentRepository.ExistsAsync(studentId);
-
-        if (!studentExists)
+        var student = await _studentRepository.GetByIdAsync(studentId);
+        if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
+
+        // HARDENING (C-14): Student role may only read their own submissions.
+        var callerRole = User.GetUserRole();
+        if (callerRole == "Student" && student.UserID != User.GetUserId())
+            return StatusCode(403, new { error = "You may only view your own submissions", code = "SUBMISSION_FORBIDDEN" });
 
         // Repository returns submissions with Assessment, Student, and Grader navigation loaded
         var submissions = await _submissionRepository.GetByStudentIdWithDetailsAsync(studentId);
