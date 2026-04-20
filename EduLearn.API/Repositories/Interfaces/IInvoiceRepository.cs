@@ -8,6 +8,7 @@ public interface IInvoiceRepository
     Task<IEnumerable<Invoice>> GetAllAsync();
     Task<Invoice?> GetByIdAsync(int invoiceId);
     Task<IEnumerable<Invoice>> GetByStudentIdAsync(int studentId);
+    Task<Invoice?> GetByStudentAndTermAsync(int studentId, string term);
     Task<IEnumerable<Invoice>> GetByTermAsync(string term);
     Task<IEnumerable<Invoice>> GetByStatusAsync(InvoiceStatus status);
     Task<Invoice> CreateAsync(Invoice invoice);

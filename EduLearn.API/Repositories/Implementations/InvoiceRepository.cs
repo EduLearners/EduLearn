@@ -24,6 +24,10 @@ public class InvoiceRepository : IInvoiceRepository
     public async Task<IEnumerable<Invoice>> GetByStudentIdAsync(int studentId)
         => await _context.Invoices.Where(i => i.StudentID == studentId).ToListAsync();
 
+    public async Task<Invoice?> GetByStudentAndTermAsync(int studentId, string term)
+        => await _context.Invoices.AsNoTracking()
+            .FirstOrDefaultAsync(i => i.StudentID == studentId && i.Term == term);
+
     public async Task<IEnumerable<Invoice>> GetByTermAsync(string term)
         => await _context.Invoices.Where(i => i.Term == term).ToListAsync();
 

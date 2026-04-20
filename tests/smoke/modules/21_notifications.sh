@@ -7,6 +7,7 @@ ROLE=ITAdmin
 # and had an invoice generated. Unread count MUST be > 0 if producers fire.
 http_get /api/notifications/unread-count "$TOKEN_STUDENT1" >/dev/null
 assert_status 200 "$LAST_STATUS" "GET /api/notifications/unread-count (Student1, pre-seed) → 200"
+perf_check "$LAST_MS" GET /api/notifications/unread-count "unread-count SLA <150ms WARN"
 PRE_COUNT=$(jget unreadCount)
 if [[ "$PRE_COUNT" -gt 0 ]]; then
   log_pass "[NHT-01 producers] Student1 has $PRE_COUNT unread notifications from upstream modules (Enrollment/Assessment/Finance)"
@@ -22,6 +23,7 @@ assert_status 403 "$LAST_STATUS" "POST /api/notifications/test (Student) → 403
 body="{\"userID\":$ID_STUDENT1,\"category\":\"System\",\"severity\":\"Info\",\"message\":\"smoke seed $SEED_TS\"}"
 http_post /api/notifications/test "$TOKEN_ITADMIN" "$body" >/dev/null
 assert_status 201 "$LAST_STATUS" "POST /api/notifications/test (ITAdmin) → 201"
+perf_check "$LAST_MS" POST /api/notifications/test "POST /api/notifications/test SLA <750ms WARN"
 export NOTIFICATION_ID=$(jget notificationID)
 
 # PRD-aligned enum values — Assessment category (NHT-01 enum alignment 2026-04-20)
@@ -49,6 +51,7 @@ assert_status 200 "$LAST_STATUS" "GET /api/notifications?unreadOnly=true → 200
 
 http_get /api/notifications/unread-count "$TOKEN_STUDENT1" >/dev/null
 assert_status 200 "$LAST_STATUS" "GET /api/notifications/unread-count → 200"
+perf_check "$LAST_MS" GET /api/notifications/unread-count "unread-count SLA <150ms WARN"
 log_info "Student1 unreadCount=$(jget unreadCount)"
 
 # Mark-read — other user's → 403
@@ -64,6 +67,7 @@ assert_body_contains NOTIFICATION_NOT_FOUND "error code NOTIFICATION_NOT_FOUND"
 # Own → 204
 http_put "/api/notifications/$NOTIFICATION_ID/read" "$TOKEN_STUDENT1" "" >/dev/null
 assert_status 204 "$LAST_STATUS" "PUT /api/notifications/{id}/read (own) → 204"
+perf_check "$LAST_MS" PUT /api/notifications/read "mark-read SLA <750ms WARN"
 
 # Idempotent
 http_put "/api/notifications/$NOTIFICATION_ID/read" "$TOKEN_STUDENT1" "" >/dev/null
@@ -72,6 +76,7 @@ assert_status 204 "$LAST_STATUS" "PUT /api/notifications/{id}/read idempotent �
 # Read-all
 http_put /api/notifications/read-all "$TOKEN_STUDENT1" "" >/dev/null
 assert_status 204 "$LAST_STATUS" "PUT /api/notifications/read-all → 204"
+perf_check "$LAST_MS" PUT /api/notifications/read-all "read-all SLA <750ms WARN"
 
 # After read-all, unread count should be 0
 http_get /api/notifications/unread-count "$TOKEN_STUDENT1" >/dev/null
