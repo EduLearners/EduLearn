@@ -2,6 +2,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,13 +14,17 @@ public class ScholarshipsController : ControllerBase
 {
     private readonly IScholarshipRepository _scholarshipRepository;
     private readonly IStudentRepository _studentRepository;
+    // NHT-01 CHANGE (interim-polish): notify the student when a scholarship is awarded.
+    private readonly INotificationService _notificationService;
 
     public ScholarshipsController(
         IScholarshipRepository scholarshipRepository,
-        IStudentRepository studentRepository)
+        IStudentRepository studentRepository,
+        INotificationService notificationService)
     {
         _scholarshipRepository = scholarshipRepository;
         _studentRepository = studentRepository;
+        _notificationService = notificationService;
     }
 
     // ── POST /api/scholarships — SFB-04: Award scholarship ──
@@ -48,6 +53,19 @@ public class ScholarshipsController : ControllerBase
         };
 
         var created = await _scholarshipRepository.CreateAsync(scholarship, ct);
+
+        // NHT-01 CHANGE (interim-polish): notify the student that a scholarship has been awarded.
+        // Re-fetch student to obtain UserID (ExistsAsync above only returned a bool).
+        var student = await _studentRepository.GetByIdAsync(created.StudentID);
+        if (student is not null)
+        {
+            await _notificationService.NotifyAsync(
+                student.UserID,
+                NotificationCategory.Finance,
+                NotificationSeverity.Info,
+                $"Scholarship awarded: {created.AwardType} (${created.Amount:0.00}) valid {created.ValidFrom:yyyy-MM-dd} to {created.ValidTo:yyyy-MM-dd}.",
+                created.ScholarID);
+        }
 
         return CreatedAtAction(nameof(GetByStudent), new { studentId = created.StudentID }, MapToDto(created));
     }

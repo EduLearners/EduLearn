@@ -2,20 +2,14 @@ using System.Security.Claims;
 
 namespace EduLearn.API.Extensions;
 
-// Shared JWT subject/role extraction helpers.
-// Single source of truth for "who is calling" — used by every controller
-// that needs ownership checks. Previously duplicated inline in Tickets and
-// Notifications controllers.
+
 public static class ClaimsPrincipalExtensions
 {
-    // Returns the UserID from the JWT NameIdentifier claim.
-    // Safe to call from any [Authorize]-protected endpoint.
-    // Throws InvalidOperationException if the claim is missing — which
-    // only happens when called from an unauthenticated context.
+    
     public static int GetUserId(this ClaimsPrincipal user)
-    {
+    {//we are searching the security tocken(JWT) for the claim that has the nameidentifier, which is the user id. If it is not found
         var raw = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? throw new InvalidOperationException(
+            ?? throw new InvalidOperationException(//?? is row is null then it will be executes
                 "NameIdentifier claim missing — is the endpoint [Authorize]-protected?");
         return int.Parse(raw);
     }

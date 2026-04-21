@@ -3,6 +3,7 @@ using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,15 +16,22 @@ public class PaymentsController : ControllerBase
     private readonly IPaymentRepository _paymentRepository;
     private readonly IInvoiceRepository _invoiceRepository;
     private readonly IStudentRepository _studentRepository;
+    // AUDIT + NHT-01 CHANGE (interim-polish): record payment events and notify the student.
+    private readonly INotificationService _notificationService;
+    private readonly AuditLogService _auditLogService;
 
     public PaymentsController(
         IPaymentRepository paymentRepository,
         IInvoiceRepository invoiceRepository,
-        IStudentRepository studentRepository)
+        IStudentRepository studentRepository,
+        INotificationService notificationService,
+        AuditLogService auditLogService)
     {
         _paymentRepository = paymentRepository;
         _invoiceRepository = invoiceRepository;
         _studentRepository = studentRepository;
+        _notificationService = notificationService;
+        _auditLogService = auditLogService;
     }
 
     // ── POST /api/payments — SFB-03: Record a payment ──
@@ -60,6 +68,27 @@ public class PaymentsController : ControllerBase
         decimal totalPaid = allPayments.Sum(p => p.Status == PaymentStatus.Completed ? p.Amount : 0m);
         invoice.Status = totalPaid >= invoice.AmountDue ? InvoiceStatus.Paid : InvoiceStatus.PartiallyPaid;
         await _invoiceRepository.UpdateAsync(invoice);
+
+        // NHT-01 CHANGE (interim-polish): notify the student their payment has been recorded.
+        // Looked up via invoice.StudentID → student.UserID (notifications target UserID).
+        var student = await _studentRepository.GetByIdAsync(invoice.StudentID);
+        if (student is not null)
+        {
+            await _notificationService.NotifyAsync(
+                student.UserID,
+                NotificationCategory.Finance,
+                NotificationSeverity.Info,
+                $"Payment of ${created.Amount:0.00} recorded for invoice #{invoice.InvoiceID}. Invoice status: {invoice.Status}.",
+                created.PaymentID);
+        }
+
+        // AUDIT CHANGE (interim-polish): record the payment event for IAM-04 / compliance.
+        await _auditLogService.LogAsync(
+            User.GetUserId(),
+            "PaymentRecorded",
+            "Payment",
+            created.PaymentID,
+            new { invoiceId = created.InvoiceID, amount = created.Amount, method = created.Method.ToString(), invoiceStatus = invoice.Status.ToString() });
 
         return CreatedAtAction(nameof(GetByInvoice), new { invoiceId = created.InvoiceID }, MapToDto(created));
     }

@@ -20,19 +20,23 @@ public class SubmissionsController : ControllerBase
     private readonly IStudentRepository _studentRepository;
     private readonly IUserRepository _userRepository;
     private readonly INotificationService _notificationService;
+    // AUDIT CHANGE (interim-polish): record grading events for IAM-04.
+    private readonly AuditLogService _auditLogService;
 
     public SubmissionsController(
         ISubmissionRepository submissionRepository,
         IAssessmentRepository assessmentRepository,
         IStudentRepository studentRepository,
         IUserRepository userRepository,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        AuditLogService auditLogService)
     {
         _submissionRepository = submissionRepository;
         _assessmentRepository = assessmentRepository;
         _studentRepository = studentRepository;
         _userRepository = userRepository;
         _notificationService = notificationService;
+        _auditLogService = auditLogService;
     }
 
     // ── POST /api/submissions — Student submits work for an assessment ──
@@ -194,6 +198,15 @@ public class SubmissionsController : ControllerBase
             NotificationSeverity.Info,
             $"Grade posted for {submission.Assessment.Title}: {dto.Score}/{submission.Assessment.MaxScore}.",
             submission.SubmissionID);
+
+        // AUDIT CHANGE (interim-polish): record the grading event for IAM-04.
+        // Regrades already create a GradeChange row above; this adds a service-level trail.
+        await _auditLogService.LogAsync(
+            callerId,
+            "SubmissionGraded",
+            "Submission",
+            submission.SubmissionID,
+            new { assessmentId = submission.AssessmentID, studentId = submission.StudentID, score = dto.Score, maxScore = submission.Assessment.MaxScore });
 
         // Build response with grader name
         var response = MapToDto(submission);

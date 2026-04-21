@@ -19,17 +19,22 @@ public class EnrollmentsController : ControllerBase
     private readonly IStudentRepository _studentRepo;
     private readonly ISectionRepository _sectionRepo;
     private readonly INotificationService _notificationService;
+    // AUDIT CHANGE (interim-polish): log enrollment state changes to the append-only audit trail
+    // so the Auditor demo has meaningful IAM-04 content beyond auth events.
+    private readonly AuditLogService _auditLogService;
 
     public EnrollmentsController(
         IEnrollmentRepository enrollRepo,
         IStudentRepository studentRepo,
         ISectionRepository sectionRepo,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        AuditLogService auditLogService)
     {
         _enrollRepo = enrollRepo;
         _studentRepo = studentRepo;
         _sectionRepo = sectionRepo;
         _notificationService = notificationService;
+        _auditLogService = auditLogService;
     }
 
     // AUTH CHANGE: Student, Registrar, ITAdmin can enroll
@@ -119,6 +124,14 @@ public class EnrollmentsController : ControllerBase
                 student.UserID, NotificationCategory.Enrollment, NotificationSeverity.Info,
                 msg, enrollment.EnrollID);
 
+            // AUDIT CHANGE (interim-polish): record the enrollment event for IAM-04.
+            await _auditLogService.LogAsync(
+                User.GetUserId(),
+                "EnrollmentCreated",
+                "Enrollment",
+                enrollment.EnrollID,
+                new { studentId = enrollment.StudentID, sectionId = enrollment.SectionID, status = enrollment.Status.ToString() });
+
             return StatusCode(StatusCodes.Status201Created, response);
         }
         catch
@@ -160,6 +173,11 @@ public class EnrollmentsController : ControllerBase
             enrollment.Status = EnrollmentStatus.Dropped;
             await _enrollRepo.UpdateAsync(enrollment);
 
+            // AUDIT CHANGE (interim-polish): capture promoted enrollment so we can notify
+            // the waitlisted-then-promoted student AFTER the transaction commits.
+            int? promotedEnrollId = null;
+            int? promotedStudentId = null;
+
             if (wasEnrolled)
             {
                 var section = await _sectionRepo.GetByIdAsync(enrollment.SectionID);
@@ -174,6 +192,8 @@ public class EnrollmentsController : ControllerBase
                         nextInLine.WaitlistPosition = null;
                         await _enrollRepo.UpdateAsync(nextInLine);
                         section.EnrolledCount++;
+                        promotedEnrollId = nextInLine.EnrollID;
+                        promotedStudentId = nextInLine.StudentID;
 
                         // Shift remaining waitlist positions (2,3,4... → 1,2,3...)
                         var remainingWaitlisted = await _enrollRepo.GetWaitlistedBySectionAsync(enrollment.SectionID);
@@ -194,15 +214,39 @@ public class EnrollmentsController : ControllerBase
 
             // NHT-01: notify the student their enrollment was dropped (Warning severity).
             var droppedStudent = await _studentRepo.GetByIdAsync(enrollment.StudentID);
+            var droppedSection = await _sectionRepo.GetByIdWithCourseAsync(enrollment.SectionID);
+            var courseTitle = droppedSection?.Course.Title ?? $"Section #{enrollment.SectionID}";
+            var term = droppedSection?.Term ?? string.Empty;
+
             if (droppedStudent is not null)
             {
-                var droppedSection = await _sectionRepo.GetByIdWithCourseAsync(enrollment.SectionID);
-                var courseTitle = droppedSection?.Course.Title ?? $"Section #{enrollment.SectionID}";
-                var term = droppedSection?.Term ?? string.Empty;
                 await _notificationService.NotifyAsync(
                     droppedStudent.UserID, NotificationCategory.Enrollment, NotificationSeverity.Warning,
                     $"Dropped from {courseTitle} ({term}).", enrollment.EnrollID);
             }
+
+            // NHT-01 (interim-polish): notify the promoted waitlist student that they're now enrolled.
+            if (promotedStudentId.HasValue && promotedEnrollId.HasValue)
+            {
+                var promotedStudent = await _studentRepo.GetByIdAsync(promotedStudentId.Value);
+                if (promotedStudent is not null)
+                {
+                    await _notificationService.NotifyAsync(
+                        promotedStudent.UserID,
+                        NotificationCategory.Enrollment,
+                        NotificationSeverity.Info,
+                        $"You have been promoted from the waitlist and are now enrolled in {courseTitle} ({term}).",
+                        promotedEnrollId.Value);
+                }
+            }
+
+            // AUDIT CHANGE (interim-polish): record the drop event for IAM-04.
+            await _auditLogService.LogAsync(
+                User.GetUserId(),
+                "EnrollmentDropped",
+                "Enrollment",
+                enrollment.EnrollID,
+                new { studentId = enrollment.StudentID, sectionId = enrollment.SectionID, promotedEnrollId });
 
             return NoContent();
         }

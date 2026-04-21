@@ -7,6 +7,8 @@ using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+// AUDIT CHANGE (interim-polish): invoice generation now writes to the append-only audit log.
+
 namespace EduLearn.API.Controllers;
 
 [ApiController]
@@ -18,19 +20,22 @@ public class InvoicesController : ControllerBase
     private readonly IScholarshipRepository _scholarshipRepository;
     private readonly IStudentRepository _studentRepository;
     private readonly INotificationService _notificationService;
+    private readonly AuditLogService _auditLogService;
 
     public InvoicesController(
         IInvoiceRepository invoiceRepository,
         IFeeScheduleRepository feeScheduleRepository,
         IScholarshipRepository scholarshipRepository,
         IStudentRepository studentRepository,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        AuditLogService auditLogService)
     {
         _invoiceRepository = invoiceRepository;
         _feeScheduleRepository = feeScheduleRepository;
         _scholarshipRepository = scholarshipRepository;
         _studentRepository = studentRepository;
         _notificationService = notificationService;
+        _auditLogService = auditLogService;
     }
 
     // ── POST /api/invoices/generate — SFB-02: Generate invoice ──
@@ -114,6 +119,14 @@ public class InvoicesController : ControllerBase
             NotificationSeverity.Info,
             $"Invoice #{created.InvoiceID} generated: ${created.AmountDue:0.00} due {created.DueDate:yyyy-MM-dd}.",
             created.InvoiceID);
+
+        // AUDIT CHANGE (interim-polish): record invoice generation for IAM-04 / compliance.
+        await _auditLogService.LogAsync(
+            User.GetUserId(),
+            "InvoiceGenerated",
+            "Invoice",
+            created.InvoiceID,
+            new { studentId = created.StudentID, term = created.Term, amountDue = created.AmountDue });
 
         return CreatedAtAction(nameof(GetById), new { id = created.InvoiceID }, MapToDto(created, student));
     }

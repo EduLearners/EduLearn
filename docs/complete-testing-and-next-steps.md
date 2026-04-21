@@ -49,33 +49,29 @@ Open Swagger: `https://localhost:5001/swagger`
 
 All endpoints except `/api/auth/*` and `/api/health` require a JWT token.
 
-**Step 1 — Register a user:**
-```
-POST /api/auth/register
-```
-```json
-{
-  "username": "ashish.admin",
-  "fullName": "Ashish Kumar",
-  "email": "ashish@edulearn.com",
-  "role": "ITAdmin",
-  "password": "Admin@123"
-}
-```
+On a fresh DB, the API auto-seeds a default ITAdmin account on first startup:
 
-**Step 2 — Login to get JWT:**
+| Field    | Value       |
+|----------|-------------|
+| Username | `admin`     |
+| Password | `Admin@123` |
+| Role     | `ITAdmin`   |
+
+The seeder (`EduLearn.API/Data/DbInitializer.cs`) is idempotent — it runs on every `dotnet run` but only creates the account if a user named `admin` does not already exist. Privileged public signup is still locked by design (`POST /api/auth/register` always forces `Role = Student` — C-26 anti-privilege-escalation), so the seeded admin is the Swagger-only entry point for demoing any admin-gated endpoint. Other roles are minted through `POST /api/users` (AdminPolicy — ITAdmin only) once the admin is logged in.
+
+**Step 1 — Login as the seeded admin to get a JWT:**
 ```
 POST /api/auth/login
 ```
 ```json
 {
-  "username": "ashish.admin",
+  "username": "admin",
   "password": "Admin@123"
 }
 ```
 Response contains `"token": "eyJhbGciOiJIUzI1NiIs..."` — copy this.
 
-**Step 3 — Authorize in Swagger:**
+**Step 2 — Authorize in Swagger:**
 Click the 🔒 **Authorize** button at the top → paste the token → click Authorize.
 
 Now all subsequent requests will include the JWT. Token expires in 60 minutes.
@@ -113,37 +109,47 @@ Run in order — each section depends on data from the previous one.
 
 ### SECTION 0 — Authentication (IAM-01)
 
-**0.1 Register ITAdmin**
+On a fresh DB the API auto-seeds an ITAdmin (`admin` / `Admin@123`) at startup. This section logs in as that seeded admin, then creates the rest of the demo users — **Instructor** and **Finance** via `POST /api/users` (AdminPolicy-gated, honors the `role` field), and two **Students** via `POST /api/auth/register` (public signup, which is hard-coded to Student by C-26).
+
+The creation order below produces these stable UserIDs, referenced by every subsequent section:
+
+| UserID | Username   | Role       | Created via               |
+|--------|------------|------------|---------------------------|
+| 1      | admin      | ITAdmin    | startup seeder            |
+| 2      | dr.priya   | Instructor | `POST /api/users`         |
+| 3      | rahul.s    | Student    | `POST /api/auth/register` |
+| 4      | sneha.s    | Student    | `POST /api/auth/register` |
+| 5      | tanya.fin  | Finance    | `POST /api/users`         |
+
+**0.1 Login as seeded ITAdmin (get JWT)**
 ```
-POST /api/auth/register
+POST /api/auth/login
 ```
 ```json
 {
-  "username": "ashish.admin",
-  "fullName": "Ashish Kumar",
-  "email": "ashish@edulearn.com",
-  "role": "ITAdmin",
+  "username": "admin",
   "password": "Admin@123"
 }
 ```
-Expected: `200 OK`
+Expected: `200 OK` with `"token": "eyJ..."` — **Copy this token and click 🔒 Authorize in Swagger before continuing.**
 
-**0.2 Register Instructor**
+**0.2 Create Instructor (UserID 2)**
 ```
-POST /api/auth/register
+POST /api/users
 ```
 ```json
 {
   "username": "dr.priya",
   "fullName": "Dr. Priya Sharma",
   "email": "priya@edulearn.com",
+  "phone": "+91-9876543220",
   "role": "Instructor",
   "password": "Inst@123"
 }
 ```
-Expected: `200 OK`
+Expected: `201 Created` — `userID: 2`, role `"Instructor"`
 
-**0.3 Register Student 1**
+**0.3 Register Student 1 (UserID 3) — public signup**
 ```
 POST /api/auth/register
 ```
@@ -156,9 +162,9 @@ POST /api/auth/register
   "password": "Stud@123"
 }
 ```
-Expected: `200 OK`
+Expected: `200 OK` — role is always forced to `"Student"` regardless of body (C-26).
 
-**0.4 Register Student 2**
+**0.4 Register Student 2 (UserID 4) — public signup**
 ```
 POST /api/auth/register
 ```
@@ -173,41 +179,30 @@ POST /api/auth/register
 ```
 Expected: `200 OK`
 
-**0.5 Register Finance Officer**
+**0.5 Create Finance Officer (UserID 5)**
 ```
-POST /api/auth/register
+POST /api/users
 ```
 ```json
 {
   "username": "tanya.fin",
   "fullName": "Tanya Singh",
   "email": "tanya@edulearn.com",
+  "phone": "+91-9876543250",
   "role": "Finance",
   "password": "Fin@123"
 }
 ```
-Expected: `200 OK`
+Expected: `201 Created` — `userID: 5`, role `"Finance"`
 
-**0.6 Login as ITAdmin (get JWT)**
-```
-POST /api/auth/login
-```
-```json
-{
-  "username": "ashish.admin",
-  "password": "Admin@123"
-}
-```
-Expected: `200 OK` with `"token": "eyJ..."` — **Copy this token and click 🔒 Authorize in Swagger.**
-
-**0.7 Test 401 — Access without token**
-Remove the token from Swagger Authorize, then try:
+**0.6 Test 401 — Access without token**
+Click 🔒 Authorize in Swagger and **Logout**, then try:
 ```
 GET /api/users
 ```
 Expected: `401 Unauthorized` — "Authentication required. Please login at POST /api/auth/login to get a JWT token."
 
-Re-authorize with the token before continuing.
+Re-authorize with the admin token before continuing. (If the token has expired, re-run 0.1 to get a fresh one.)
 
 ---
 
@@ -225,7 +220,7 @@ Expected: `200 OK` — returns 5 users. Roles show as strings ("ITAdmin", "Instr
 ```
 GET /api/users/1
 ```
-Expected: `200 OK` — Ashish Kumar
+Expected: `200 OK` — `fullName: "Default IT Administrator"`, role `"ITAdmin"` (the seeded admin).
 
 **1.3 Get non-existent user**
 ```

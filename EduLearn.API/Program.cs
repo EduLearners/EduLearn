@@ -1,19 +1,3 @@
-// ============================================================
-// Program.cs — Application Entry Point
-//
-// AUTH CHANGES:
-//   - JWT Bearer authentication + custom 401/403 responses
-//   - 7 role-based authorization policies
-//   - Swagger 🔒 Authorize button
-//
-// AUDIT CHANGES:
-//   - Added: IAuditLogRepository + AuditLogRepository DI registration
-//   - Added: AuditLogService DI registration
-//   - Added: AuditViewPolicy for Auditor + ITAdmin
-//
-// KEPT UNCHANGED: All 13 existing repos, EnumSchemaFilter, DbContext, CORS
-// ============================================================
-
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -29,13 +13,13 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// [EXISTING] JSON enum serialization
+//JSON enum serialization  UserRole{Admin,User} is will send 0 or 1
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(
-            new System.Text.Json.Serialization.JsonStringEnumConverter()));
+            new System.Text.Json.Serialization.JsonStringEnumConverter()));//convert Enum into  number
 
-// [EXISTING] Swagger + JWT lock icon
+//Swagger + JWT lock icon
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -232,6 +216,11 @@ builder.Services.AddAuthorization(options =>
 });
 
 var app = builder.Build();
+
+// Seed the default ITAdmin ('admin' / 'Admin@123') so the API can be demoed
+// via Swagger on a fresh DB without needing SSMS to promote a role.
+// Idempotent — skips if a user named 'admin' already exists.
+await EduLearn.API.Data.DbInitializer.SeedDefaultAdminAsync(app.Services);
 
 // [EXISTING] Swagger UI
 if (app.Environment.IsDevelopment())
