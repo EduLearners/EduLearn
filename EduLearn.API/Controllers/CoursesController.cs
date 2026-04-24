@@ -1,17 +1,16 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
-using EduLearn.API.Repositories.Interfaces;          // TEAMMATE: added for repository pattern
-using Microsoft.AspNetCore.Authorization;             // AUTH CHANGE: added for [Authorize]
+using EduLearn.API.Repositories.Interfaces;         
+using Microsoft.AspNetCore.Authorization;             //added for [Authorize]
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize] // AUTH CHANGE: All endpoints require a valid JWT token
+[Authorize] 
 public class CoursesController : ControllerBase
 {
-    // TEAMMATE: Changed from AppDbContext to ICourseRepository
     private readonly ICourseRepository _courseRepository;
 
     public CoursesController(ICourseRepository courseRepository)
@@ -19,9 +18,8 @@ public class CoursesController : ControllerBase
         _courseRepository = courseRepository;
     }
 
-    // AUTH CHANGE: Only Instructor, DeptAdmin, ITAdmin can create courses
     [HttpPost]
-    [Authorize(Policy = "CourseManagerPolicy")]
+    [Authorize(Roles = "Instructor,DeptAdmin,ITAdmin")]
     public async Task<ActionResult<CourseResponseDto>> CreateCourse(CreateCourseDto dto)
     {
         var existing = await _courseRepository.GetByCodeAsync(dto.Code);
@@ -43,7 +41,6 @@ public class CoursesController : ControllerBase
         return CreatedAtAction(nameof(GetCourse), new { id = course.CourseID }, MapToDto(course));
     }
 
-    // AUTH CHANGE: Any logged-in user can view courses
     [HttpGet]
     [Authorize(Policy = "AllUsersPolicy")]
     public async Task<ActionResult<List<CourseResponseDto>>> GetCourses()
@@ -52,7 +49,6 @@ public class CoursesController : ControllerBase
         return Ok(courses.Select(c => MapToDto(c)).ToList());
     }
 
-    // AUTH CHANGE: Any logged-in user can view a single course
     [HttpGet("{id}")]
     [Authorize(Policy = "AllUsersPolicy")]
     public async Task<ActionResult<CourseResponseDto>> GetCourse(int id)
@@ -65,7 +61,6 @@ public class CoursesController : ControllerBase
         return Ok(MapToDto(course));
     }
 
-    // AUTH CHANGE: Only Instructor, DeptAdmin, ITAdmin can update courses
     [HttpPut("{id}")]
     [Authorize(Policy = "CourseManagerPolicy")]
     public async Task<ActionResult<CourseResponseDto>> UpdateCourse(int id, CreateCourseDto dto)

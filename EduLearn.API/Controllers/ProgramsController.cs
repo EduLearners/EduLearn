@@ -10,7 +10,6 @@ namespace EduLearn.API.Controllers;
 [Authorize]
 public class ProgramsController : ControllerBase
 {
-    // Repository pattern: controller talks to repository interface, NOT AppDbContext directly
     private readonly IProgramRepository _programRepository;
 
     public ProgramsController(IProgramRepository programRepository)
@@ -18,19 +17,18 @@ public class ProgramsController : ControllerBase
         _programRepository = programRepository;
     }
 
-    // ── POST /api/programs — Create a new degree program ──
+    //Create new degree program
     [HttpPost]
-    [Authorize(Policy = "DeptAdminPolicy")]   // HARDENING (C-6): PRD §6.4 CCM-01 requires DeptAdmin
+    [Authorize(Policy = "DeptAdminPolicy")]
     public async Task<ActionResult<ProgramResponseDto>> CreateProgram(CreateProgramDto dto)
     {
-        // Check duplicate using repository method
         if (await _programRepository.ExistsByNameAndDegreeAsync(dto.Name, dto.DegreeType))
             return Conflict(new { error = "Program with this name and degree type already exists", code = "DUPLICATE_PROGRAM" });
 
-        // Creating a new Program entity from the DTO like-b.tech(AI)
+       
         var program = new EduLearn.API.Models.Program
         {
-            // Maps the incoming DTO to a new Program entity
+            
             Name = dto.Name,
             DepartmentID = dto.DepartmentID,
             DegreeType = dto.DegreeType,
@@ -39,24 +37,23 @@ public class ProgramsController : ControllerBase
             DurationTerms = dto.DurationTerms
         };
 
-        // _context.Programs.Add(program) + SaveChanges internally
+      
         await _programRepository.CreateAsync(program);
 
         return CreatedAtAction(nameof(GetProgram), new { id = program.ProgramID }, MapToDto(program));
     }
 
-    // ── GET /api/programs — List all programs ──
+    //List all programs
     [HttpGet]
     public async Task<ActionResult<List<ProgramResponseDto>>> GetPrograms()
     {
-        // Repository returns all programs (already uses AsNoTracking internally)
         var programs = await _programRepository.GetAllAsync();
 
         var response = programs.Select(p => MapToDto(p)).ToList();
         return Ok(response);
     }
 
-    // ── GET /api/programs/{id} — Get one program by ID ──
+    //Get one program by ID
     [HttpGet("{id}")]
     public async Task<ActionResult<ProgramResponseDto>> GetProgram(int id)
     {
@@ -68,9 +65,8 @@ public class ProgramsController : ControllerBase
         return Ok(MapToDto(program));
     }
 
-    // ── PUT /api/programs/{id} — Update a program ──
     [HttpPut("{id}")]
-    [Authorize(Policy = "DeptAdminPolicy")]   // HARDENING (C-6): PRD §6.4 CCM-01
+    [Authorize(Policy = "DeptAdminPolicy")]   
     public async Task<ActionResult<ProgramResponseDto>> UpdateProgram(int id, CreateProgramDto dto)
     {
         var program = await _programRepository.GetByIdAsync(id);
@@ -78,7 +74,6 @@ public class ProgramsController : ControllerBase
         if (program is null)
             return NotFound(new { error = "Program not found", code = "PROGRAM_NOT_FOUND" });
 
-        // Update fields from DTO
         program.Name = dto.Name;
         program.DepartmentID = dto.DepartmentID;
         program.DegreeType = dto.DegreeType;
@@ -86,13 +81,11 @@ public class ProgramsController : ControllerBase
         program.ElectivesJSON = dto.ElectivesJSON;
         program.DurationTerms = dto.DurationTerms;
 
-        // EF Core detects the changes automatically, repository calls SaveChanges
         await _programRepository.UpdateAsync(program);
 
         return Ok(MapToDto(program));
     }
 
-    // A private static helper method that converts the entity to a response DTO
     private static ProgramResponseDto MapToDto(EduLearn.API.Models.Program program) => new()
     {
         ProgramID = program.ProgramID,

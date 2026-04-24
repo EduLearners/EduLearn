@@ -10,17 +10,20 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
+
+//initializes  configuration, logging, and dependency injection container
 var builder = WebApplication.CreateBuilder(args);
 
-//JSON enum serialization  UserRole{Admin,User} is will send 0 or 1
+//UserRole{Admin,User} is will send 0 or 1
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter()));//convert Enum into  number
 
 //Swagger + JWT lock icon
-builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddEndpointsApiExplorer();//Find all routrs(get,post..)
 builder.Services.AddSwaggerGen(options =>
 {
     options.UseInlineDefinitionsForEnums();
@@ -45,16 +48,19 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// [EXISTING] CORS
+
+//.AllowAnyOrigin(): Any website(Google, a malicious site, or your own frontend) can call your API.
+//.AllowAnyHeader(): Allows the request to include any custom headers (like Authorization or Content-Type).
+//.AllowAnyMethod(): Allows any HTTP verb (GET, POST, PUT, DELETE, etc.).
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
         policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
-// [EXISTING] Database
+// Database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// [EXISTING] All 13 Repositories
+//All 13 Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
@@ -74,25 +80,14 @@ builder.Services.AddScoped<IProgramRepository, ProgramRepository>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IFeeScheduleRepository, FeeScheduleRepository>();
 builder.Services.AddScoped<IScholarshipRepository, ScholarshipRepository>();
-
-// NHT CHANGE (NHT-03): Ticket repository.
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
-
-// AUDIT CHANGE: Register audit log repository (append-only: create + read, no update/delete)
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
-
-// [EXISTING] Auth services
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AuthService>();
-
-// AUDIT CHANGE: Register AuditLogService — all teammates inject this to log actions
 builder.Services.AddScoped<AuditLogService>();
-
-// NHT CHANGE (NHT-01, 2026-04-20 restructure): persist-only REST notification service.
-// SignalR removed — out of syllabus. React polls /api/notifications + /unread-count.
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
-// [EXISTING] JWT Authentication
+//JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -111,7 +106,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
-            // Custom 401 response
+            //Custom 401 response
             OnChallenge = async context =>
             {
                 context.HandleResponse();
@@ -161,55 +156,40 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// [EXISTING] + [AUDIT CHANGE] Role-based Authorization Policies
+//Role-based Authorization Policies
 builder.Services.AddAuthorization(options =>
 {
-    // Any logged-in user (all 7 roles)
+    //logged-in all 7 roles
     options.AddPolicy("AllUsersPolicy", p => p.RequireRole(
         "Student", "Instructor", "Registrar", "DeptAdmin", "Finance", "ITAdmin", "Auditor"));
 
-    // Instructor, DeptAdmin, ITAdmin — create/update courses
     options.AddPolicy("CourseManagerPolicy", p => p.RequireRole(
         "Instructor", "DeptAdmin", "ITAdmin"));
 
-    // Student, Registrar, ITAdmin — enroll/drop
     options.AddPolicy("EnrollmentPolicy", p => p.RequireRole(
         "Student", "Registrar", "ITAdmin"));
 
-    // Instructor, Registrar, DeptAdmin, ITAdmin — view section roster
     options.AddPolicy("RosterViewPolicy", p => p.RequireRole(
         "Instructor", "Registrar", "DeptAdmin", "ITAdmin"));
 
-    // Student, Instructor, Registrar, ITAdmin — view enrollment lists
+    
     options.AddPolicy("EnrollmentViewPolicy", p => p.RequireRole(
         "Student", "Instructor", "Registrar", "ITAdmin"));
 
-    // ITAdmin only — full admin access
     options.AddPolicy("AdminPolicy", p => p.RequireRole("ITAdmin"));
 
-    // ITAdmin + Registrar — view user list
     options.AddPolicy("UserViewPolicy", p => p.RequireRole(
         "ITAdmin", "Registrar"));
 
-    // AUDIT CHANGE: Auditor + ITAdmin — view audit logs (PRD Section 6.1)
     options.AddPolicy("AuditViewPolicy", p => p.RequireRole(
         "Auditor", "ITAdmin"));
 
-    // NHT CHANGE (NHT-03): Ticket assign/resolve — ITAdmin only today. If a SupportStaff
-    // role is added later, widen here without touching controllers. Kept separate from
-    // AdminPolicy to avoid broadening that policy's scope.
     options.AddPolicy("SupportStaffPolicy", p => p.RequireRole("ITAdmin"));
 
-    // HARDENING (C-1): Finance + ITAdmin — mutate SFB resources (fees, invoices, payments, scholarships)
     options.AddPolicy("FinancePolicy", p => p.RequireRole("Finance", "ITAdmin"));
 
-    // HARDENING (C-6, C-10): DeptAdmin + ITAdmin — manage degree programs and rooms
     options.AddPolicy("DeptAdminPolicy", p => p.RequireRole("DeptAdmin", "ITAdmin"));
 
-    // HARDENING (C-25): FallbackPolicy — any endpoint without an explicit authorization
-    // attribute defaults to requiring authentication. Prevents accidental anonymous exposure
-    // if a future controller forgets [Authorize]. Endpoints that must remain anonymous
-    // (AuthController.Register/Login, HealthController if public) must use [AllowAnonymous].
     options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
@@ -222,36 +202,9 @@ var app = builder.Build();
 // Idempotent — skips if a user named 'admin' already exists.
 await EduLearn.API.Data.DbInitializer.SeedDefaultAdminAsync(app.Services);
 
-// [EXISTING] Swagger UI
+//Swagger UI
 if (app.Environment.IsDevelopment())
 {
-    // Pin the OpenAPI version string in the emitted document to 3.0.1. Microsoft.OpenApi 2.4.1
-    // defaults to "3.0.4" which some Swagger UI copies (older caches, VS-embedded viewers)
-    // don't recognise, producing a "does not specify a valid version field" render error.
-    // 3.0.1 is the lowest 3.0 patch every Swagger UI since 2018 accepts.
-    app.Use(async (context, next) =>
-    {
-        var path = context.Request.Path.Value;
-        if (path != null && path.StartsWith("/swagger/", StringComparison.OrdinalIgnoreCase) && path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
-        {
-            var originalBody = context.Response.Body;
-            using var buffer = new MemoryStream();
-            context.Response.Body = buffer;
-            await next();
-            buffer.Position = 0;
-            var json = await new StreamReader(buffer, System.Text.Encoding.UTF8).ReadToEndAsync();
-            json = System.Text.RegularExpressions.Regex.Replace(
-                json,
-                "\"openapi\"\\s*:\\s*\"3\\.0\\.[0-9]+\"",
-                "\"openapi\": \"3.0.1\"");
-            context.Response.Body = originalBody;
-            context.Response.ContentLength = System.Text.Encoding.UTF8.GetByteCount(json);
-            await context.Response.WriteAsync(json);
-            return;
-        }
-        await next();
-    });
-
     app.UseSwagger();
     app.UseSwaggerUI();
 }
@@ -266,7 +219,8 @@ app.MapControllers();
 
 app.Run();
 
-// [EXISTING] EnumSchemaFilter — no changes
+
+//display enums as STRING values (names) instead of numeric values
 public class EnumSchemaFilter : ISchemaFilter
 {
     public void Apply(IOpenApiSchema schema, SchemaFilterContext context)

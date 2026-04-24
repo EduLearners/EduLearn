@@ -110,9 +110,6 @@ public class StudentsController : ControllerBase
         }
     }
 
-    // GET /api/students
-    // HARDENING C-8: PRD line 1826 — list access restricted to staff roles.
-    // Students must never enumerate peers (PII leak).
     [HttpGet]
     [Authorize(Roles = "Registrar,Instructor,ITAdmin")]
     public async Task<ActionResult<IEnumerable<StudentResponseDto>>> GetStudents(
@@ -136,9 +133,7 @@ public class StudentsController : ControllerBase
                 code = "STUDENT_NOT_FOUND"
             });
 
-        // HARDENING C-8: Students may only read their own record — prevents
-        // cross-student PII reads by id enumeration. Staff roles (Registrar,
-        // Instructor, ITAdmin) fall through unchecked.
+   
         if (User.GetUserRole() == "Student" && student.UserID != User.GetUserId())
             return StatusCode(403, new
             {
@@ -149,8 +144,6 @@ public class StudentsController : ControllerBase
         return Ok(MapToDto(student));
     }
 
-    // PUT /api/students/{id}
-    // HARDENING C-8: PRD §6.2 SRA-02 — only Registrar (or ITAdmin) may mutate students.
     [Authorize(Roles = "Registrar,ITAdmin")]
     [HttpPut("{id}")]
     public async Task<ActionResult<StudentResponseDto>> UpdateStudent(
