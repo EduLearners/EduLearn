@@ -145,6 +145,52 @@ public class SectionsController : ControllerBase
         return Ok(result);
     }
 
+    // PUT /api/sections/{id} — Update an existing section
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Registrar,DeptAdmin,ITAdmin")]
+    public async Task<ActionResult<SectionResponseDto>> UpdateSection(
+        int id, CreateSectionDto dto, CancellationToken cancellationToken)
+    {
+        var section = await _sectionRepo.GetByIdAsync(id);
+        if (section is null)
+            return NotFound(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
+
+        var course = await _courseRepo.GetByIdAsync(dto.CourseID);
+        if (course is null)
+            return BadRequest(new { error = "Course not found", code = "COURSE_NOT_FOUND" });
+
+        var instructor = await _userRepo.GetByIdAsync(dto.InstructorID);
+        if (instructor is null)
+            return BadRequest(new { error = "Instructor not found", code = "INSTRUCTOR_NOT_FOUND" });
+
+        if (instructor.Role != Models.Enums.UserRole.Instructor)
+            return BadRequest(new { error = "The specified user is not an Instructor", code = "INVALID_INSTRUCTOR_ROLE" });
+
+        if (dto.RoomID.HasValue)
+        {
+            var roomExists = await _roomRepo.ExistsAsync(dto.RoomID.Value);
+            if (!roomExists)
+                return BadRequest(new { error = "Room not found", code = "ROOM_NOT_FOUND" });
+        }
+
+        if (dto.Capacity < section.EnrolledCount)
+            return BadRequest(new
+            {
+                error = $"Cannot reduce capacity to {dto.Capacity}. Currently {section.EnrolledCount} students are enrolled.",
+                code = "CAPACITY_TOO_LOW"
+            });
+
+        section.CourseID = dto.CourseID;
+        section.Term = dto.Term;
+        section.InstructorID = dto.InstructorID;
+        section.RoomID = dto.RoomID;
+        section.Capacity = dto.Capacity;
+        section.ScheduleJSON = dto.ScheduleJSON;
+
+        var updated = await _sectionRepo.UpdateAsync(section);
+        return Ok(MapToDto(updated, course.Title, instructor.FullName));
+    }
+
     private static SectionResponseDto MapToDto(
         Section s, string courseName, string instructorName) => new()
     {
