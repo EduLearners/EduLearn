@@ -53,11 +53,7 @@ public class EnrollmentRepository : IEnrollmentRepository
             e.SectionID == sectionId &&
             e.Status != EnrollmentStatus.Dropped);
 
-    public async Task<bool> HasActiveEnrollmentAsync(int studentId, int sectionId)
-        => await _context.Enrollments.AnyAsync(e =>
-            e.StudentID == studentId &&
-            e.SectionID == sectionId &&
-            e.Status != EnrollmentStatus.Dropped);
+    // BUG-4 FIX: HasActiveEnrollmentAsync removed — was identical to IsAlreadyEnrolledAsync
 
     public async Task<int> GetMaxWaitlistPositionAsync(int sectionId)
         => await _context.Enrollments

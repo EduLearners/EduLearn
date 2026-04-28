@@ -71,10 +71,8 @@ public class StudentsController : ControllerBase
                 code = "PROGRAM_NOT_FOUND"
             });
 
-        // Auto-generate MRN (Student Registration Number)
-        // Format: STU-00001, STU-00002, etc.
-        var count = await _studentRepo.GetCountAsync();
-        var mrn = $"STU-{count + 1:D5}";
+        // BUG-2 FIX: Guid-based MRN to avoid race condition under concurrent requests
+        var mrn = $"STU-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
 
         var student = new Student
         {
@@ -162,6 +160,10 @@ public class StudentsController : ControllerBase
         student.Gender = dto.Gender;
         student.ContactInfoJSON = dto.ContactInfoJSON;
         student.ExpectedGraduationTerm = dto.ExpectedGraduationTerm;
+
+        // BUG-5 FIX: Allow lifecycle status updates
+        if (dto.EnrollmentStatus.HasValue)
+            student.EnrollmentStatus = dto.EnrollmentStatus.Value;
 
         var updated = await _studentRepo.UpdateAsync(student);
         return Ok(MapToDto(updated));

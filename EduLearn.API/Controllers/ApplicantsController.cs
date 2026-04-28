@@ -25,6 +25,14 @@ public class ApplicantsController : ControllerBase
     public async Task<ActionResult<ApplicantResponseDto>> CreateApplicant(
         CreateApplicantDto dto, CancellationToken cancellationToken)
     {
+        // BUG-6 FIX: Validate DOB is in the past
+        if (dto.DOB >= DateTime.UtcNow)
+            return BadRequest(new
+            {
+                error = "Date of birth must be in the past",
+                code = "INVALID_DOB"
+            });
+
         // If NationalID is provided, check it is not already registered
         if (!string.IsNullOrWhiteSpace(dto.NationalID))
         {

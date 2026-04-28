@@ -125,6 +125,14 @@ public class SectionsController : ControllerBase
 
         var sections = await _sectionRepo.GetByCourseAndTermAsync(courseId, term);
 
+        // BUG-7 FIX: Return 404 with meaningful message instead of silent empty 200
+        if (!sections.Any())
+            return NotFound(new
+            {
+                error = $"No sections found for course '{course.Title}' in term '{term}'",
+                code = "SECTIONS_NOT_FOUND"
+            });
+
         var result = new List<SectionResponseDto>();
         foreach (var s in sections)
         {

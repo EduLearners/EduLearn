@@ -63,6 +63,17 @@ public class EnrollmentsController : ControllerBase
                 return BadRequest(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
             }
 
+            // BUG-1 FIX: Check section is open before allowing enrollment
+            if (section.Status != SectionStatus.Open)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return BadRequest(new
+                {
+                    error = "Section is not open for enrollment",
+                    code = "SECTION_NOT_OPEN"
+                });
+            }
+
             var isDuplicate = await _enrollRepo.IsAlreadyEnrolledAsync(dto.StudentID, dto.SectionID);
             if (isDuplicate)
             {
@@ -194,6 +205,10 @@ public class EnrollmentsController : ControllerBase
                         section.EnrolledCount++;
                         promotedEnrollId = nextInLine.EnrollID;
                         promotedStudentId = nextInLine.StudentID;
+
+                        // BUG-3 FIX: Flush promoted student to DB before renumbering
+                        // to avoid EF Core returning stale cached data
+                        await _enrollRepo.SaveChangesAsync();
 
                         // Shift remaining waitlist positions (2,3,4... → 1,2,3...)
                         var remainingWaitlisted = await _enrollRepo.GetWaitlistedBySectionAsync(enrollment.SectionID);
