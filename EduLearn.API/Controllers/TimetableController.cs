@@ -27,7 +27,7 @@ public class TimetableController : ControllerBase
         _sectionRepo = sectionRepo;
     }
 
-    // GET /api/timetable/student/{studentId}/{term}
+    // GET /api/timetable/student/{studentId}/{term} — Get student's weekly schedule
     [HttpGet("student/{studentId}/{term}")]
     [Authorize(Policy = "EnrollmentViewPolicy")]
     public async Task<ActionResult<TimetableResponseDto>> GetStudentTimetable(
@@ -37,12 +37,14 @@ public class TimetableController : ControllerBase
         if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
+        // Students can only view their own timetable
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
         if (callerRole == "Student" && student.UserID != callerId)
             return StatusCode(403, new { error = "You may only view your own timetable", code = "TIMETABLE_FORBIDDEN" });
 
+        // Get all active enrollments for this student (Enrolled status only)
         var enrollments = await _enrollRepo.GetByStudentIdAsync(studentId);
 
         var termEnrollments = enrollments
@@ -73,7 +75,7 @@ public class TimetableController : ControllerBase
         });
     }
 
-    // POST /api/timetable/validate-section — Check schedule conflict before enrolling
+    // POST /api/timetable/validate-section — Check if a section conflicts with student's schedule
     [HttpPost("validate-section")]
     [Authorize(Policy = "EnrollmentPolicy")]
     public async Task<ActionResult<ConflictCheckResponseDto>> ValidateSection(
@@ -87,11 +89,13 @@ public class TimetableController : ControllerBase
         if (newSection is null)
             return NotFound(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
 
+        // Get student's current enrollments for the same term
         var enrollments = await _enrollRepo.GetByStudentIdAsync(studentId);
         var sameTermEnrollments = enrollments
             .Where(e => e.Section.Term == newSection.Term && e.Status == EnrollmentStatus.Enrolled)
             .ToList();
 
+        // Parse the new section's schedule
         var newSchedule = ParseSchedule(newSection.ScheduleJSON);
         if (newSchedule is null)
         {
@@ -102,11 +106,13 @@ public class TimetableController : ControllerBase
             });
         }
 
+        // Check each existing enrollment for time conflict
         foreach (var enrollment in sameTermEnrollments)
         {
             var existingSchedule = ParseSchedule(enrollment.Section.ScheduleJSON);
             if (existingSchedule is null) continue;
 
+            // Check if days overlap
             var newDays = newSchedule.Days?.Split('-', ',', '/')
                 .Select(d => d.Trim().ToLower()).ToHashSet() ?? new HashSet<string>();
             var existingDays = existingSchedule.Days?.Split('-', ',', '/')
@@ -141,24 +147,33 @@ public class TimetableController : ControllerBase
         });
     }
 
+    // Parse ScheduleJSON like {"days":"Mon-Wed-Fri","time":"10:00-11:00"}
     private static ScheduleInfo? ParseSchedule(string? scheduleJson)
     {
         if (string.IsNullOrWhiteSpace(scheduleJson)) return null;
+
         try
         {
             return JsonSerializer.Deserialize<ScheduleInfo>(scheduleJson,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
-        catch { return null; }
+        catch
+        {
+            return null;
+        }
     }
 
+    // Check if two time ranges overlap: "10:00-11:00" vs "10:30-11:30"
     private static bool TimesOverlap(string? time1, string? time2)
     {
-        if (string.IsNullOrWhiteSpace(time1) || string.IsNullOrWhiteSpace(time2)) return false;
+        if (string.IsNullOrWhiteSpace(time1) || string.IsNullOrWhiteSpace(time2))
+            return false;
+
         try
         {
             var parts1 = time1.Split('-');
             var parts2 = time2.Split('-');
+
             if (parts1.Length != 2 || parts2.Length != 2) return false;
 
             var start1 = TimeOnly.Parse(parts1[0].Trim());
@@ -168,7 +183,10 @@ public class TimetableController : ControllerBase
 
             return start1 < end2 && start2 < end1;
         }
-        catch { return false; }
+        catch
+        {
+            return false;
+        }
     }
 
     private class ScheduleInfo

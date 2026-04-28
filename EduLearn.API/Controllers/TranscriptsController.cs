@@ -31,7 +31,7 @@ public class TranscriptsController : ControllerBase
         _programRepo = programRepo;
     }
 
-    // POST /api/transcripts/generate/{studentId}
+    // POST /api/transcripts/generate/{studentId} — Generate transcript from enrollment data
     [HttpPost("generate/{studentId}")]
     [Authorize(Roles = "Registrar,ITAdmin")]
     public async Task<ActionResult<TranscriptResponseDto>> GenerateTranscript(
@@ -43,8 +43,10 @@ public class TranscriptsController : ControllerBase
 
         var program = await _programRepo.GetByIdAsync(student.ProgramID);
 
+        // Get all enrollments for this student (includes Section + Course via Include)
         var enrollments = await _enrollRepo.GetByStudentIdAsync(studentId);
 
+        // Build transcript entries from enrollment data
         var entries = enrollments.Select(e => new
         {
             courseName = e.Section.Course.Title,
@@ -73,7 +75,7 @@ public class TranscriptsController : ControllerBase
             MapToDto(created, student, program?.Name ?? "Unknown"));
     }
 
-    // GET /api/transcripts/student/{studentId}
+    // GET /api/transcripts/student/{studentId} — Get all transcripts for a student
     [HttpGet("student/{studentId}")]
     public async Task<ActionResult<IEnumerable<TranscriptResponseDto>>> GetByStudent(
         int studentId, CancellationToken cancellationToken)
@@ -82,6 +84,7 @@ public class TranscriptsController : ControllerBase
         if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
+        // Students can only view their own transcripts
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
@@ -107,6 +110,7 @@ public class TranscriptsController : ControllerBase
         if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
+        // Students can only view their own transcripts
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
@@ -114,10 +118,11 @@ public class TranscriptsController : ControllerBase
             return StatusCode(403, new { error = "You may only view your own transcripts", code = "TRANSCRIPT_FORBIDDEN" });
 
         var program = await _programRepo.GetByIdAsync(student.ProgramID);
+
         return Ok(MapToDto(transcript, student, program?.Name ?? "Unknown"));
     }
 
-    // PUT /api/transcripts/{id}/publish
+    // PUT /api/transcripts/{id}/publish — Publish a draft transcript
     [HttpPut("{id}/publish")]
     [Authorize(Roles = "Registrar,ITAdmin")]
     public async Task<ActionResult<TranscriptResponseDto>> PublishTranscript(
@@ -138,6 +143,7 @@ public class TranscriptsController : ControllerBase
         transcript.IssuedAt = DateTime.UtcNow;
 
         var updated = await _transcriptRepo.UpdateAsync(transcript);
+
         var student = await _studentRepo.GetByIdAsync(transcript.StudentID);
         var program = await _programRepo.GetByIdAsync(student!.ProgramID);
 
