@@ -68,10 +68,10 @@ public class AssessmentsController : ControllerBase
             CreatedByFK = callerId   
         };
 
-        //Add + SaveChange
+        //SaveChange
         await _assessmentRepository.CreateAsync(assessment);
 
-        // Build response with course name and creator name
+       
         var response = new AssessmentResponseDto
         {
             AssessmentID = assessment.AssessmentID,

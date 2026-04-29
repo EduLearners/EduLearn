@@ -8,6 +8,12 @@ public interface IDiscussionRepository
     Task<IEnumerable<Discussion>> GetAllAsync();
     Task<Discussion?> GetByIdAsync(int discussionId);
     Task<IEnumerable<Discussion>> GetByCourseIdAsync(int courseId);
+
+    // Get by CourseID with Course and ThreadStarter navigation loaded (for response DTOs)
+    Task<IEnumerable<Discussion>> GetByCourseIdWithDetailsAsync(int courseId);
+
+    // Get by ID with Course and ThreadStarter navigation loaded (for reply and status endpoints)
+    Task<Discussion?> GetByIdWithDetailsAsync(int discussionId);
     Task<IEnumerable<Discussion>> GetByStatusAsync(DiscussionStatus status);
     Task<IEnumerable<Discussion>> GetByThreadStarterAsync(int userId);
     Task<Discussion> CreateAsync(Discussion discussion);

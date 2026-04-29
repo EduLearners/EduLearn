@@ -81,6 +81,11 @@ builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IFeeScheduleRepository, FeeScheduleRepository>();
 builder.Services.AddScoped<IScholarshipRepository, ScholarshipRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
+builder.Services.AddScoped<IGradeChangeRepository, GradeChangeRepository>();
+builder.Services.AddScoped<ISyllabusRepository, SyllabusRepository>();
+builder.Services.AddScoped<PrerequisiteEngine>();  // CCM-03: prerequisite check service
+
+
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AuthService>();
@@ -156,7 +161,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-//Role-based Authorization Policies
+//Role-based Authorization Policies//Stratagy
 builder.Services.AddAuthorization(options =>
 {
     //logged-in all 7 roles
@@ -198,8 +203,6 @@ builder.Services.AddAuthorization(options =>
 var app = builder.Build();
 
 // Seed the default ITAdmin ('admin' / 'Admin@123') so the API can be demoed
-// via Swagger on a fresh DB without needing SSMS to promote a role.
-// Idempotent — skips if a user named 'admin' already exists.
 await EduLearn.API.Data.DbInitializer.SeedDefaultAdminAsync(app.Services);
 
 //Swagger UI
@@ -220,7 +223,7 @@ app.MapControllers();
 app.Run();
 
 
-//display enums as STRING values (names) instead of numeric values
+//display enums as STRING values instead of numeric values
 public class EnumSchemaFilter : ISchemaFilter
 {
     public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
