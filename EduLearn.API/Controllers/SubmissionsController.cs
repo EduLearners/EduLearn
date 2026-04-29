@@ -39,6 +39,8 @@ public class SubmissionsController : ControllerBase
 
     
     [HttpPost]
+    [Authorize(Roles = "Student")]
+
     public async Task<ActionResult<SubmissionResponseDto>> CreateSubmission(CreateSubmissionDto dto)
     {
        

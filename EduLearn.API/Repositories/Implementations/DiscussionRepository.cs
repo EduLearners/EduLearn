@@ -24,6 +24,23 @@ public class DiscussionRepository : IDiscussionRepository
     public async Task<IEnumerable<Discussion>> GetByCourseIdAsync(int courseId)
         => await _context.Discussions.Where(d => d.CourseID == courseId).ToListAsync();
 
+    // Get by CourseID with Course and ThreadStarter loaded — for listing discussions with names
+    public async Task<IEnumerable<Discussion>> GetByCourseIdWithDetailsAsync(int courseId)
+        => await _context.Discussions
+            .AsNoTracking()
+            .Where(d => d.CourseID == courseId)
+            .Include(d => d.Course)
+            .Include(d => d.ThreadStarter)
+            .OrderByDescending(d => d.CreatedAt)
+            .ToListAsync();
+
+    // Get by ID with Course and ThreadStarter loaded — for reply and status endpoints
+    public async Task<Discussion?> GetByIdWithDetailsAsync(int discussionId)
+        => await _context.Discussions
+            .Include(d => d.Course)
+            .Include(d => d.ThreadStarter)
+            .FirstOrDefaultAsync(d => d.DiscussionID == discussionId);
+
     public async Task<IEnumerable<Discussion>> GetByStatusAsync(DiscussionStatus status)
         => await _context.Discussions.Where(d => d.Status == status).ToListAsync();
 

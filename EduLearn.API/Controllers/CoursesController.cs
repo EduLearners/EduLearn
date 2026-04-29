@@ -1,7 +1,8 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
-using EduLearn.API.Repositories.Interfaces;         
-using Microsoft.AspNetCore.Authorization;             //added for [Authorize]
+using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
@@ -12,14 +13,21 @@ namespace EduLearn.API.Controllers;
 public class CoursesController : ControllerBase
 {
     private readonly ICourseRepository _courseRepository;
+    private readonly PrerequisiteEngine _prerequisiteEngine;
+    private readonly IStudentRepository _studentRepository;
 
-    public CoursesController(ICourseRepository courseRepository)
+    public CoursesController(
+        ICourseRepository courseRepository,
+        PrerequisiteEngine prerequisiteEngine,
+        IStudentRepository studentRepository)
     {
-        _courseRepository = courseRepository;
+        _courseRepository    = courseRepository;
+        _prerequisiteEngine  = prerequisiteEngine;
+        _studentRepository   = studentRepository;
     }
 
     [HttpPost]
-    [Authorize(Roles = "Instructor,DeptAdmin,ITAdmin")]
+    [Authorize(Policy = "CourseManagerPolicy")]
     public async Task<ActionResult<CourseResponseDto>> CreateCourse(CreateCourseDto dto)
     {
         var existing = await _courseRepository.GetByCodeAsync(dto.Code);
@@ -94,4 +102,28 @@ public class CoursesController : ControllerBase
         Status = course.Status,
         CreatedAt = course.CreatedAt
     };
+
+    // ── GET /api/courses/{id}/check-prerequisites/{studentId} ──
+    // CCM-03: Checks if a student has completed all prerequisites for a course.
+    // Multi-table join: Course.PrerequisitesJSON → Sections → Enrollments (GradePostedFlag = true)
+    [HttpGet("{id}/check-prerequisites/{studentId}")]
+    [Authorize(Policy = "AllUsersPolicy")]
+    public async Task<ActionResult<PrerequisiteCheckResponseDto>> CheckPrerequisites(
+        int id, int studentId)
+    {
+        // Validate the course exists
+        var course = await _courseRepository.GetByIdAsync(id);
+        if (course is null)
+            return NotFound(new { error = "Course not found", code = "COURSE_NOT_FOUND" });
+
+        // Validate the student exists — PrerequisiteEngine uses null-forgiving operator
+        // so we validate here to return a clean 404 instead of a NullReferenceException
+        var studentExists = await _studentRepository.ExistsAsync(studentId);
+        if (!studentExists)
+            return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
+
+        // Delegate full logic to PrerequisiteEngine service
+        var result = await _prerequisiteEngine.CheckAsync(id, studentId);
+        return Ok(result);
+    }
 }
