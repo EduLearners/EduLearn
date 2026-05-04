@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using EduLearn.API.Data;
+using EduLearn.API.Middleware;
 using EduLearn.API.Repositories.Implementations;
 using EduLearn.API.Repositories.Interfaces;
 using EduLearn.API.Services;
@@ -204,6 +205,9 @@ var app = builder.Build();
 
 // Seed the default ITAdmin ('admin' / 'Admin@123') so the API can be demoed
 await EduLearn.API.Data.DbInitializer.SeedDefaultAdminAsync(app.Services);
+
+// Global exception handler — must be first in pipeline to wrap everything below
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
 //Swagger UI
 if (app.Environment.IsDevelopment())
