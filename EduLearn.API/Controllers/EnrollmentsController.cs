@@ -103,7 +103,21 @@ public class EnrollmentsController : ControllerBase
                 WaitlistPosition = waitlistPosition
             };
 
-            await _enrollRepo.CreateAsync(enrollment);
+            // FIX: If student was previously enrolled and dropped, reuse the existing
+            // record instead of creating a new one (unique index on StudentID+SectionID)
+            var existingDropped = await _enrollRepo.GetDroppedEnrollmentAsync(dto.StudentID, dto.SectionID);
+            if (existingDropped is not null)
+            {
+                existingDropped.Status = status;
+                existingDropped.WaitlistPosition = waitlistPosition;
+                existingDropped.EnrolledAt = DateTime.UtcNow;
+                await _enrollRepo.UpdateAsync(existingDropped);
+                enrollment = existingDropped;
+            }
+            else
+            {
+                await _enrollRepo.CreateAsync(enrollment);
+            }
 
             if (status == EnrollmentStatus.Enrolled)
             {
