@@ -1,10 +1,10 @@
 using EduLearn.API.DTOs;
-using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
@@ -49,7 +49,8 @@ public class AssessmentsController : ControllerBase
         }
 
         
-        var callerId = User.GetUserId();
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
         var creator = await _userRepository.GetByIdAsync(callerId);
 
         if (creator is null)

@@ -1,11 +1,11 @@
 using EduLearn.API.DTOs;
-using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
 using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 // AUDIT CHANGE (interim-polish): invoice generation now writes to the append-only audit log.
 
@@ -122,7 +122,8 @@ public class InvoicesController : ControllerBase
 
         // AUDIT CHANGE (interim-polish): record invoice generation for IAM-04 / compliance.
         await _auditLogService.LogAsync(
-            User.GetUserId(),
+            int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new InvalidOperationException("NameIdentifier claim missing")),
             "InvoiceGenerated",
             "Invoice",
             created.InvoiceID,
@@ -137,11 +138,11 @@ public class InvoicesController : ControllerBase
     public async Task<ActionResult<IEnumerable<InvoiceResponseDto>>> GetByStudent(int studentId, CancellationToken ct)
     {
         // HARDENING (C-3): Student role may only read own invoices.
-        var callerRole = User.GetUserRole();
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         if (callerRole == "Student")
         {
             var target = await _studentRepository.GetByIdAsync(studentId);
-            if (target?.UserID != User.GetUserId())
+            if (target?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
                 return StatusCode(403, new { error = "You may only view your own invoices", code = "INVOICE_FORBIDDEN" });
         }
 
@@ -165,8 +166,8 @@ public class InvoicesController : ControllerBase
         var student = await _studentRepository.GetByIdAsync(invoice.StudentID);
 
         // HARDENING (C-18): Student role may only view their own invoices.
-        var callerRole = User.GetUserRole();
-        if (callerRole == "Student" && student?.UserID != User.GetUserId())
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        if (callerRole == "Student" && student?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
             return StatusCode(403, new { error = "You may only view your own invoices", code = "INVOICE_FORBIDDEN" });
 
         return Ok(MapToDto(invoice, student));

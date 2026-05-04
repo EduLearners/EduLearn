@@ -1,11 +1,11 @@
 using EduLearn.API.DTOs;
-using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
 using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
@@ -84,7 +84,8 @@ public class PaymentsController : ControllerBase
 
         // AUDIT CHANGE (interim-polish): record the payment event for IAM-04 / compliance.
         await _auditLogService.LogAsync(
-            User.GetUserId(),
+            int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new InvalidOperationException("NameIdentifier claim missing")),
             "PaymentRecorded",
             "Payment",
             created.PaymentID,
@@ -104,11 +105,11 @@ public class PaymentsController : ControllerBase
             return NotFound(new { error = "Invoice not found", code = "INVOICE_NOT_FOUND" });
 
         // HARDENING (C-19): Student role may only read payments against their own invoice.
-        var callerRole = User.GetUserRole();
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         if (callerRole == "Student")
         {
             var student = await _studentRepository.GetByIdAsync(invoice.StudentID);
-            if (student?.UserID != User.GetUserId())
+            if (student?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
                 return StatusCode(403, new { error = "You may only view payments on your own invoices", code = "PAYMENT_FORBIDDEN" });
         }
 

@@ -1,11 +1,11 @@
 using EduLearn.API.DTOs;
-using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;          // TEAMMATE: added for repository pattern
 using EduLearn.API.Services;                          // NHT-01: INotificationService
 using Microsoft.AspNetCore.Authorization;             // AUTH CHANGE: added for [Authorize]
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
@@ -49,8 +49,8 @@ public class EnrollmentsController : ControllerBase
 
         // HARDENING (C-22): If caller is a Student, dto.StudentID must equal caller's own record.
         // Registrar/ITAdmin may pass any StudentID (they're doing bulk enrollment).
-        var callerRole = User.GetUserRole();
-        if (callerRole == "Student" && student.UserID != User.GetUserId())
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        if (callerRole == "Student" && student.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
             return StatusCode(403, new { error = "Students may only enroll themselves", code = "ENROLLMENT_FORBIDDEN" });
 
         using var transaction = await _enrollRepo.BeginTransactionAsync();
@@ -151,7 +151,8 @@ public class EnrollmentsController : ControllerBase
 
             // AUDIT CHANGE (interim-polish): record the enrollment event for IAM-04.
             await _auditLogService.LogAsync(
-                User.GetUserId(),
+                int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? throw new InvalidOperationException("NameIdentifier claim missing")),
                 "EnrollmentCreated",
                 "Enrollment",
                 enrollment.EnrollID,
@@ -183,11 +184,11 @@ public class EnrollmentsController : ControllerBase
 
             // HARDENING (C-21): If caller is a Student, enrollment must belong to them.
             // Registrar/ITAdmin may drop any enrollment.
-            var callerRole = User.GetUserRole();
+            var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
             if (callerRole == "Student")
             {
                 var owner = await _studentRepo.GetByIdAsync(enrollment.StudentID);
-                if (owner?.UserID != User.GetUserId())
+                if (owner?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
                 {
                     await transaction.RollbackAsync(cancellationToken);
                     return StatusCode(403, new { error = "You may only drop your own enrollments", code = "ENROLLMENT_FORBIDDEN" });
@@ -271,7 +272,8 @@ public class EnrollmentsController : ControllerBase
 
             // AUDIT CHANGE (interim-polish): record the drop event for IAM-04.
             await _auditLogService.LogAsync(
-                User.GetUserId(),
+                int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? throw new InvalidOperationException("NameIdentifier claim missing")),
                 "EnrollmentDropped",
                 "Enrollment",
                 enrollment.EnrollID,
@@ -293,11 +295,11 @@ public class EnrollmentsController : ControllerBase
         int studentId, CancellationToken cancellationToken)
     {
         // HARDENING (C-14/F-4): Student role may only read their own enrollments.
-        var callerRole = User.GetUserRole();
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         if (callerRole == "Student")
         {
             var target = await _studentRepo.GetByIdAsync(studentId);
-            if (target?.UserID != User.GetUserId())
+            if (target?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
                 return StatusCode(403, new { error = "You may only view your own enrollments", code = "ENROLLMENT_FORBIDDEN" });
         }
 

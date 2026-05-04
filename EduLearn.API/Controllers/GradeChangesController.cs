@@ -1,9 +1,9 @@
 ﻿using EduLearn.API.DTOs;
-using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
@@ -42,7 +42,8 @@ public class GradeChangesController : ControllerBase
             return NotFound(new { error = "Submission not found", code = "SUBMISSION_NOT_FOUND" });
 
         // ChangedByFK comes from JWT — not from body (same pattern as grading)
-        var callerId = User.GetUserId();
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
         var changedBy = await _userRepository.GetByIdAsync(callerId);
 
         if (changedBy is null)

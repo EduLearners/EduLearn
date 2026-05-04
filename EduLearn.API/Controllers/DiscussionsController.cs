@@ -1,6 +1,6 @@
 using System.Text.Json;
+using System.Security.Claims;
 using EduLearn.API.DTOs;
-using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
@@ -40,7 +40,8 @@ public class DiscussionsController : ControllerBase
             return BadRequest(new { error = "Course not found", code = "COURSE_NOT_FOUND" });
 
         // ThreadStarterID comes from JWT — not from body
-        var callerId = User.GetUserId();
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
         var caller = await _userRepository.GetByIdAsync(callerId);
 
         if (caller is null)
@@ -125,7 +126,8 @@ public class DiscussionsController : ControllerBase
             return BadRequest(new { error = "This discussion is not open for replies", code = "DISCUSSION_NOT_OPEN" });
 
         // AuthorID comes from JWT — not from body
-        var callerId = User.GetUserId();
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
         var caller = await _userRepository.GetByIdAsync(callerId);
 
         if (caller is null)

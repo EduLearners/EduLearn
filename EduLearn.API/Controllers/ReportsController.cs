@@ -1,10 +1,10 @@
 using EduLearn.API.DTOs;
-using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
@@ -28,7 +28,8 @@ public class ReportsController : ControllerBase
     {
         // HARDENING (H-3): GeneratedByFK comes from the JWT, not the body.
         // dto.GeneratedByFK is ignored — previously allowed attribution forgery.
-        var callerId = User.GetUserId();
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
 
         var report = new Report
         {

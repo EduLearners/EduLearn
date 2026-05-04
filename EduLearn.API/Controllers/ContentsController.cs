@@ -1,10 +1,10 @@
 ﻿using EduLearn.API.DTOs;
-using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
@@ -37,7 +37,8 @@ public class ContentsController : ControllerBase
         if (course is null)
             return BadRequest(new { error = "Course not found", code = "COURSE_NOT_FOUND" });
 
-        var callerId = User.GetUserId();
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
         var uploader = await _userRepository.GetByIdAsync(callerId);
 
         if (uploader is null)

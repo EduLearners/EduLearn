@@ -1,11 +1,11 @@
 ﻿using EduLearn.API.DTOs;
-using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
 using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
@@ -58,9 +58,9 @@ public class SubmissionsController : ControllerBase
         if (student is null)
             return BadRequest(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
-        
-        var callerRole = User.GetUserRole();
-        if (callerRole == "Student" && student.UserID != User.GetUserId())
+
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        if (callerRole == "Student" && student.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
             return StatusCode(403, new { error = "Students may only submit their own work", code = "SUBMISSION_FORBIDDEN" });
 
         // Check for duplicate submission (same student  same assessment)
@@ -134,7 +134,8 @@ public class SubmissionsController : ControllerBase
         if (submission.Assessment.Status != AssessmentStatus.Published)
             return BadRequest(new { error = "Cannot grade a submission whose assessment is not Published", code = "ASSESSMENT_NOT_OPEN_FOR_GRADING" });
 
-        var callerId = User.GetUserId();
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
         var grader = await _userRepository.GetByIdAsync(callerId);
         if (grader is null)
             return BadRequest(new { error = "Grader user not found", code = "GRADER_NOT_FOUND" });
@@ -203,8 +204,8 @@ public class SubmissionsController : ControllerBase
         if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
-        var callerRole = User.GetUserRole();
-        if (callerRole == "Student" && student.UserID != User.GetUserId())
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        if (callerRole == "Student" && student.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
             return StatusCode(403, new { error = "You may only view your own submissions", code = "SUBMISSION_FORBIDDEN" });
 
         var submissions = await _submissionRepository.GetByStudentIdWithDetailsAsync(studentId);

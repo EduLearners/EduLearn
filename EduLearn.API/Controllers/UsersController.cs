@@ -1,11 +1,11 @@
 using EduLearn.API.DTOs;
-using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
 using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
@@ -70,8 +70,9 @@ public class UsersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<UserResponseDto>> GetUser(int id)
     {
-        var callerId = User.GetUserId();
-        var callerRole = User.GetUserRole();
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var isPrivileged = callerRole == "ITAdmin" || callerRole == "Registrar";
 
         if (!isPrivileged && id != callerId)
@@ -89,8 +90,9 @@ public class UsersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<UserResponseDto>> UpdateUser(int id, UpdateUserDto dto)
     {
-        var callerId = User.GetUserId();
-        var isAdmin = User.IsITAdmin();
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
+        var isAdmin = (User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty) == "ITAdmin";
 
         if (!isAdmin && id != callerId)
             return StatusCode(403, new { error = "You may only update your own profile", code = "USER_FORBIDDEN" });

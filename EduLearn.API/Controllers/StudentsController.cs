@@ -1,5 +1,4 @@
 using EduLearn.API.DTOs;
-using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
@@ -7,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
@@ -132,7 +132,7 @@ public class StudentsController : ControllerBase
             });
 
    
-        if (User.GetUserRole() == "Student" && student.UserID != User.GetUserId())
+        if ((User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty) == "Student" && student.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
             return StatusCode(403, new
             {
                 error = "You may only view your own student record",

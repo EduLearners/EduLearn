@@ -1,9 +1,9 @@
 ﻿using EduLearn.API.DTOs;
-using EduLearn.API.Extensions;
 using EduLearn.API.Models;
 using EduLearn.API.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
@@ -45,7 +45,8 @@ public class SyllabiController : ControllerBase
             return Conflict(new { error = "A syllabus with this version already exists for this course", code = "DUPLICATE_SYLLABUS_VERSION" });
 
         // CreatedByFK comes from JWT — not from body (same pattern as Content and Assessment)
-        var callerId = User.GetUserId();
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
         var creator = await _userRepository.GetByIdAsync(callerId);
 
         if (creator is null)
