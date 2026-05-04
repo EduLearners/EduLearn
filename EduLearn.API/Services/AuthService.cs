@@ -132,7 +132,7 @@ public class AuthService
 
         // Password matched — generate JWT
         var token = _tokenService.GenerateToken(user);
-        var expiryMinutes = int.Parse(_config["Jwt:ExpiryInMinutes"] ?? "60");
+        var expiryMinutes = int.Parse(_config["Jwt:AccessTokenExpiryMinutes"] ?? "60");
 
         // AUDIT CHANGE: Log successful login
         await _auditLogService.LogAsync(

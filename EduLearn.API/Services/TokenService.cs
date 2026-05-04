@@ -25,9 +25,9 @@ public class TokenService
 
     public string GenerateToken(User user)
     {
-        // AUTH CHANGE: Step 1 — Get secret key from appsettings.json → Jwt:Key
+        // AUTH CHANGE: Step 1 — Get secret key from appsettings.json → Jwt:Secret
         var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+            Encoding.UTF8.GetBytes(_config["Jwt:Secret"]!));
 
         // AUTH CHANGE: Step 2 — Create signing credentials (HMAC-SHA256)
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -43,7 +43,7 @@ public class TokenService
         };
 
         // AUTH CHANGE: Step 4 — Read expiry from config (default 60 min)
-        var expiryMinutes = int.Parse(_config["Jwt:ExpiryInMinutes"] ?? "60");
+        var expiryMinutes = int.Parse(_config["Jwt:AccessTokenExpiryMinutes"] ?? "60");
 
         // AUTH CHANGE: Step 5 — Build and return the JWT token string
         var token = new JwtSecurityToken(
