@@ -72,6 +72,14 @@ public class EnrollmentRepository : IEnrollmentRepository
             .OrderBy(e => e.WaitlistPosition)
             .ToListAsync();
 
+    // FIX: Find a dropped enrollment for re-enrollment (reuse row instead of INSERT)
+    public async Task<Enrollment?> GetDroppedEnrollmentAsync(int studentId, int sectionId)
+        => await _context.Enrollments
+            .FirstOrDefaultAsync(e =>
+                e.StudentID == studentId &&
+                e.SectionID == sectionId &&
+                e.Status == EnrollmentStatus.Dropped);
+
     public async Task<IEnumerable<Enrollment>> GetByStudentIdWithDetailsAsync(int studentId)
         => await _context.Enrollments
             .AsNoTracking()

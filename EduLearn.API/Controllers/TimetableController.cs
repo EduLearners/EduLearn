@@ -57,7 +57,7 @@ public class TimetableController : ControllerBase
             CourseName = e.Section.Course.Title,
             CourseCode = e.Section.Course.Code,
             Term = e.Section.Term,
-            InstructorName = e.Section.Instructor?.FullName ?? "Unknown",
+            InstructorName = "See section details",
             ScheduleJSON = e.Section.ScheduleJSON,
             Status = e.Status.ToString()
         }).ToList();
@@ -102,7 +102,7 @@ public class TimetableController : ControllerBase
             return Ok(new ConflictCheckResponseDto
             {
                 HasConflict = false,
-                ConflictMessage = "New section has no schedule defined — no conflict detection possible"
+                ConflictMessage = "New section has no schedule defined"
             });
         }
 
@@ -120,27 +120,23 @@ public class TimetableController : ControllerBase
 
             var overlappingDays = newDays.Intersect(existingDays).ToList();
 
-            if (overlappingDays.Any())
+            if (overlappingDays.Any() && TimesOverlap(newSchedule.Time, existingSchedule.Time))
             {
-                // Check if times overlap
-                if (TimesOverlap(newSchedule.Time, existingSchedule.Time))
+                return Ok(new ConflictCheckResponseDto
                 {
-                    return Ok(new ConflictCheckResponseDto
+                    HasConflict = true,
+                    ConflictMessage = $"Schedule conflict with {enrollment.Section.Course.Title} on {string.Join(", ", overlappingDays)} at {existingSchedule.Time}",
+                    ConflictsWith = new TimetableEntryDto
                     {
-                        HasConflict = true,
-                        ConflictMessage = $"Schedule conflict with {enrollment.Section.Course.Title} on {string.Join(", ", overlappingDays)} at {existingSchedule.Time}",
-                        ConflictsWith = new TimetableEntryDto
-                        {
-                            SectionID = enrollment.SectionID,
-                            CourseName = enrollment.Section.Course.Title,
-                            CourseCode = enrollment.Section.Course.Code,
-                            Term = enrollment.Section.Term,
-                            InstructorName = enrollment.Section.Instructor?.FullName ?? "Unknown",
-                            ScheduleJSON = enrollment.Section.ScheduleJSON,
-                            Status = enrollment.Status.ToString()
-                        }
-                    });
-                }
+                        SectionID = enrollment.SectionID,
+                        CourseName = enrollment.Section.Course.Title,
+                        CourseCode = enrollment.Section.Course.Code,
+                        Term = enrollment.Section.Term,
+                        InstructorName = "See section details",
+                        ScheduleJSON = enrollment.Section.ScheduleJSON,
+                        Status = enrollment.Status.ToString()
+                    }
+                });
             }
         }
 
@@ -185,7 +181,6 @@ public class TimetableController : ControllerBase
             var start2 = TimeOnly.Parse(parts2[0].Trim());
             var end2 = TimeOnly.Parse(parts2[1].Trim());
 
-            // Two ranges overlap if one starts before the other ends
             return start1 < end2 && start2 < end1;
         }
         catch

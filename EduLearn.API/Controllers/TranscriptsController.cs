@@ -58,16 +58,13 @@ public class TranscriptsController : ControllerBase
             enrolledAt = e.EnrolledAt
         }).ToList();
 
-        // Calculate GPA placeholder — only count completed (graded) enrollments
-        // In a full system, grades would come from Submissions. For now, track enrolled count.
-        var completedCount = entries.Count(e => e.gradePosted);
         var totalCredits = entries.Where(e => e.status == "Enrolled").Sum(e => e.credits);
 
         var transcript = new Transcript
         {
             StudentID = studentId,
             EntriesJSON = JsonSerializer.Serialize(entries),
-            GPA = null, // Will be calculated when grades are posted
+            GPA = null,
             Status = TranscriptStatus.Draft
         };
 
