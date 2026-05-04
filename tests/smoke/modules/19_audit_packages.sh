@@ -19,3 +19,12 @@ assert_status 403 "$LAST_STATUS" "POST /api/audit-packages/generate (Student) �
 
 http_get "/api/audit-packages/$PACKAGE_ID/download" "$TOKEN_AUDITOR" >/dev/null
 assert_status 200 "$LAST_STATUS" "GET /api/audit-packages/{id}/download → 200"
+assert_body_contains "packageID" "download body contains packageID"
+assert_body_contains "periodStart" "download body contains periodStart"
+
+http_get "/api/audit-packages/9999999/download" "$TOKEN_AUDITOR" >/dev/null
+assert_status 404 "$LAST_STATUS" "GET /api/audit-packages/{bad}/download → 404"
+
+# Role denial — Student cannot access audit packages
+http_get "/api/audit-packages/$PACKAGE_ID/download" "$TOKEN_STUDENT1" >/dev/null
+assert_status 403 "$LAST_STATUS" "GET /api/audit-packages/{id}/download (Student) → 403"

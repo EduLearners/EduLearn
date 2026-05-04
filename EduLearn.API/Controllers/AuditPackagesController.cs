@@ -66,16 +66,24 @@ public class AuditPackagesController : ControllerBase
     // ── GET /api/audit-packages/{id}/download — Retrieve an audit package by ID ──
     [HttpGet("{id}/download")]
     [Authorize(Roles = "Auditor,ITAdmin")]
-    public async Task<ActionResult<AuditPackageResponseDto>> Download(int id, CancellationToken ct)
+    public async Task<IActionResult> Download(int id, CancellationToken ct)
     {
         var package = await _reportRepository.GetAuditPackageByIdAsync(id, ct);
 
         if (package is null)
             return NotFound(new { error = "Audit package not found", code = "AUDIT_PACKAGE_NOT_FOUND" });
 
-        // TODO post-interim: package as ZIP archive, set PackageURI, return file
+        var dto = MapToDto(package);
+        var json = System.Text.Json.JsonSerializer.Serialize(dto,
+            new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+            });
+        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+        var fileName = $"audit-package-{id}-{package.PeriodStart:yyyyMMdd}-{package.PeriodEnd:yyyyMMdd}.json";
 
-        return Ok(MapToDto(package));
+        return File(bytes, "application/json", fileName);
     }
 
     private static AuditPackageResponseDto MapToDto(AuditPackage p) => new()

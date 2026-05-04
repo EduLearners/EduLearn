@@ -67,16 +67,24 @@ public class ReportsController : ControllerBase
     /// </summary>
     [HttpGet("{id}/download")]
     [Authorize(Roles = "Auditor,ITAdmin")]
-    public async Task<ActionResult<ReportResponseDto>> Download(int id, CancellationToken ct)
+    public async Task<IActionResult> Download(int id, CancellationToken ct)
     {
         var report = await _reportRepository.GetReportByIdAsync(id, ct);
 
         if (report is null)
             return NotFound(new { error = "Report not found", code = "REPORT_NOT_FOUND" });
 
-        // TODO post-interim: generate PDF via QuestPDF, set ReportURI, return file
+        var dto = MapToDto(report);
+        var json = System.Text.Json.JsonSerializer.Serialize(dto,
+            new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+            });
+        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+        var fileName = $"report-{id}-{report.Scope}-{report.GeneratedAt:yyyyMMdd}.json";
 
-        return Ok(MapToDto(report));
+        return File(bytes, "application/json", fileName);
     }
 
     private static ReportResponseDto MapToDto(Report r) => new()
