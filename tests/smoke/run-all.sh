@@ -94,7 +94,7 @@ else
     06_students 07_sections 08_enrollments 09_assessments 10_content \
     11_submissions 12_applicants 13_fees 14_scholarships 15_invoices \
     16_payments 17_reports 18_kpis 19_audit_packages 20_audit_log \
-    21_notifications 22_tickets; do
+    21_notifications 22_tickets 23_transcripts 24_timetable 25_bug_fixes; do
     . "$SMOKE_ROOT/modules/${m}.sh" || true
   done
 

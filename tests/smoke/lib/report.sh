@@ -85,7 +85,7 @@ _write_markdown() {
     echo "Per PRD §11 Non-Functional Requirements: Enrollment and grade-posting must complete in <2s."
     echo
     local prd_fail
-    prd_fail=$(grep -c 'SLA HARD' "$RESULTS_LOG" 2>/dev/null || echo 0)
+    prd_fail=$(grep -c 'SLA HARD' "$RESULTS_LOG" 2>/dev/null) || prd_fail=0
     if (( prd_fail == 0 )); then
       echo "- ✅ No PRD-mandated SLA violations this run."
     else
