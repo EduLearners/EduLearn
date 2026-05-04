@@ -24,7 +24,7 @@ public class ReportsController : ControllerBase
 
     // ── POST /api/reports/generate — Create a new report record ──
     [HttpPost("generate")]
-    [Authorize(Roles = "Auditor,ITAdmin")]   // HARDENING (C-2): PRD §6.8 RKA-01
+    [Authorize(Roles = "Auditor,ITAdmin")]   
     public async Task<ActionResult<ReportResponseDto>> GenerateReport(GenerateReportDto dto, CancellationToken ct)
     {
         // HARDENING (H-3): GeneratedByFK comes from the JWT, not the body.
@@ -47,7 +47,7 @@ public class ReportsController : ControllerBase
 
     // ── GET /api/reports — List all reports ──
     [HttpGet]
-    [Authorize(Roles = "Auditor,ITAdmin")]   // HARDENING (C-2)
+    [Authorize(Roles = "Auditor,ITAdmin")]   
     public async Task<ActionResult<IEnumerable<ReportResponseDto>>> GetAllReports(CancellationToken ct)
     {
         var reports = await _reportRepository.GetAllReportsAsync(ct);
@@ -56,7 +56,7 @@ public class ReportsController : ControllerBase
 
     // ── GET /api/reports/{id}/download — Get a single report by ID ──
     [HttpGet("{id}/download")]
-    [Authorize(Roles = "Auditor,ITAdmin")]   // HARDENING (C-2)
+    [Authorize(Roles = "Auditor,ITAdmin")]   
     public async Task<ActionResult<ReportResponseDto>> Download(int id, CancellationToken ct)
     {
         var report = await _reportRepository.GetReportByIdAsync(id, ct);
