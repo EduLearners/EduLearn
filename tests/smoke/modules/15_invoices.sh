@@ -9,6 +9,10 @@ export INVOICE_ID=$(jget invoiceID)
 export INVOICE_AMOUNT=$(jget amountDue)
 log_info "INVOICE_ID=$INVOICE_ID  amountDue=$INVOICE_AMOUNT (expected 45000 = 55000 - 10000 scholarship)"
 
+# R-2: lock the scholarship deduction in. Previously this was logged but
+# not asserted, so a silently-zero deduction (the original bug) passed CI.
+assert_json_eq amountDue 45000 "Invoice applied scholarship deduction: amountDue=45000"
+
 # Unknown student
 http_post /api/invoices/generate "$TOKEN_FINANCE" "{\"studentID\":9999999,\"term\":\"Fall 2026\",\"dueDate\":\"2026-08-15\"}" >/dev/null
 assert_status 404 "$LAST_STATUS" "POST /api/invoices/generate bad student → 404"
