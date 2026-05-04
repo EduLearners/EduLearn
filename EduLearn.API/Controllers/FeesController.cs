@@ -9,6 +9,7 @@ namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/fees")]
+[Authorize]
 public class FeesController : ControllerBase
 {
     private readonly IFeeScheduleRepository _feeScheduleRepository;

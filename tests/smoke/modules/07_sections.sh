@@ -3,7 +3,7 @@ log_section "Module 07 — Sections (ETS-02)"
 ROLE=ITAdmin
 
 # Capacity-2 section so we can test waitlist/drop downstream
-body="{\"courseID\":$COURSE_ID_1,\"term\":\"Fall 2026\",\"instructorID\":$ID_INSTRUCTOR,\"roomID\":$ROOM_ID,\"capacity\":2,\"scheduleJSON\":\"[]\"}"
+body="{\"courseID\":$COURSE_ID_1,\"term\":\"Fall 2026\",\"instructorID\":$ID_INSTRUCTOR,\"roomID\":$ROOM_ID,\"capacity\":2,\"scheduleJSON\":\"{\\\"days\\\":\\\"Mon-Wed-Fri\\\",\\\"time\\\":\\\"09:00-10:30\\\"}\"}"
 http_post /api/sections "$TOKEN_ITADMIN" "$body" >/dev/null
 assert_status 201 "$LAST_STATUS" "POST /api/sections (cap=2) → 201"
 export SECTION_ID_SMALL=$(jget sectionID)

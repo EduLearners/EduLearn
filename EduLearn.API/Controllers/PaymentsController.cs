@@ -11,6 +11,7 @@ namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/payments")]
+[Authorize]
 public class PaymentsController : ControllerBase
 {
     private readonly IPaymentRepository _paymentRepository;

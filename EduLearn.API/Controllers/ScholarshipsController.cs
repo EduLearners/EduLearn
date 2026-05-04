@@ -10,6 +10,7 @@ namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/scholarships")]
+[Authorize]
 public class ScholarshipsController : ControllerBase
 {
     private readonly IScholarshipRepository _scholarshipRepository;

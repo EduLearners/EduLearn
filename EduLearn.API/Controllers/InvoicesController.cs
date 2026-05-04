@@ -13,6 +13,7 @@ namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/invoices")]
+[Authorize]
 public class InvoicesController : ControllerBase
 {
     private readonly IInvoiceRepository _invoiceRepository;

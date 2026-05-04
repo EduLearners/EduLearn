@@ -8,6 +8,7 @@ namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/audit-packages")]
+[Authorize]
 public class AuditPackagesController : ControllerBase
 {
     private readonly IReportRepository _reportRepository;

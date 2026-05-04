@@ -18,17 +18,20 @@ public class TranscriptsController : ControllerBase
     private readonly IStudentRepository _studentRepo;
     private readonly IEnrollmentRepository _enrollRepo;
     private readonly IProgramRepository _programRepo;
+    private readonly ISubmissionRepository _submissionRepo;
 
     public TranscriptsController(
         ITranscriptRepository transcriptRepo,
         IStudentRepository studentRepo,
         IEnrollmentRepository enrollRepo,
-        IProgramRepository programRepo)
+        IProgramRepository programRepo,
+        ISubmissionRepository submissionRepo)
     {
         _transcriptRepo = transcriptRepo;
         _studentRepo = studentRepo;
         _enrollRepo = enrollRepo;
         _programRepo = programRepo;
+        _submissionRepo = submissionRepo;
     }
 
     // POST /api/transcripts/generate/{studentId} — Generate transcript from enrollment data
@@ -46,25 +49,53 @@ public class TranscriptsController : ControllerBase
         // Get all enrollments for this student (includes Section + Course via Include)
         var enrollments = await _enrollRepo.GetByStudentIdAsync(studentId);
 
-        // Build transcript entries from enrollment data
-        var entries = enrollments.Select(e => new
-        {
-            courseName = e.Section.Course.Title,
-            courseCode = e.Section.Course.Code,
-            credits = e.Section.Course.Credits,
-            term = e.Section.Term,
-            status = e.Status.ToString(),
-            gradePosted = e.GradePostedFlag,
-            enrolledAt = e.EnrolledAt
-        }).ToList();
+        // R-4: official transcripts must show only Enrolled entries —
+        // exclude Dropped and Waitlisted enrollments before serialising.
+        var entries = enrollments
+            .Where(e => e.Status == EnrollmentStatus.Enrolled)
+            .Select(e => new
+            {
+                courseName = e.Section.Course.Title,
+                courseCode = e.Section.Course.Code,
+                credits = e.Section.Course.Credits,
+                term = e.Section.Term,
+                status = e.Status.ToString(),
+                gradePosted = e.GradePostedFlag,
+                enrolledAt = e.EnrolledAt
+            }).ToList();
 
-        var totalCredits = entries.Where(e => e.status == "Enrolled").Sum(e => e.credits);
+        var totalCredits = entries.Sum(e => e.credits);
+
+        // R-5: simple GPA computation on the Indian 10-point CGPA scale.
+        // Average all of the student's graded submission percentages, then
+        // map the average to a CGPA bucket. No credit-weighting (kept
+        // intentionally simple — see audit R-5 / docs/AUDIT-REPORT-2026-05-04.md).
+        var submissions = await _submissionRepo.GetByStudentIdWithDetailsAsync(studentId);
+        var graded = submissions
+            .Where(s => s.Score.HasValue && s.Assessment.MaxScore > 0)
+            .ToList();
+        decimal? gpa = null;
+        if (graded.Count > 0)
+        {
+            var avgPercent = graded.Average(s => s.Score!.Value / s.Assessment.MaxScore * 100m);
+            gpa = avgPercent switch
+            {
+                >= 90m => 10m,
+                >= 80m => 9m,
+                >= 70m => 8m,
+                >= 60m => 7m,
+                >= 50m => 6m,
+                >= 45m => 5m,
+                >= 40m => 4m,
+                _      => 0m
+            };
+        }
 
         var transcript = new Transcript
         {
             StudentID = studentId,
             EntriesJSON = JsonSerializer.Serialize(entries),
-            GPA = null,
+            GPA = gpa,
             Status = TranscriptStatus.Draft
         };
 
