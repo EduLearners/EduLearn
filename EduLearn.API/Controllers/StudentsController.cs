@@ -31,6 +31,10 @@ public class StudentsController : ControllerBase
 
     // POST /api/students — Create a new student after applicant is accepted
     // HARDENING C-8: PRD §6.2 SRA-02 requires Registrar (or ITAdmin) for student writes.
+    /// <summary>
+    /// Create a new student record linked to an existing User with the Student role. Registrar and ITAdmin only.
+    /// Generates a collision-safe MRN and validates the user, role, and program before persisting.
+    /// </summary>
     [HttpPost]
     [Authorize(Roles = "Registrar,ITAdmin")]
     public async Task<ActionResult<StudentResponseDto>> CreateStudent(
@@ -108,6 +112,9 @@ public class StudentsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// List all student records. Registrar, Instructor, and ITAdmin only.
+    /// </summary>
     [HttpGet]
     [Authorize(Roles = "Registrar,Instructor,ITAdmin")]
     public async Task<ActionResult<IEnumerable<StudentResponseDto>>> GetStudents(
@@ -118,6 +125,10 @@ public class StudentsController : ControllerBase
     }
 
     // GET /api/students/{id}
+    /// <summary>
+    /// Retrieve a single student record by ID. Any authenticated user may call this endpoint.
+    /// Students may only view their own record; privileged roles may view any.
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<StudentResponseDto>> GetStudent(
         int id, CancellationToken cancellationToken)
@@ -142,6 +153,10 @@ public class StudentsController : ControllerBase
         return Ok(MapToDto(student));
     }
 
+    /// <summary>
+    /// Update a student's personal details and enrollment status. Registrar and ITAdmin only.
+    /// Allows lifecycle status transitions such as Active to Graduated or Withdrawn.
+    /// </summary>
     [Authorize(Roles = "Registrar,ITAdmin")]
     [HttpPut("{id}")]
     public async Task<ActionResult<StudentResponseDto>> UpdateStudent(

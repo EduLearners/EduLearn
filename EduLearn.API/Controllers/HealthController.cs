@@ -21,6 +21,10 @@ public class HealthController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Return API and database health status. ITAdmin only.
+    /// Returns 200 when healthy or 503 when the database probe fails.
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {

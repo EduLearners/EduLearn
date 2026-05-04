@@ -20,6 +20,10 @@ public class ApplicantsController : ControllerBase
         _applicantRepo = applicantRepo;
     }
 
+    /// <summary>
+    /// Create a new applicant record. Registrar and ITAdmin only.
+    /// Validates that date of birth is in the past and National ID is unique.
+    /// </summary>
     // POST /api/applicants
     [HttpPost]
     public async Task<ActionResult<ApplicantResponseDto>> CreateApplicant(
@@ -60,6 +64,9 @@ public class ApplicantsController : ControllerBase
             new { id = created.ApplicantID }, MapToDto(created));
     }
 
+    /// <summary>
+    /// List all applicant records. Registrar and ITAdmin only.
+    /// </summary>
     // GET /api/applicants
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ApplicantResponseDto>>> GetApplicants(
@@ -69,6 +76,10 @@ public class ApplicantsController : ControllerBase
         return Ok(applicants.Select(MapToDto));
     }
 
+    /// <summary>
+    /// Retrieve a single applicant by ID. Registrar and ITAdmin only.
+    /// Returns 404 if the applicant does not exist.
+    /// </summary>
     // GET /api/applicants/{id}
     [HttpGet("{id}")]
     public async Task<ActionResult<ApplicantResponseDto>> GetApplicant(
@@ -86,6 +97,10 @@ public class ApplicantsController : ControllerBase
         return Ok(MapToDto(applicant));
     }
 
+    /// <summary>
+    /// Update the application status of an existing applicant. Registrar and ITAdmin only.
+    /// Returns 404 if the applicant does not exist.
+    /// </summary>
     // PUT /api/applicants/{id}/status
     [HttpPut("{id}/status")]
     public async Task<ActionResult<ApplicantResponseDto>> UpdateStatus(

@@ -28,8 +28,12 @@ public class ContentsController : ControllerBase
         _userRepository = userRepository;
     }
 
+    /// <summary>
+    /// Upload new content to a course. Instructor and ITAdmin only.
+    /// Validates that the course exists and associates the uploader from the JWT claim.
+    /// </summary>
     [HttpPost("upload")]
-    [Authorize(Roles = "Instructor,ITAdmin")] 
+    [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<ContentResponseDto>> UploadContent(CreateContentDto dto)
     {
         var course = await _courseRepository.GetByIdAsync(dto.CourseID);
@@ -75,6 +79,10 @@ public class ContentsController : ControllerBase
         return StatusCode(StatusCodes.Status201Created, response);
     }
 
+    /// <summary>
+    /// List all content items for a given course. All authenticated users.
+    /// Returns 404 if the course does not exist.
+    /// </summary>
     [HttpGet("course/{courseId}")]
     public async Task<ActionResult<List<ContentResponseDto>>> GetByCourse(int courseId)
     {
@@ -89,6 +97,10 @@ public class ContentsController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>
+    /// Retrieve a single content item by ID. All authenticated users.
+    /// Returns 404 if the content does not exist.
+    /// </summary>
     // Get specific content item
     [HttpGet("{id}")]
     public async Task<ActionResult<ContentResponseDto>> GetContent(int id)
@@ -101,6 +113,10 @@ public class ContentsController : ControllerBase
         return Ok(MapToDto(content));
     }
 
+    /// <summary>
+    /// Publish a new version of an existing content item. Instructor and ITAdmin only.
+    /// Only Active content can be versioned; increments the version counter.
+    /// </summary>
     //Upload a new version of existing content
     [HttpPut("{id}/version")]
     [Authorize(Roles = "Instructor,ITAdmin")]

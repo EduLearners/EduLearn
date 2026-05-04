@@ -36,6 +36,10 @@ public class PaymentsController : ControllerBase
     }
 
     // ── POST /api/payments — SFB-03: Record a payment ──
+    /// <summary>
+    /// Record a payment against an existing invoice. Finance / ITAdmin only.
+    /// Updates the invoice status to Paid or PartiallyPaid based on cumulative amount paid.
+    /// </summary>
     [HttpPost]
     [Authorize(Policy = "FinancePolicy")]   // HARDENING (C-1.C): PRD requires Finance role
     public async Task<ActionResult<PaymentResponseDto>> Create(CreatePaymentDto dto, CancellationToken ct)
@@ -96,6 +100,9 @@ public class PaymentsController : ControllerBase
     }
 
     // ── GET /api/payments/invoice/{invoiceId} — SFB-03: List payments for invoice ──
+    /// <summary>
+    /// List all payments recorded against an invoice. All authenticated roles; Students may only view their own invoice payments.
+    /// </summary>
     [HttpGet("invoice/{invoiceId}")]
     [ActionName("GetByInvoice")]
     [Authorize]

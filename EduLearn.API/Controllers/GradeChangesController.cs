@@ -31,6 +31,10 @@ public class GradeChangesController : ControllerBase
     // PRD AGI-03: auto-creation already happens in SubmissionsController on re-grade.
     // This endpoint allows an instructor to record a modification with a reason
     // without going through the full grade flow (e.g. correcting a clerical error).
+    /// <summary>
+    /// Manually record a grade modification for a submission. Instructor and ITAdmin only.
+    /// ChangedByFK is resolved from the caller's JWT, not the request body.
+    /// </summary>
     [HttpPost]
     [Authorize(Roles = "Instructor,ITAdmin")]   // PRD §6.6 AGI-03 — Instructor only
     public async Task<ActionResult<GradeChangeResponseDto>> CreateGradeChange(CreateGradeChangeDto dto)
@@ -79,6 +83,10 @@ public class GradeChangesController : ControllerBase
     // ── GET /api/grade-changes/submission/{submissionId} — Grade change audit trail ──
     // PRD AGI-03: Instructor and Auditor can view the full history of score changes
     // for a specific submission. Ordered newest first.
+    /// <summary>
+    /// Retrieve the full grade-change audit trail for a submission. Instructor, Auditor, and ITAdmin only.
+    /// Results are ordered newest first.
+    /// </summary>
     [HttpGet("submission/{submissionId}")]
     [Authorize(Roles = "Instructor,Auditor,ITAdmin")]   // PRD §6.6 AGI-03
     public async Task<ActionResult<List<GradeChangeResponseDto>>> GetBySubmission(int submissionId)

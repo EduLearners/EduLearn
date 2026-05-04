@@ -40,6 +40,10 @@ public class AuditLogController : ControllerBase
     // AUDIT: GET /api/audit-log — Query audit trail
     // Access: Auditor and ITAdmin only
     // ════════════════════════════════════════
+    /// <summary>
+    /// Query the audit trail with optional filters. Auditor and ITAdmin only.
+    /// Supports filtering by user, action, resource type, resource ID, and date range.
+    /// </summary>
     [HttpGet]
     [Authorize(Roles = "Auditor,ITAdmin")]
     public async Task<IActionResult> GetAuditLogs(

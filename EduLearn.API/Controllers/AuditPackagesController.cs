@@ -20,6 +20,10 @@ public class AuditPackagesController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Generate an audit package bundling all reports within a date range. Auditor and ITAdmin only.
+    /// Validates that PeriodEnd is after PeriodStart before creating the package record.
+    /// </summary>
     // ── POST /api/audit-packages/generate — Build an audit package for a date range ──
     [HttpPost("generate")]
     [Authorize(Roles = "Auditor,ITAdmin")]
@@ -55,6 +59,10 @@ public class AuditPackagesController : ControllerBase
         return CreatedAtAction(nameof(Download), new { id = created.PackageID }, MapToDto(created));
     }
 
+    /// <summary>
+    /// Retrieve an existing audit package by its ID. Auditor and ITAdmin only.
+    /// Returns 404 if the package does not exist.
+    /// </summary>
     // ── GET /api/audit-packages/{id}/download — Retrieve an audit package by ID ──
     [HttpGet("{id}/download")]
     [Authorize(Roles = "Auditor,ITAdmin")]

@@ -37,6 +37,10 @@ public class EnrollmentsController : ControllerBase
         _auditLogService = auditLogService;
     }
 
+    /// <summary>
+    /// Enroll a student in a section. Student, Registrar, and ITAdmin (EnrollmentPolicy).
+    /// Students may only enroll themselves; auto-waitlists when section capacity is full.
+    /// </summary>
     // AUTH CHANGE: Student, Registrar, ITAdmin can enroll
     [HttpPost("enroll")]
     [Authorize(Policy = "EnrollmentPolicy")]
@@ -167,6 +171,10 @@ public class EnrollmentsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Drop an enrollment by ID. Student, Registrar, and ITAdmin (EnrollmentPolicy).
+    /// Students may only drop their own enrollments; promotes the next waitlisted student automatically.
+    /// </summary>
     // AUTH CHANGE: Student, Registrar, ITAdmin can drop
     [HttpDelete("{id}/drop")]
     [Authorize(Policy = "EnrollmentPolicy")]
@@ -288,6 +296,10 @@ public class EnrollmentsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// List all enrollments for a student. EnrollmentViewPolicy (Student, Instructor, Registrar, ITAdmin).
+    /// Students may only view their own enrollment records.
+    /// </summary>
     // AUTH CHANGE: Student, Instructor, Registrar, ITAdmin can view student enrollments
     [HttpGet("student/{studentId}")]
     [Authorize(Policy = "EnrollmentViewPolicy")]
@@ -322,6 +334,9 @@ public class EnrollmentsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// List all enrollments for a section (roster view). RosterViewPolicy (Instructor, Registrar, DeptAdmin, ITAdmin).
+    /// </summary>
     // AUTH CHANGE: Instructor, Registrar, DeptAdmin, ITAdmin can view section roster
     [HttpGet("section/{sectionId}")]
     [Authorize(Policy = "RosterViewPolicy")]

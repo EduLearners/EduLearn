@@ -28,6 +28,10 @@ public class TimetableController : ControllerBase
     }
 
     // GET /api/timetable/student/{studentId}/{term} — Get student's weekly schedule
+    /// <summary>
+    /// Retrieve a student's weekly timetable for a given term, including schedule JSON for each enrolled section. EnrollmentViewPolicy required.
+    /// Students may only view their own timetable; other roles with the policy may view any.
+    /// </summary>
     [HttpGet("student/{studentId}/{term}")]
     [Authorize(Policy = "EnrollmentViewPolicy")]
     public async Task<ActionResult<TimetableResponseDto>> GetStudentTimetable(
@@ -76,6 +80,10 @@ public class TimetableController : ControllerBase
     }
 
     // POST /api/timetable/validate-section — Check if a section conflicts with student's schedule
+    /// <summary>
+    /// Check whether a candidate section's schedule conflicts with a student's current term enrollments. EnrollmentPolicy required.
+    /// Returns a conflict report including the clashing section details if an overlap is detected.
+    /// </summary>
     [HttpPost("validate-section")]
     [Authorize(Policy = "EnrollmentPolicy")]
     public async Task<ActionResult<ConflictCheckResponseDto>> ValidateSection(

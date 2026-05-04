@@ -28,6 +28,10 @@ public class SyllabiController : ControllerBase
     }
 
     // ── POST /api/syllabi — Instructor creates a syllabus for a course ──
+    /// <summary>
+    /// Create a new syllabus version for a course. Instructor and ITAdmin only.
+    /// Rejects duplicate version strings for the same course; creator is derived from the JWT.
+    /// </summary>
     [HttpPost]
     [Authorize(Roles = "Instructor,ITAdmin")]   // PRD §6.4 CCM-02 — Instructor only
     public async Task<ActionResult<SyllabusResponseDto>> CreateSyllabus(CreateSyllabusDto dto)
@@ -82,6 +86,10 @@ public class SyllabiController : ControllerBase
     }
 
     // ── GET /api/syllabi/course/{courseId} — List all syllabi for a course ──
+    /// <summary>
+    /// List all syllabus versions for a given course. Any authenticated user may call this endpoint.
+    /// Returns 404 if the course does not exist.
+    /// </summary>
     [HttpGet("course/{courseId}")]
     public async Task<ActionResult<List<SyllabusResponseDto>>> GetByCourse(int courseId)
     {
@@ -99,6 +107,10 @@ public class SyllabiController : ControllerBase
     }
 
     // ── GET /api/syllabi/{id} — Get specific syllabus by ID ──
+    /// <summary>
+    /// Retrieve a single syllabus by its ID. Any authenticated user may call this endpoint.
+    /// Returns 404 if the syllabus does not exist.
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<SyllabusResponseDto>> GetSyllabus(int id)
     {
@@ -112,6 +124,10 @@ public class SyllabiController : ControllerBase
     }
 
     // ── PUT /api/syllabi/{id} — Instructor updates an existing syllabus ──
+    /// <summary>
+    /// Update an existing syllabus version, outcomes, assessment plan, and URI. Instructor and ITAdmin only.
+    /// Rejects version string changes that would clash with an existing version for the same course.
+    /// </summary>
     [HttpPut("{id}")]
     [Authorize(Roles = "Instructor,ITAdmin")]   // PRD §6.4 CCM-02 — Instructor only
     public async Task<ActionResult<SyllabusResponseDto>> UpdateSyllabus(int id, UpdateSyllabusDto dto)

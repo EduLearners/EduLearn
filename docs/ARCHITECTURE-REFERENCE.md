@@ -16,8 +16,8 @@ EduLearn.API/
 ├── Data/
 │   └── AppDbContext.cs   All 25 entities, all FK configs, all HasConversion calls
 ├── DTOs/                 Request and response DTOs per controller
-├── Extensions/
-│   └── ClaimsPrincipalExtensions.cs  GetUserId(), GetUserRole(), IsITAdmin() helpers
+├── Middleware/
+│   └── GlobalExceptionMiddleware.cs   Catches unhandled exceptions, returns clean JSON
 ├── Models/               25 entity classes
 │   └── Enums/            10 enum files
 ├── Repositories/

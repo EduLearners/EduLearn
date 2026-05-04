@@ -27,6 +27,10 @@ public class NotificationsController : ControllerBase
 
     // ── GET /api/notifications?page=&pageSize=&unreadOnly= — caller's own notifications, newest first ──
     // unreadOnly=true filters to unread rows only (bell-icon "unread list" UX).
+    /// <summary>
+    /// Retrieve paginated notifications for the authenticated caller, newest first. All authenticated roles.
+    /// Pass unreadOnly=true to filter to unread items only (bell-icon UX).
+    /// </summary>
     [HttpGet]
     public async Task<ActionResult<PaginatedResponseDto<NotificationResponseDto>>> GetMine(
         [FromQuery] int page = 1,
@@ -39,6 +43,9 @@ public class NotificationsController : ControllerBase
     }
 
     // ── GET /api/notifications/unread-count — bell-icon counter ──
+    /// <summary>
+    /// Return the number of unread notifications for the authenticated caller. All authenticated roles.
+    /// </summary>
     [HttpGet("unread-count")]
     public async Task<ActionResult<UnreadCountDto>> GetUnreadCount()
     {
@@ -48,6 +55,10 @@ public class NotificationsController : ControllerBase
     }
 
     // ── PUT /api/notifications/{id}/read — mark one notification read (owner only) ──
+    /// <summary>
+    /// Mark a single notification as read. All authenticated roles; caller must own the notification.
+    /// Returns 403 if the notification belongs to a different user.
+    /// </summary>
     [HttpPut("{id}/read")]
     public async Task<IActionResult> MarkRead(int id)
     {
@@ -72,6 +83,9 @@ public class NotificationsController : ControllerBase
     }
 
     // ── PUT /api/notifications/read-all — mark all the caller's notifications as read ──
+    /// <summary>
+    /// Mark all notifications for the authenticated caller as read. All authenticated roles.
+    /// </summary>
     [HttpPut("read-all")]
     public async Task<IActionResult> MarkAllRead()
     {
@@ -85,6 +99,10 @@ public class NotificationsController : ControllerBase
     // Persists a row via NotificationService.NotifyAsync. Same persist path as production
     // producers (Enrollment, Submissions, Invoices, Tickets). Used by smoke tests to seed
     // notifications without triggering real domain events.
+    /// <summary>
+    /// Create a test notification via the same persistence path as production. ITAdmin only.
+    /// Used by smoke tests to seed notification rows without triggering real domain events.
+    /// </summary>
     [HttpPost("test")]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<NotificationResponseDto>> CreateTest(CreateNotificationDto dto)

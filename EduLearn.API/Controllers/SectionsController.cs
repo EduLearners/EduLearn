@@ -29,6 +29,10 @@ public class SectionsController : ControllerBase
     }
 
     // POST /api/sections
+    /// <summary>
+    /// Create a new course section with an assigned instructor and optional room. Registrar, DeptAdmin, and ITAdmin only.
+    /// Validates that the course, instructor (Instructor role), and room (if provided) all exist.
+    /// </summary>
     [HttpPost]
     [Authorize(Roles = "Registrar,DeptAdmin,ITAdmin")]   // HARDENING (C-9): PRD §6.3 ETS-02
     public async Task<ActionResult<SectionResponseDto>> CreateSection(
@@ -89,6 +93,10 @@ public class SectionsController : ControllerBase
     }
 
     // GET /api/sections/{id}
+    /// <summary>
+    /// Retrieve a single section by its ID. Any authenticated user may call this endpoint.
+    /// Returns 404 if the section does not exist.
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<SectionResponseDto>> GetSection(
         int id, CancellationToken cancellationToken)
@@ -110,6 +118,10 @@ public class SectionsController : ControllerBase
     }
 
     // GET /api/sections/course/{courseId}/term/{term}
+    /// <summary>
+    /// List all sections for a given course and term. Any authenticated user may call this endpoint.
+    /// Returns 404 if the course does not exist or no sections are found for the specified term.
+    /// </summary>
     [HttpGet("course/{courseId}/term/{term}")]
     public async Task<ActionResult<IEnumerable<SectionResponseDto>>> GetByCourseAndTerm(
         int courseId, string term, CancellationToken cancellationToken)
@@ -146,6 +158,10 @@ public class SectionsController : ControllerBase
     }
 
     // PUT /api/sections/{id} — Update an existing section
+    /// <summary>
+    /// Update an existing section's details including instructor, room, capacity, and schedule. Registrar, DeptAdmin, and ITAdmin only.
+    /// Rejects capacity reductions that would fall below the current enrolled student count.
+    /// </summary>
     [HttpPut("{id}")]
     [Authorize(Roles = "Registrar,DeptAdmin,ITAdmin")]
     public async Task<ActionResult<SectionResponseDto>> UpdateSection(

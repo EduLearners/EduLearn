@@ -37,7 +37,10 @@ public class SubmissionsController : ControllerBase
         _auditLogService = auditLogService;
     }
 
-    
+    /// <summary>
+    /// Submit work for a published assessment. Student role only.
+    /// Marks the submission as Late if the assessment due date has passed; rejects duplicates.
+    /// </summary>
     [HttpPost]
     [Authorize(Roles = "Student")]
 
@@ -107,6 +110,10 @@ public class SubmissionsController : ControllerBase
         return StatusCode(StatusCodes.Status201Created, response);
     }
 
+    /// <summary>
+    /// List all submissions for a given assessment. Instructor and ITAdmin only.
+    /// Returns 404 if the assessment does not exist.
+    /// </summary>
     [HttpGet("assessment/{assessmentId}")]
     [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<List<SubmissionResponseDto>>> GetByAssessment(int assessmentId)
@@ -122,6 +129,10 @@ public class SubmissionsController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>
+    /// Assign or update a score for a submission. Instructor and ITAdmin only.
+    /// Records a GradeChange audit row on re-grades and sends a notification to the student.
+    /// </summary>
     [HttpPost("{id}/grade")]
     [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<SubmissionResponseDto>> GradeSubmission(int id, GradeSubmissionDto dto)
@@ -197,6 +208,10 @@ public class SubmissionsController : ControllerBase
     }
 
     //Student's submissions across all assessments
+    /// <summary>
+    /// List all submissions made by a given student across all assessments. Any authenticated user may call this endpoint.
+    /// Students may only view their own submissions; privileged roles may view any student's submissions.
+    /// </summary>
     [HttpGet("student/{studentId}")]
     public async Task<ActionResult<List<SubmissionResponseDto>>> GetByStudent(int studentId)
     {

@@ -18,6 +18,10 @@ public class ProgramsController : ControllerBase
     }
 
     //Create new degree program
+    /// <summary>
+    /// Create a new degree program. DeptAdmin and ITAdmin only.
+    /// Returns 409 Conflict if a program with the same name and degree type already exists.
+    /// </summary>
     [HttpPost]
     [Authorize(Policy = "DeptAdminPolicy")]
     public async Task<ActionResult<ProgramResponseDto>> CreateProgram(CreateProgramDto dto)
@@ -44,6 +48,9 @@ public class ProgramsController : ControllerBase
     }
 
     //List all programs
+    /// <summary>
+    /// List all degree programs. All authenticated roles.
+    /// </summary>
     [HttpGet]
     public async Task<ActionResult<List<ProgramResponseDto>>> GetPrograms()
     {
@@ -54,6 +61,9 @@ public class ProgramsController : ControllerBase
     }
 
     //Get one program by ID
+    /// <summary>
+    /// Retrieve a single degree program by ID. All authenticated roles.
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<ProgramResponseDto>> GetProgram(int id)
     {
@@ -65,8 +75,11 @@ public class ProgramsController : ControllerBase
         return Ok(MapToDto(program));
     }
 
+    /// <summary>
+    /// Update an existing degree program's metadata. DeptAdmin and ITAdmin only.
+    /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Policy = "DeptAdminPolicy")]   
+    [Authorize(Policy = "DeptAdminPolicy")]
     public async Task<ActionResult<ProgramResponseDto>> UpdateProgram(int id, CreateProgramDto dto)
     {
         var program = await _programRepository.GetByIdAsync(id);

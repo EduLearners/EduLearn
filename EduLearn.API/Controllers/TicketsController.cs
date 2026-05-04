@@ -40,6 +40,10 @@ public class TicketsController : ControllerBase
     }
 
     // ── POST /api/tickets — Any authenticated user raises a ticket ──
+    /// <summary>
+    /// Create a new helpdesk support ticket. Any authenticated user may call this endpoint.
+    /// The ticket is opened immediately and the action is recorded in the audit log.
+    /// </summary>
     [HttpPost]
     public async Task<ActionResult<TicketResponseDto>> Create(CreateTicketDto dto)
     {
@@ -74,6 +78,9 @@ public class TicketsController : ControllerBase
     }
 
     // ── GET /api/tickets — ITAdmin sees all, others see their own ──
+    /// <summary>
+    /// List tickets visible to the caller. ITAdmin sees all tickets; other roles see only their own.
+    /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TicketResponseDto>>> GetAll()
     {
@@ -88,6 +95,10 @@ public class TicketsController : ControllerBase
     }
 
     // ── GET /api/tickets/{id} — creator, assignee, or ITAdmin only ──
+    /// <summary>
+    /// Retrieve a single ticket by ID. Accessible to the ticket creator, the assigned support user, or ITAdmin.
+    /// Returns 403 for all other callers.
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<TicketResponseDto>> GetById(int id)
     {
@@ -114,6 +125,10 @@ public class TicketsController : ControllerBase
     }
 
     // ── PUT /api/tickets/{id}/assign — ITAdmin assigns ticket to a support user ──
+    /// <summary>
+    /// Assign an open ticket to an ITAdmin support user and set its status to InProgress. SupportStaff (ITAdmin) only.
+    /// Notifies the assignee via the notification service and logs the assignment in the audit trail.
+    /// </summary>
     [HttpPut("{id}/assign")]
     [Authorize(Policy = "SupportStaffPolicy")]
     public async Task<ActionResult<TicketResponseDto>> Assign(int id, AssignTicketDto dto)
@@ -166,6 +181,10 @@ public class TicketsController : ControllerBase
     }
 
     // ── PUT /api/tickets/{id}/resolve — ITAdmin closes with resolution URI ──
+    /// <summary>
+    /// Mark a ticket as Resolved and attach a resolution URI. SupportStaff (ITAdmin) only.
+    /// Notifies the ticket creator and records the resolution note in the audit log.
+    /// </summary>
     [HttpPut("{id}/resolve")]
     [Authorize(Policy = "SupportStaffPolicy")]
     public async Task<ActionResult<TicketResponseDto>> Resolve(int id, ResolveTicketDto dto)

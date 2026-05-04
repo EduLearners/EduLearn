@@ -23,6 +23,10 @@ public class FeesController : ControllerBase
         _programRepository = programRepository;
     }
 
+    /// <summary>
+    /// Create a new fee schedule for a program and term. FinancePolicy only.
+    /// Validates that the program exists and EffectiveFrom precedes EffectiveTo.
+    /// </summary>
     // ── POST /api/fees — SFB-01: Create fee schedule ──
     [HttpPost]
     [Authorize(Policy = "FinancePolicy")]   // HARDENING (C-1.D): PRD requires Finance role
@@ -50,6 +54,10 @@ public class FeesController : ControllerBase
         return CreatedAtAction(nameof(GetByProgramAndTerm), new { programId = created.ProgramID, term = created.Term }, MapToDto(created));
     }
 
+    /// <summary>
+    /// Retrieve the fee schedule for a specific program and term. FinancePolicy only.
+    /// Returns 404 if no matching schedule is found.
+    /// </summary>
     // ── GET /api/fees/program/{programId}/term/{term} — SFB-01: Get fee schedule ──
     [HttpGet("program/{programId}/term/{term}")]
     [Authorize(Policy = "FinancePolicy")]   // HARDENING (C-1.D)
@@ -63,6 +71,10 @@ public class FeesController : ControllerBase
         return Ok(MapToDto(fee));
     }
 
+    /// <summary>
+    /// Update an existing fee schedule. FinancePolicy only.
+    /// Superseded schedules are terminal and cannot be transitioned back to any other status.
+    /// </summary>
     // ── PUT /api/fees/{id} — SFB-01: Update fee schedule ──
     [HttpPut("{id}")]
     [Authorize(Policy = "FinancePolicy")]   // HARDENING (C-1.D)

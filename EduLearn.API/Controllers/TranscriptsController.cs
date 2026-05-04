@@ -35,6 +35,10 @@ public class TranscriptsController : ControllerBase
     }
 
     // POST /api/transcripts/generate/{studentId} — Generate transcript from enrollment data
+    /// <summary>
+    /// Generate a new transcript draft for the given student. Registrar and ITAdmin only.
+    /// Includes only Enrolled course entries and computes a 10-point CGPA from graded submissions.
+    /// </summary>
     [HttpPost("generate/{studentId}")]
     [Authorize(Roles = "Registrar,ITAdmin")]
     public async Task<ActionResult<TranscriptResponseDto>> GenerateTranscript(
@@ -107,6 +111,10 @@ public class TranscriptsController : ControllerBase
     }
 
     // GET /api/transcripts/student/{studentId} — Get all transcripts for a student
+    /// <summary>
+    /// List all transcripts for a given student. Any authenticated user may call this endpoint.
+    /// Students may only view their own transcripts; Registrar and ITAdmin may view any.
+    /// </summary>
     [HttpGet("student/{studentId}")]
     public async Task<ActionResult<IEnumerable<TranscriptResponseDto>>> GetByStudent(
         int studentId, CancellationToken cancellationToken)
@@ -129,6 +137,10 @@ public class TranscriptsController : ControllerBase
     }
 
     // GET /api/transcripts/{id}
+    /// <summary>
+    /// Retrieve a single transcript by its ID. Any authenticated user may call this endpoint.
+    /// Students may only view their own transcripts; Registrar and ITAdmin may view any.
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<TranscriptResponseDto>> GetTranscript(
         int id, CancellationToken cancellationToken)
@@ -154,6 +166,10 @@ public class TranscriptsController : ControllerBase
     }
 
     // PUT /api/transcripts/{id}/publish — Publish a draft transcript
+    /// <summary>
+    /// Promote a Draft transcript to Issued status, recording the issued timestamp. Registrar and ITAdmin only.
+    /// Returns 400 if the transcript is already in a non-Draft state.
+    /// </summary>
     [HttpPut("{id}/publish")]
     [Authorize(Roles = "Registrar,ITAdmin")]
     public async Task<ActionResult<TranscriptResponseDto>> PublishTranscript(

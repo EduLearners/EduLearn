@@ -23,8 +23,12 @@ public class ReportsController : ControllerBase
     }
 
     // ── POST /api/reports/generate — Create a new report record ──
+    /// <summary>
+    /// Generate and persist a new report record. Auditor and ITAdmin only.
+    /// GeneratedByFK is resolved from the caller's JWT to prevent attribution forgery.
+    /// </summary>
     [HttpPost("generate")]
-    [Authorize(Roles = "Auditor,ITAdmin")]   
+    [Authorize(Roles = "Auditor,ITAdmin")]
     public async Task<ActionResult<ReportResponseDto>> GenerateReport(GenerateReportDto dto, CancellationToken ct)
     {
         // HARDENING (H-3): GeneratedByFK comes from the JWT, not the body.
@@ -46,8 +50,11 @@ public class ReportsController : ControllerBase
     }
 
     // ── GET /api/reports — List all reports ──
+    /// <summary>
+    /// List all generated reports. Auditor and ITAdmin only.
+    /// </summary>
     [HttpGet]
-    [Authorize(Roles = "Auditor,ITAdmin")]   
+    [Authorize(Roles = "Auditor,ITAdmin")]
     public async Task<ActionResult<IEnumerable<ReportResponseDto>>> GetAllReports(CancellationToken ct)
     {
         var reports = await _reportRepository.GetAllReportsAsync(ct);
@@ -55,8 +62,11 @@ public class ReportsController : ControllerBase
     }
 
     // ── GET /api/reports/{id}/download — Get a single report by ID ──
+    /// <summary>
+    /// Retrieve a single report by ID. Auditor and ITAdmin only.
+    /// </summary>
     [HttpGet("{id}/download")]
-    [Authorize(Roles = "Auditor,ITAdmin")]   
+    [Authorize(Roles = "Auditor,ITAdmin")]
     public async Task<ActionResult<ReportResponseDto>> Download(int id, CancellationToken ct)
     {
         var report = await _reportRepository.GetReportByIdAsync(id, ct);

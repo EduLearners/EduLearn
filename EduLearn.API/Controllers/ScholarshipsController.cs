@@ -29,6 +29,10 @@ public class ScholarshipsController : ControllerBase
     }
 
     // ── POST /api/scholarships — SFB-04: Award scholarship ──
+    /// <summary>
+    /// Award a scholarship to a student and notify them. Finance / ITAdmin only.
+    /// Validates student existence, positive amount, and a valid date range before creating.
+    /// </summary>
     [HttpPost]
     [Authorize(Policy = "FinancePolicy")]   // HARDENING (C-1.A): PRD requires Finance role
     public async Task<ActionResult<ScholarshipResponseDto>> Create(CreateScholarshipDto dto, CancellationToken ct)
@@ -72,6 +76,9 @@ public class ScholarshipsController : ControllerBase
     }
 
     // ── GET /api/scholarships/student/{studentId} — SFB-04: List scholarships for student ──
+    /// <summary>
+    /// List all scholarships awarded to a given student. Finance / ITAdmin only.
+    /// </summary>
     [HttpGet("student/{studentId}")]
     [ActionName("GetByStudent")]
     [Authorize(Policy = "FinancePolicy")]   // HARDENING (C-1.A)
@@ -83,6 +90,10 @@ public class ScholarshipsController : ControllerBase
     }
 
     // ── PUT /api/scholarships/{id} — SFB-04: Update/revoke scholarship ──
+    /// <summary>
+    /// Update or revoke a scholarship's status. Finance / ITAdmin only.
+    /// Revoked scholarships cannot be reactivated; attempting to do so returns 400.
+    /// </summary>
     [HttpPut("{id}")]
     [Authorize(Policy = "FinancePolicy")]   // HARDENING (C-1.A)
     public async Task<ActionResult<ScholarshipResponseDto>> Update(int id, UpdateScholarshipDto dto, CancellationToken ct)

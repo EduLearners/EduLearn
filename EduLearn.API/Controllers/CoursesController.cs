@@ -26,6 +26,10 @@ public class CoursesController : ControllerBase
         _studentRepository   = studentRepository;
     }
 
+    /// <summary>
+    /// Create a new course. CourseManager policy (Instructor / ITAdmin) only.
+    /// Returns 409 if a course with the same code already exists.
+    /// </summary>
     [HttpPost]
     [Authorize(Policy = "CourseManagerPolicy")]
     public async Task<ActionResult<CourseResponseDto>> CreateCourse(CreateCourseDto dto)
@@ -49,6 +53,9 @@ public class CoursesController : ControllerBase
         return CreatedAtAction(nameof(GetCourse), new { id = course.CourseID }, MapToDto(course));
     }
 
+    /// <summary>
+    /// List all courses. All authenticated users (AllUsersPolicy).
+    /// </summary>
     [HttpGet]
     [Authorize(Policy = "AllUsersPolicy")]
     public async Task<ActionResult<List<CourseResponseDto>>> GetCourses()
@@ -57,6 +64,10 @@ public class CoursesController : ControllerBase
         return Ok(courses.Select(c => MapToDto(c)).ToList());
     }
 
+    /// <summary>
+    /// Retrieve a single course by ID. All authenticated users (AllUsersPolicy).
+    /// Returns 404 if the course does not exist.
+    /// </summary>
     [HttpGet("{id}")]
     [Authorize(Policy = "AllUsersPolicy")]
     public async Task<ActionResult<CourseResponseDto>> GetCourse(int id)
@@ -69,6 +80,10 @@ public class CoursesController : ControllerBase
         return Ok(MapToDto(course));
     }
 
+    /// <summary>
+    /// Update an existing course. CourseManager policy (Instructor / ITAdmin) only.
+    /// Returns 404 if the course does not exist.
+    /// </summary>
     [HttpPut("{id}")]
     [Authorize(Policy = "CourseManagerPolicy")]
     public async Task<ActionResult<CourseResponseDto>> UpdateCourse(int id, CreateCourseDto dto)
@@ -106,6 +121,10 @@ public class CoursesController : ControllerBase
     // ── GET /api/courses/{id}/check-prerequisites/{studentId} ──
     // CCM-03: Checks if a student has completed all prerequisites for a course.
     // Multi-table join: Course.PrerequisitesJSON → Sections → Enrollments (GradePostedFlag = true)
+    /// <summary>
+    /// Check whether a student has satisfied all prerequisites for a course. All authenticated users.
+    /// Returns 404 if either the course or the student does not exist.
+    /// </summary>
     [HttpGet("{id}/check-prerequisites/{studentId}")]
     [Authorize(Policy = "AllUsersPolicy")]
     public async Task<ActionResult<PrerequisiteCheckResponseDto>> CheckPrerequisites(

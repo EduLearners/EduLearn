@@ -30,8 +30,12 @@ public class AssessmentsController : ControllerBase
         _sectionRepository = sectionRepository;
     }
 
+    /// <summary>
+    /// Create a new assessment for a course. Instructor and ITAdmin only.
+    /// Validates that the target course and optional section exist before saving.
+    /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Instructor,ITAdmin")]   
+    [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<AssessmentResponseDto>> CreateAssessment(CreateAssessmentDto dto)
     {
        
@@ -93,6 +97,10 @@ public class AssessmentsController : ControllerBase
         return CreatedAtAction(nameof(GetAssessmentsByCourse), new { courseId = assessment.CourseID }, response);
     }
 
+    /// <summary>
+    /// List all assessments for a given course. All authenticated users.
+    /// Returns 404 if the course does not exist.
+    /// </summary>
     [HttpGet("course/{courseId}")]
     public async Task<ActionResult<List<AssessmentResponseDto>>> GetAssessmentsByCourse(int courseId)
     {
@@ -126,8 +134,12 @@ public class AssessmentsController : ControllerBase
     }
 
    
+    /// <summary>
+    /// Update an existing assessment. Instructor and ITAdmin only.
+    /// Only assessments in Draft status may be modified.
+    /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = "Instructor,ITAdmin")]   
+    [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<AssessmentResponseDto>> UpdateAssessment(int id, UpdateAssessmentDto dto)
     {
         
@@ -179,8 +191,12 @@ public class AssessmentsController : ControllerBase
     }
 
     
+    /// <summary>
+    /// Transition an assessment through its status lifecycle. Instructor and ITAdmin only.
+    /// Enforces valid transitions: Draft → Published → Closed → Archived.
+    /// </summary>
     [HttpPut("{id}/publish")]
-    [Authorize(Roles = "Instructor,ITAdmin")]   
+    [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<AssessmentResponseDto>> PublishAssessment(int id, UpdateAssessmentStatusDto dto)
     {
         

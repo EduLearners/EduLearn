@@ -32,6 +32,10 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
+    /// <summary>
+    /// Register a new user account. Open to anonymous callers.
+    /// Hashes the password with BCrypt before persisting the record.
+    /// </summary>
     // POST /api/auth/register — BCrypt hashes password before saving
     [HttpPost("register")]
     [AllowAnonymous]  // HARDENING (C-25): explicit opt-out from FallbackPolicy
@@ -45,6 +49,10 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Authenticate with username and password. Open to anonymous callers.
+    /// Returns a signed JWT on success or 401 if credentials are invalid.
+    /// </summary>
     // AUTH CHANGE: POST /api/auth/login — validates password → returns JWT
     [HttpPost("login")]
     [AllowAnonymous]  // HARDENING (C-25): explicit opt-out from FallbackPolicy

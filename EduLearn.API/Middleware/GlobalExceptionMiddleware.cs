@@ -42,6 +42,19 @@ public class GlobalExceptionMiddleware
 
     private async Task WriteResponseAsync(HttpContext context, Exception ex)
     {
+        // If MVC has already started writing the response (e.g. serializer
+        // threw mid-stream), Clear() throws InvalidOperationException and the
+        // middleware itself becomes the unhandled exception. Bail out and let
+        // the framework's default handler take over with whatever bytes were
+        // already on the wire.
+        if (context.Response.HasStarted)
+        {
+            _logger.LogError(ex,
+                "Response already started for {Method} {Path} — cannot write error JSON",
+                context.Request.Method, context.Request.Path);
+            return;
+        }
+
         var statusCode = MapStatusCode(ex);
 
         context.Response.Clear();

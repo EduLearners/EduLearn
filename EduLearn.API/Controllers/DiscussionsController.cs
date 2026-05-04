@@ -29,6 +29,10 @@ public class DiscussionsController : ControllerBase
         _userRepository = userRepository;
     }
 
+    /// <summary>
+    /// Create a new discussion thread for a course. All authenticated users.
+    /// Thread starter ID is derived from the JWT; an optional initial message seeds the posts list.
+    /// </summary>
     // ── POST /api/discussions — Any authenticated user creates a discussion thread ──
     [HttpPost]
     public async Task<ActionResult<DiscussionResponseDto>> CreateDiscussion(CreateDiscussionDto dto)
@@ -93,6 +97,10 @@ public class DiscussionsController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// List all discussion threads for a course. All authenticated users.
+    /// Returns 404 if the course does not exist.
+    /// </summary>
     // ── GET /api/discussions/course/{courseId} — List all discussions for a course ──
     [HttpGet("course/{courseId}")]
     public async Task<ActionResult<List<DiscussionResponseDto>>> GetByCourse(int courseId)
@@ -110,6 +118,10 @@ public class DiscussionsController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>
+    /// Append a reply to an existing discussion thread. All authenticated users.
+    /// Only threads in Open or Pinned status accept replies; Closed and Archived are locked.
+    /// </summary>
     // ── POST /api/discussions/{id}/reply — Any authenticated user replies to a discussion ──
     // KEY LOGIC: reads PostsJSON, deserializes, appends new reply, re-serializes, saves back
     [HttpPost("{id}/reply")]
@@ -165,6 +177,10 @@ public class DiscussionsController : ControllerBase
         return Ok(MapToDto(discussion));
     }
 
+    /// <summary>
+    /// Update the moderation status of a discussion thread. Instructor and ITAdmin only.
+    /// Returns 404 if the discussion does not exist.
+    /// </summary>
     // ── PUT /api/discussions/{id}/status — Instructor moderates the discussion ──
     [HttpPut("{id}/status")]
     [Authorize(Roles = "Instructor,ITAdmin")]   // PRD §6.5 LMS-02 — Instructor only

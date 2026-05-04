@@ -24,6 +24,10 @@ public class UsersController : ControllerBase
     }
 
     // AUTH CHANGE: Only ITAdmin can create users directly (others use /api/auth/register)
+    /// <summary>
+    /// Create a new user account directly. ITAdmin only (AdminPolicy); other users register via /api/auth/register.
+    /// Checks for duplicate email and username before persisting and logs the action in the audit trail.
+    /// </summary>
     [HttpPost]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto dto)
@@ -57,6 +61,9 @@ public class UsersController : ControllerBase
     }
 
     // AUTH CHANGE: Only ITAdmin and Registrar can list all users
+    /// <summary>
+    /// List all user accounts. ITAdmin and Registrar only (UserViewPolicy).
+    /// </summary>
     [HttpGet]
     [Authorize(Policy = "UserViewPolicy")]
     public async Task<ActionResult<List<UserResponseDto>>> GetUsers()
@@ -67,6 +74,10 @@ public class UsersController : ControllerBase
 
     // HARDENING (F-1): PRD §6.1 line 1779 says GET /api/users/{id} is '*' (any auth user).
     // Non-privileged roles may view only their own profile; ITAdmin/Registrar may view any.
+    /// <summary>
+    /// Retrieve a user profile by ID. Any authenticated user may call this endpoint.
+    /// Non-privileged roles may only view their own profile; ITAdmin and Registrar may view any.
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<UserResponseDto>> GetUser(int id)
     {
@@ -87,6 +98,10 @@ public class UsersController : ControllerBase
 
     // HARDENING (F-2): PRD §6.1 line 1784 — any user may update their OWN profile.
     // HARDENING (H-9): pre-check email collision instead of letting DbUpdateException bubble as 500.
+    /// <summary>
+    /// Update a user's full name, email, and phone. Any authenticated user may update their own profile; ITAdmin may update any.
+    /// Pre-checks for email collision to prevent a 500 from a unique-constraint violation.
+    /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult<UserResponseDto>> UpdateUser(int id, UpdateUserDto dto)
     {
@@ -118,6 +133,9 @@ public class UsersController : ControllerBase
     }
 
     // AUTH CHANGE: Only ITAdmin can activate/suspend/lock users
+    /// <summary>
+    /// Update the account status (Active, Suspended, Locked) for a user. ITAdmin only (AdminPolicy).
+    /// </summary>
     [HttpPut("{id}/status")]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<UserResponseDto>> UpdateUserStatus(int id, UpdateStatusDto dto)

@@ -40,6 +40,10 @@ public class InvoicesController : ControllerBase
     }
 
     // ── POST /api/invoices/generate — SFB-02: Generate invoice ──
+    /// <summary>
+    /// Generate a new invoice for a student term, applying any active scholarship deductions. Finance / ITAdmin only.
+    /// Rejects duplicate invoices for the same student and term, and past-dated due dates.
+    /// </summary>
     [HttpPost("generate")]
     [Authorize(Policy = "FinancePolicy")]
     public async Task<ActionResult<InvoiceResponseDto>> Generate(GenerateInvoiceDto dto, CancellationToken ct)
@@ -134,6 +138,9 @@ public class InvoicesController : ControllerBase
     }
 
     // ── GET /api/invoices/student/{studentId} — SFB-02: List invoices for student ──
+    /// <summary>
+    /// List all invoices for a given student. All authenticated roles; Students may only view their own records.
+    /// </summary>
     [HttpGet("student/{studentId}")]
     [Authorize]
     public async Task<ActionResult<IEnumerable<InvoiceResponseDto>>> GetByStudent(int studentId, CancellationToken ct)
@@ -154,6 +161,9 @@ public class InvoicesController : ControllerBase
     }
 
     // ── GET /api/invoices/{id} — SFB-02: Get invoice by ID ──
+    /// <summary>
+    /// Retrieve a single invoice by ID. All authenticated roles; Students may only view their own invoices.
+    /// </summary>
     [HttpGet("{id}")]
     [ActionName("GetById")]
     [Authorize]
