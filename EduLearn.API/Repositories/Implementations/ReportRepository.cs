@@ -44,6 +44,15 @@ public class ReportRepository : IReportRepository
                 totalEnrollments = await _context.Enrollments.AsNoTracking().CountAsync(ct)
             }),
 
+            ReportScope.Enrollment => JsonSerializer.Serialize(new
+            {
+                totalEnrollments  = await _context.Enrollments.AsNoTracking().CountAsync(ct),
+                activeEnrollments = await _context.Enrollments.AsNoTracking()
+                                        .CountAsync(e => e.Status == EnrollmentStatus.Enrolled, ct),
+                waitlisted        = await _context.Enrollments.AsNoTracking()
+                                        .CountAsync(e => e.Status == EnrollmentStatus.Waitlisted, ct)
+            }),
+
             _ => JsonSerializer.Serialize(new { })
         };
 

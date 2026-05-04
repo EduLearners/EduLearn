@@ -13,17 +13,16 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
-//initializes  configuration, logging, and dependency injection container
 var builder = WebApplication.CreateBuilder(args);
 
-//UserRole{Admin,User} is will send 0 or 1
+// JSON enum serialization — enums sent as strings, not integers
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(
-            new System.Text.Json.Serialization.JsonStringEnumConverter()));//convert Enum into  number
+            new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
-//Swagger + JWT lock icon
-builder.Services.AddEndpointsApiExplorer();//Find all routrs(get,post..)
+// Swagger + JWT lock icon
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.UseInlineDefinitionsForEnums();
@@ -48,10 +47,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-
-//.AllowAnyOrigin(): Any website(Google, a malicious site, or your own frontend) can call your API.
-//.AllowAnyHeader(): Allows the request to include any custom headers (like Authorization or Content-Type).
-//.AllowAnyMethod(): Allows any HTTP verb (GET, POST, PUT, DELETE, etc.).
+// CORS
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
         policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
@@ -60,7 +56,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-//All 13 Repositories
+// Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
@@ -82,12 +78,14 @@ builder.Services.AddScoped<IFeeScheduleRepository, FeeScheduleRepository>();
 builder.Services.AddScoped<IScholarshipRepository, ScholarshipRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+
+// Services
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
-//JWT Authentication
+// JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -106,7 +104,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
-            //Custom 401 response
             OnChallenge = async context =>
             {
                 context.HandleResponse();
@@ -133,7 +130,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 await context.Response.WriteAsync(JsonSerializer.Serialize(response));
             },
 
-            // Custom 403 response
             OnForbidden = async context =>
             {
                 context.Response.StatusCode = 403;
@@ -156,10 +152,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-//Role-based Authorization Policies
+// Role-based Authorization Policies
 builder.Services.AddAuthorization(options =>
 {
-    //logged-in all 7 roles
     options.AddPolicy("AllUsersPolicy", p => p.RequireRole(
         "Student", "Instructor", "Registrar", "DeptAdmin", "Finance", "ITAdmin", "Auditor"));
 
@@ -172,7 +167,6 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RosterViewPolicy", p => p.RequireRole(
         "Instructor", "Registrar", "DeptAdmin", "ITAdmin"));
 
-    
     options.AddPolicy("EnrollmentViewPolicy", p => p.RequireRole(
         "Student", "Instructor", "Registrar", "ITAdmin"));
 
@@ -184,12 +178,17 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AuditViewPolicy", p => p.RequireRole(
         "Auditor", "ITAdmin"));
 
+    // Ticket assign/resolve — ITAdmin only
     options.AddPolicy("SupportStaffPolicy", p => p.RequireRole("ITAdmin"));
 
+    // Finance + ITAdmin — mutate SFB resources
     options.AddPolicy("FinancePolicy", p => p.RequireRole("Finance", "ITAdmin"));
 
+    // DeptAdmin + ITAdmin — manage programs and rooms
     options.AddPolicy("DeptAdminPolicy", p => p.RequireRole("DeptAdmin", "ITAdmin"));
 
+    // FallbackPolicy: bare [Authorize] requires any authenticated user.
+    // AuthController.Register/Login must use [AllowAnonymous].
     options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
@@ -198,11 +197,9 @@ builder.Services.AddAuthorization(options =>
 var app = builder.Build();
 
 // Seed the default ITAdmin ('admin' / 'Admin@123') so the API can be demoed
-// via Swagger on a fresh DB without needing SSMS to promote a role.
-// Idempotent — skips if a user named 'admin' already exists.
 await EduLearn.API.Data.DbInitializer.SeedDefaultAdminAsync(app.Services);
 
-//Swagger UI
+// Swagger UI
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -219,8 +216,7 @@ app.MapControllers();
 
 app.Run();
 
-
-//display enums as STRING values (names) instead of numeric values
+// Display enums as string values (names) instead of numeric values in Swagger
 public class EnumSchemaFilter : ISchemaFilter
 {
     public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
