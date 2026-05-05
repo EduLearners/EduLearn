@@ -4,34 +4,70 @@
 
 ---
 
-## Current Status (April 15, 2026)
+## Current Status (May 5, 2026)
 
 ### Build Status: ✅ 0 errors, 0 warnings
 
 ### Infrastructure
 - ASP.NET Core 8.0 + EF Core 8.0
 - SQL Server LocalDB — `EduLearnDb` with 25 tables
-- JWT Bearer authentication (60 min expiry) + BCrypt password hashing
+- JWT Bearer authentication (60 min expiry) + BCrypt password hashing (cost=12)
 - 8 role-based authorization policies
-- Swagger with 🔒 Authorize button
-- 20 repository interfaces + 20 implementations
-- 3 services: TokenService, AuthService, AuditLogService
+- Swagger with 🔒 Authorize button + XML doc summaries on all 94 endpoints
+- 21 repository interfaces + 21 implementations
+- 4 services: TokenService, AuthService, AuditLogService, PdfGeneratorService (QuestPDF 2024.x)
 - All controllers secured with `[Authorize]` (except Auth + Health)
+- Global exception middleware returns clean JSON on unhandled errors
+- Security hardening C-1 through C-26: all closed
 
-### 21 Controllers — 55+ Endpoints
+### Smoke Test Suite
+- **Run:** `bash tests/smoke/run-all.sh`
+- **Coverage:** 254+ assertions across all 25 modules + security sweeps
+- **Status:** ✅ All passing as of `dac2833`
+
+### Controllers — 94 Endpoints
 
 | Module | Owner | Controllers | Status |
 |---|---|---|---|
 | IAM | Ashish | AuthController, UsersController, AuditLogController | ✅ Done |
-| SRA | Saurav | ApplicantsController, StudentsController | ✅ Done |
-| ETS | Saurav | EnrollmentsController, SectionsController, RoomsController | ✅ Done |
-| CCM | Vikash | CoursesController, ProgramsController | ✅ Done |
-| AGI | Vikash | AssessmentsController, SubmissionsController | ✅ Done |
-| LMS | Vikash | ContentsController | ✅ Done |
+| SRA | Saurav | ApplicantsController, StudentsController, TranscriptsController | ✅ Done |
+| ETS | Saurav | EnrollmentsController, SectionsController, RoomsController, TimetableController | ✅ Done |
+| CCM | Vikash | CoursesController, ProgramsController, SyllabiController | ✅ Done |
+| AGI | Vikash | AssessmentsController, SubmissionsController, GradeChangesController | ✅ Done |
+| LMS | Vikash | ContentsController, DiscussionsController | ✅ Done |
 | SFB | Tanya | FeesController, InvoicesController, PaymentsController, ScholarshipsController | ✅ Done |
 | RKA | Utkarsh | ReportsController, KPIsController, AuditPackagesController | ✅ Done |
-| NHT | Swarna | — | ❌ Not started |
+| NHT | Swarna | NotificationsController, TicketsController | ✅ Done |
 | System | — | HealthController | ✅ Done |
+
+---
+
+## Known Gaps vs PRD
+
+| What | Owner | Gap | Priority |
+|---|---|---|---|
+| SRA-03 transcript download | Saurav | Returns JSON; PRD requires PDF + QR code | High |
+| AGI-04 plagiarism | Vikash | `PUT /api/submissions/{id}/plagiarism-report` and `GET /api/submissions/{id}/integrity-status` not implemented | High |
+| IAM-03 MFA | Ashish | `POST /api/auth/mfa/setup` and `POST /api/auth/mfa/verify` not implemented | Medium |
+
+---
+
+## Post-Interim Changes (April 24 → May 5, 2026)
+
+### Bug Fixes
+| Fix | Commit | Detail |
+|---|---|---|
+| RKA-01 camelCase downloads | `12fd156` | `JsonSerializer.Serialize` was returning PascalCase fields; added `PropertyNamingPolicy = CamelCase` |
+| R-5 GPA decimal overflow | `12fd156` | `decimal(3,2)` rejected 10.0 (Indian 10-pt CGPA); widened to `decimal(4,2)` via `WidenTranscriptGPA` migration |
+| Audit R-2 scholarship deduction | `3d718f7` | Scholarship fixture date bug caused silent zero deduction |
+| GeneratedByFK attribution (H-3) | `28ef88f` | `POST /api/reports/generate` now resolves `GeneratedByFK` from JWT, ignores body value |
+
+### New Features
+| Feature | Commits | Detail |
+|---|---|---|
+| RKA PDF downloads | `Tasks 1–6` | `GET /api/reports/{id}/download` and `GET /api/audit-packages/{id}/download` now return `application/pdf` by default via QuestPDF. Add `?format=json` to get the old JSON response. |
+| Swagger XML docs | `28ef88f` | All 94 endpoints documented with `<summary>` tags; Swagger UI shows descriptions |
+| Security hardening C-1–C-26 | multiple | See `docs/SECURITY-AUDIT-FINDINGS.md` for full list |
 
 ---
 
@@ -95,6 +131,10 @@ SELECT COUNT(*) FROM sys.foreign_keys WHERE delete_referential_action_desc != 'N
 -- All Status columns must be nvarchar, not int
 SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
 FROM INFORMATION_SCHEMA.COLUMNS WHERE COLUMN_NAME = 'Status' ORDER BY TABLE_NAME;
+
+-- GPA must be decimal(4,2) to hold 10-point CGPA
+SELECT COLUMN_NAME, NUMERIC_PRECISION, NUMERIC_SCALE
+FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Transcripts' AND COLUMN_NAME = 'GPA';
 ```
 
 ---
@@ -743,65 +783,95 @@ Expected: `200 OK`
 
 ---
 
-### SECTION 14 — Reports (RKA-01)
+### SECTION 14 — Transcripts (SRA-03)
 
-> Login as ITAdmin or Auditor to access these endpoints.
+> Registrar or ITAdmin only.
 
-**14.1 Generate report**
+**14.1 Generate transcript for student 1**
+```
+POST /api/transcripts/generate/1
+```
+Expected: `201 Created` — status "Draft", includes enrolled courses and computed CGPA (10-point scale, `decimal(4,2)`)
+
+**14.2 Get transcripts by student**
+```
+GET /api/transcripts/student/1
+```
+Expected: `200 OK` — returns draft transcript list
+
+**14.3 Publish transcript**
+```
+PUT /api/transcripts/{id}/publish
+```
+Expected: `200 OK` — status changes to "Issued", `issuedAt` populated
+
+**14.4 Download transcript (JSON)**
+```
+GET /api/transcripts/{id}
+```
+Expected: `200 OK` — transcript JSON with GPA, entries, student info
+
+> **Known gap:** PRD requires PDF + QR code download. Currently only JSON is returned. Saurav to implement.
+
+---
+
+### SECTION 15 — Reports (RKA-01)
+
+> Login as ITAdmin or Auditor to access these endpoints. `generatedByFK` is resolved from the JWT — body value is ignored (H-3 hardening).
+
+**15.1 Generate report**
 ```
 POST /api/reports/generate
 ```
 ```json
 {
   "scope": "Enrollment",
-  "parametersJSON": "{\"term\": \"Fall 2026\"}",
-  "generatedByFK": 1
+  "parametersJSON": "{\"term\": \"Fall 2026\"}"
 }
 ```
 Expected: `201 Created` — report record created with scope "Enrollment"
 
-**14.2 List all reports**
+**15.2 List all reports**
 ```
 GET /api/reports
 ```
 Expected: `200 OK` — returns report list
 
-**14.3 Download report**
+**15.3 Download report as PDF (default)**
 ```
 GET /api/reports/1/download
 ```
-Expected: `200 OK` — returns report data (PDF generation is post-interim TODO)
+Expected: `200 OK` — `Content-Type: application/pdf`, binary PDF file via QuestPDF
 
-**14.4 Negative test — invalid user**
+**15.4 Download report as JSON**
 ```
-POST /api/reports/generate
+GET /api/reports/1/download?format=json
 ```
-```json
-{
-  "scope": "Finance",
-  "parametersJSON": null,
-  "generatedByFK": 0
-}
+Expected: `200 OK` — `Content-Type: application/json`, camelCase fields (`reportID`, `scope`, `generatedAt`, etc.)
+
+**15.5 Role denial — Student cannot access reports**
 ```
-Expected: `400` — `INVALID_USER_ID`
+GET /api/reports
+```
+Expected: `403 Forbidden` (when called with Student token)
 
 ---
 
-### SECTION 15 — KPIs (RKA-02)
+### SECTION 16 — KPIs (RKA-02)
 
-**15.1 Seed default KPIs**
+**16.1 Seed default KPIs**
 ```
 POST /api/kpis/seed
 ```
 Expected: `200 OK` — default KPIs created (idempotent — returns `409 Conflict` if already seeded)
 
-**15.2 List all KPIs**
+**16.2 List all KPIs**
 ```
 GET /api/kpis
 ```
 Expected: `200 OK` — returns list of KPIs with names, targets, current values
 
-**15.3 Recalculate KPIs**
+**16.3 Recalculate KPIs**
 ```
 POST /api/kpis/recalculate
 ```
@@ -809,9 +879,9 @@ Expected: `200 OK` — KPI values recomputed from current data
 
 ---
 
-### SECTION 16 — Audit Packages (RKA-03)
+### SECTION 17 — Audit Packages (RKA-03)
 
-**16.1 Generate audit package**
+**17.1 Generate audit package**
 ```
 POST /api/audit-packages/generate
 ```
@@ -823,7 +893,7 @@ POST /api/audit-packages/generate
 ```
 Expected: `201 Created` — audit package with contents summary
 
-**16.2 Invalid date range**
+**17.2 Invalid date range**
 ```
 POST /api/audit-packages/generate
 ```
@@ -835,17 +905,23 @@ POST /api/audit-packages/generate
 ```
 Expected: `400` — `INVALID_DATE_RANGE`
 
-**16.3 Download audit package**
+**17.3 Download audit package as PDF (default)**
 ```
 GET /api/audit-packages/1/download
 ```
-Expected: `200 OK` — returns package data (ZIP generation is post-interim TODO)
+Expected: `200 OK` — `Content-Type: application/pdf`, binary PDF via QuestPDF
+
+**17.4 Download audit package as JSON**
+```
+GET /api/audit-packages/1/download?format=json
+```
+Expected: `200 OK` — `Content-Type: application/json`, camelCase fields (`packageID`, `periodStart`, `periodEnd`, `contentsJSON`, `generatedAt`)
 
 ---
 
-### SECTION 17 — Assessment Archival (AGI-01 — New)
+### SECTION 18 — Assessment Archival (AGI-01)
 
-**17.1 Close assessment first**
+**18.1 Close assessment first**
 ```
 PUT /api/assessments/1/publish
 ```
@@ -854,7 +930,7 @@ PUT /api/assessments/1/publish
 ```
 Expected: `200 OK` — status "Closed"
 
-**17.2 Archive closed assessment**
+**18.2 Archive closed assessment**
 ```
 PUT /api/assessments/1/publish
 ```
@@ -863,7 +939,7 @@ PUT /api/assessments/1/publish
 ```
 Expected: `200 OK` — status "Archived"
 
-**17.3 Cannot archive non-closed assessment**
+**18.3 Cannot archive non-closed assessment**
 Create a new Draft assessment, then try to archive it directly:
 ```json
 { "status": "Archived" }
@@ -887,26 +963,30 @@ FROM Enrollments ORDER BY EnrollID;
 
 -- GradeChange audit trail (from re-grading)
 SELECT * FROM GradeChanges;
+
+-- GPA column must be decimal(4,2) — supports 10-point CGPA
+SELECT NUMERIC_PRECISION, NUMERIC_SCALE FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'Transcripts' AND COLUMN_NAME = 'GPA';
 ```
 
 ---
 
-## What's Remaining — Post-Interim Features (by June 16)
+## What's Remaining — Open Gaps
+
+### Saurav (SRA)
+| Feature | Endpoints | Status | Note |
+|---|---|---|---|
+| SRA-03 transcript PDF | `GET /api/transcripts/{id}` (PDF variant) | ❌ Gap | PRD requires PDF + QR code; currently JSON only |
 
 ### Vikash (CCM + LMS + AGI)
 | Feature | Endpoints | Status |
 |---|---|---|
-| CCM-02 (Syllabus Versioning) | 4 | ❌ Not started |
-| CCM-03 (Prerequisite Engine) | 1 | ❌ Not started |
-| LMS-02 (Discussion Forums) | 4 | ❌ Not started |
-| AGI-03 (Grade Change Audit Trail) | 2 | ❌ Not started |
-| AGI-04 (Plagiarism Tracking) | 2 | ❌ Not started |
+| AGI-04 plagiarism tracking | `PUT /api/submissions/{id}/plagiarism-report`, `GET /api/submissions/{id}/integrity-status` | ❌ Not implemented |
 
-### Swarna (NHT)
+### Ashish (IAM)
 | Feature | Endpoints | Status |
 |---|---|---|
-| NHT-01 (Notifications + SignalR) | 5 | ❌ Not started |
-| NHT-03 (Helpdesk Tickets) | 5 | ❌ Not started |
+| IAM-03 MFA | `POST /api/auth/mfa/setup`, `POST /api/auth/mfa/verify` | ❌ Not implemented |
 
 ### All Team Members
 | Task | Status |
@@ -926,7 +1006,8 @@ SELECT * FROM GradeChanges;
 5. **Use strongly-typed enums** from `Models/Enums/` — no magic strings
 6. **Test via Swagger** — login first, authorize with JWT, then test endpoints
 7. **Reference PRD:** `docs/EduLearn-PRD-v1.0_2.docx` — the ONLY authoritative PRD document
+8. **PDF downloads:** use `PdfGeneratorService` (QuestPDF 2024.x, community license, registered as Scoped) — never return raw JSON when PRD says PDF
 
 ---
 
-*Last updated: April 15, 2026 • EduLearn v1.0*
+*Last updated: May 5, 2026 • EduLearn v11.0*
