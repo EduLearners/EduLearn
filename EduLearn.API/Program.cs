@@ -14,6 +14,8 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // JSON enum serialization — enums sent as strings, not integers
@@ -99,6 +101,7 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<PdfGeneratorService>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
