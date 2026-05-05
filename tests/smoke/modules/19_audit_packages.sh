@@ -23,7 +23,7 @@ assert_body_contains "packageID" "download body contains packageID"
 assert_body_contains "periodStart" "download body contains periodStart"
 
 # Download without query param must return PDF (Content-Type: application/pdf)
-_pdf_ct=$(curl -sIk -H "Authorization: Bearer $TOKEN_AUDITOR" "$API_BASE/api/audit-packages/$PACKAGE_ID/download" 2>/dev/null | tr -d '\r' | grep -i "^content-type:" | head -1)
+_pdf_ct=$(curl -sk -o /dev/null -D - -H "Authorization: Bearer $TOKEN_AUDITOR" "$API_BASE/api/audit-packages/$PACKAGE_ID/download" 2>/dev/null | tr -d '\r' | grep -i "^content-type:" | head -1)
 if echo "$_pdf_ct" | grep -qi "application/pdf"; then
   log_pass "GET /api/audit-packages/{id}/download (no param) → Content-Type: application/pdf"
 else

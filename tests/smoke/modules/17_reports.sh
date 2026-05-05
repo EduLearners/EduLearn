@@ -22,7 +22,7 @@ assert_body_contains "reportID" "download body contains reportID"
 assert_body_contains "scope" "download body contains scope"
 
 # Download without query param must return PDF (Content-Type: application/pdf)
-_pdf_ct=$(curl -sIk -H "Authorization: Bearer $TOKEN_AUDITOR" "$API_BASE/api/reports/$REPORT_ID/download" 2>/dev/null | tr -d '\r' | grep -i "^content-type:" | head -1)
+_pdf_ct=$(curl -sk -o /dev/null -D - -H "Authorization: Bearer $TOKEN_AUDITOR" "$API_BASE/api/reports/$REPORT_ID/download" 2>/dev/null | tr -d '\r' | grep -i "^content-type:" | head -1)
 if echo "$_pdf_ct" | grep -qi "application/pdf"; then
   log_pass "GET /api/reports/{id}/download (no param) → Content-Type: application/pdf"
 else
