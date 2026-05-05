@@ -2,6 +2,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -195,6 +196,63 @@ public class TranscriptsController : ControllerBase
         var program = await _programRepo.GetByIdAsync(student!.ProgramID);
 
         return Ok(MapToDto(updated, student, program?.Name ?? "Unknown"));
+    }
+
+    // GET /api/transcripts/{id}/pdf — SRA-03: Download transcript as a formatted PDF
+    /// <summary>
+    /// Download an Issued transcript as a PDF file. Only Issued transcripts can be downloaded.
+    /// Students may only download their own. Registrar and ITAdmin may download any.
+    /// </summary>
+    [HttpGet("{id}/pdf")]
+    public async Task<IActionResult> DownloadPdf(int id, CancellationToken cancellationToken)
+    {
+        var transcript = await _transcriptRepo.GetByIdAsync(id);
+        if (transcript is null)
+            return NotFound(new { error = "Transcript not found", code = "TRANSCRIPT_NOT_FOUND" });
+
+        // Only Issued transcripts can be downloaded as PDF
+        if (transcript.Status != TranscriptStatus.Issued)
+            return BadRequest(new
+            {
+                error = $"Only Issued transcripts can be downloaded as PDF (current status: {transcript.Status})",
+                code = "TRANSCRIPT_NOT_ISSUED"
+            });
+
+        var student = await _studentRepo.GetByIdAsync(transcript.StudentID);
+        if (student is null)
+            return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
+
+        // Ownership check: students can only download their own transcript
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        if (callerRole == "Student" && student.UserID != callerId)
+            return StatusCode(403, new { error = "You may only download your own transcript", code = "TRANSCRIPT_FORBIDDEN" });
+
+        var program = await _programRepo.GetByIdAsync(student.ProgramID);
+
+        // Deserialize the stored EntriesJSON back into typed rows
+        var entries = JsonSerializer.Deserialize<List<TranscriptEntryRow>>(
+            transcript.EntriesJSON,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            ?? new List<TranscriptEntryRow>();
+
+        var pdfData = new TranscriptPdfData
+        {
+            StudentName = student.Name,
+            MRN = student.MRN,
+            ProgramName = program?.Name ?? "Unknown",
+            GPA = transcript.GPA,
+            IssuedAt = transcript.IssuedAt,
+            Status = transcript.Status.ToString(),
+            Entries = entries
+        };
+
+        // Generate PDF bytes in memory using QuestPDF
+        var doc = new TranscriptPdfDocument(pdfData);
+        var pdfBytes = doc.ToPdfBytes();
+
+        var filename = $"Transcript_{student.MRN}_{DateTime.UtcNow:yyyyMMdd}.pdf";
+        return File(pdfBytes, "application/pdf", filename);
     }
 
     private static TranscriptResponseDto MapToDto(Transcript t, Student s, string programName) => new()
