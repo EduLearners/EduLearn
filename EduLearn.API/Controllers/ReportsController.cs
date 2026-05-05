@@ -2,6 +2,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -15,11 +16,16 @@ public class ReportsController : ControllerBase
 {
     private readonly IReportRepository _reportRepository;
     private readonly ILogger<ReportsController> _logger;
+    private readonly PdfGeneratorService _pdfGenerator;
 
-    public ReportsController(IReportRepository reportRepository, ILogger<ReportsController> logger)
+    public ReportsController(
+        IReportRepository reportRepository,
+        ILogger<ReportsController> logger,
+        PdfGeneratorService pdfGenerator)
     {
         _reportRepository = reportRepository;
         _logger = logger;
+        _pdfGenerator = pdfGenerator;
     }
 
     // ── POST /api/reports/generate — Create a new report record ──
@@ -63,20 +69,35 @@ public class ReportsController : ControllerBase
 
     // ── GET /api/reports/{id}/download — Get a single report by ID ──
     /// <summary>
-    /// Retrieve a single report by ID. Auditor and ITAdmin only.
+    /// Download a report as PDF (default) or JSON (?format=json). Auditor and ITAdmin only.
     /// </summary>
     [HttpGet("{id}/download")]
     [Authorize(Roles = "Auditor,ITAdmin")]
-    public async Task<ActionResult<ReportResponseDto>> Download(int id, CancellationToken ct)
+    public async Task<IActionResult> Download(int id, [FromQuery] string? format, CancellationToken ct)
     {
         var report = await _reportRepository.GetReportByIdAsync(id, ct);
 
         if (report is null)
             return NotFound(new { error = "Report not found", code = "REPORT_NOT_FOUND" });
 
-        // TODO post-interim: generate PDF via QuestPDF, set ReportURI, return file
+        var dto = MapToDto(report);
 
-        return Ok(MapToDto(report));
+        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(dto,
+                new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                });
+            var jsonBytes = System.Text.Encoding.UTF8.GetBytes(json);
+            var jsonFileName = $"report-{id}-{report.Scope}-{report.GeneratedAt:yyyyMMdd}.json";
+            return File(jsonBytes, "application/json", jsonFileName);
+        }
+
+        var pdfBytes = _pdfGenerator.GenerateReportPdf(dto);
+        var fileName = $"report-{id}-{report.Scope}-{report.GeneratedAt:yyyyMMdd}.pdf";
+        return File(pdfBytes, "application/pdf", fileName);
     }
 
     private static ReportResponseDto MapToDto(Report r) => new()
