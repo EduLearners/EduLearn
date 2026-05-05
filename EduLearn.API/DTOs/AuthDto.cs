@@ -29,9 +29,6 @@ public class RegisterDto
 
     public string? Phone { get; set; }
 
-    // AUTH CHANGE: Role dropdown in Swagger shows: Student, Instructor, ITAdmin, etc.
-    [Required]
-    public UserRole Role { get; set; }
 }
 
 // AUTH CHANGE: What the user sends to POST /api/auth/login

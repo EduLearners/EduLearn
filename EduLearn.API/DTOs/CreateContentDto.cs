@@ -20,9 +20,6 @@ namespace EduLearn.API.DTOs
         [MaxLength(500)]
         public string URI { get; set; } = null!;
 
-        [Required]
-        public int UploadedByFK { get; set; }
-
         public string? MetadataJSON { get; set; }
     }
 }

@@ -130,6 +130,10 @@ public class AuthService
             return null;
         }
 
+        // Reject suspended or locked accounts before issuing a token
+        if (user.Status != UserStatus.Active)
+            return null;
+
         // Password matched — generate JWT
         var token = _tokenService.GenerateToken(user);
         var expiryMinutes = int.Parse(_config["Jwt:AccessTokenExpiryMinutes"] ?? "60");

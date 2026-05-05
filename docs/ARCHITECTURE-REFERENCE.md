@@ -187,8 +187,11 @@ Or use the batch files: `.\add-migrations.bat <n>` and `.\migrate-database.bat`
 | AGI-02 | GET | /api/submissions/student/{studentId} |
 | AGI-03 | POST | /api/grade-changes |
 | AGI-03 | GET | /api/gradechanges/submission/{submissionId} |
-| AGI-04 | PUT | /api/submissions/{id}/plagiarism-report |
-| AGI-04 | GET | /api/submissions/{id}/integrity-status |
+| AGI-04 | POST | /api/plagiarism/report |
+| AGI-04 | GET | /api/plagiarism/{id} |
+| AGI-04 | GET | /api/plagiarism/submission/{submissionId} |
+| AGI-04 | GET | /api/plagiarism/student/{studentId}/integrity |
+| AGI-04 | PUT | /api/plagiarism/{id}/status |
 
 ### SFB (Tanya)
 | Feature | Method | Endpoint |

@@ -10,10 +10,6 @@ namespace EduLearn.API.DTOs
         [Range(0, 9999.9)]
         public decimal Score { get; set; }
 
-        // The instructor's UserID who is grading this submission
-        [Required]
-        public int GraderID { get; set; }
-
         // Reason for grade change (required only when re-grading, but we always capture it)
         [MaxLength(500)]
         public string? Reason { get; set; }
