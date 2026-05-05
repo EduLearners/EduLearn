@@ -10,11 +10,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using QuestPDF.Infrastructure;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
-
-QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+// SRA-03 + RKA: QuestPDF Community licence (free for open-source / educational projects)
+QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -91,6 +92,7 @@ builder.Services.AddScoped<IScholarshipRepository, ScholarshipRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 builder.Services.AddScoped<IGradeChangeRepository, GradeChangeRepository>();
 builder.Services.AddScoped<ISyllabusRepository, SyllabusRepository>();
+builder.Services.AddScoped<IPlagiarismRepository, PlagiarismRepository>();  // AGI-04
 builder.Services.AddScoped<PrerequisiteEngine>();  // CCM-03: prerequisite check service
 
 
