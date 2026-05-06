@@ -16,11 +16,17 @@ public class UsersController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
     private readonly AuditLogService _auditLogService;
+    // MFA CHANGE (IAM-03): notify the target user when an admin resets their MFA
+    private readonly INotificationService _notificationService;
 
-    public UsersController(IUserRepository userRepository, AuditLogService auditLogService)
+    public UsersController(
+        IUserRepository userRepository,
+        AuditLogService auditLogService,
+        INotificationService notificationService)  // MFA CHANGE (IAM-03)
     {
         _userRepository = userRepository;
         _auditLogService = auditLogService;
+        _notificationService = notificationService;
     }
 
     // AUTH CHANGE: Only ITAdmin can create users directly (others use /api/auth/register)
@@ -149,6 +155,47 @@ public class UsersController : ControllerBase
 
         await _userRepository.UpdateAsync(user);
         return Ok(MapToDto(user));
+    }
+
+    // MFA CHANGE (IAM-03): ITAdmin-only safety valve for users who have lost their authenticator
+    // device. Clears MFASecret + MFAEnabled. Idempotent: re-running on a user who has no MFA
+    // enrolled is a no-op and still returns 204. Audits MFAReset and drops a Warning notification
+    // on the target user so they see the change on their next session.
+    /// <summary>
+    /// Reset a user's MFA enrollment (clear MFASecret and MFAEnabled). ITAdmin only.
+    /// The target user will be asked to enroll again on their next login. Idempotent.
+    /// </summary>
+    [HttpPost("{id}/mfa/reset")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<IActionResult> ResetMfa(int id)
+    {
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user is null)
+            return NotFound(new { error = "User not found", code = "USER_NOT_FOUND" });
+
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
+
+        user.MFASecret = null;
+        user.MFAEnabled = false;
+        await _userRepository.UpdateAsync(user);
+
+        await _auditLogService.LogAsync(
+            callerId,
+            "MFAReset",
+            "User",
+            user.UserID,
+            new { resetBy = callerId, targetRole = user.Role.ToString() }
+        );
+
+        await _notificationService.NotifyAsync(
+            user.UserID,
+            NotificationCategory.System,
+            NotificationSeverity.Warning,
+            "Your MFA was reset by an administrator. You will be asked to enroll again on your next login."
+        );
+
+        return NoContent();
     }
 
     private static UserResponseDto MapToDto(User user) => new()

@@ -24,6 +24,8 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
     <!-- AUTH CHANGE: BCrypt password hashing (hash on register, verify on login) -->
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <!-- MFA CHANGE (IAM-03): TOTP (RFC 6238) for MFA on privileged roles -->
+    <PackageReference Include="Otp.NET" Version="1.4.0" />
   </ItemGroup>
 
 </Project>

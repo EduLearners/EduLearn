@@ -13,7 +13,7 @@
 - SQL Server LocalDB — `EduLearnDb` with 25 tables
 - JWT Bearer authentication (60 min expiry) + BCrypt password hashing (cost=12)
 - 8 role-based authorization policies
-- Swagger with 🔒 Authorize button + XML doc summaries on all 94 endpoints
+- Swagger with 🔒 Authorize button + XML doc summaries on all 100 endpoints
 - 21 repository interfaces + 21 implementations
 - 4 services: TokenService, AuthService, AuditLogService, PdfGeneratorService (QuestPDF 2024.x)
 - All controllers secured with `[Authorize]` (except Auth + Health)
@@ -22,10 +22,10 @@
 
 ### Smoke Test Suite
 - **Run:** `bash tests/smoke/run-all.sh`
-- **Coverage:** 254+ assertions across all 25 modules + security sweeps
+- **Coverage:** ~278 assertions across all 26 modules + security sweeps (estimate post-MFA; exact count verified post-run — see SECTION 19)
 - **Status:** ✅ All passing as of `dac2833`
 
-### Controllers — 94 Endpoints
+### Controllers — 100 Endpoints
 
 | Module | Owner | Controllers | Status |
 |---|---|---|---|
@@ -48,7 +48,6 @@
 |---|---|---|---|
 | SRA-03 transcript download | Saurav | Returns JSON; PRD requires PDF + QR code | High |
 | AGI-04 plagiarism | Vikash | `PUT /api/submissions/{id}/plagiarism-report` and `GET /api/submissions/{id}/integrity-status` not implemented | High |
-| IAM-03 MFA | Ashish | `POST /api/auth/mfa/setup` and `POST /api/auth/mfa/verify` not implemented | Medium |
 
 ---
 
@@ -948,6 +947,285 @@ Expected: `400` — `INVALID_STATUS_TRANSITION`
 
 ---
 
+### SECTION 19 — MFA (IAM-03)
+
+> Privileged roles (Registrar, DeptAdmin, Finance, ITAdmin, Auditor) must complete TOTP MFA on every login. Student and Instructor are exempt.
+>
+> The seeded ITAdmin (`admin`) is pre-enrolled with a fixed test TOTP secret stored in `EduLearn.API/Data/DbInitializer.cs` as `DefaultAdminMfaSecret`. This is a known-secret bootstrap purely for local dev / smoke runs — production deployments would override seeding or run admin reset on first run.
+>
+> Token model recap: privileged login returns a 5-minute JWT with `purpose=mfa_pending` (the `mfaToken`). That token can ONLY call `POST /api/auth/mfa/setup` and `POST /api/auth/mfa/verify`. Successful `/verify` returns the normal full session JWT — paste THAT into Swagger's 🔒 Authorize.
+
+**19.1 ITAdmin login (seeded admin) — challenge mode**
+
+The seeded admin already has `MFAEnabled=true`, so login produces a challenge.
+
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "admin",
+  "password": "Admin@123"
+}
+```
+Expected: `200 OK` — challenge response (note: no full `token` field):
+```json
+{
+  "mfaToken": "eyJhbGciOiJIUzI1NiIs...",
+  "purpose": "mfa_pending",
+  "expiresIn": 300,
+  "message": "MFA code required. POST /api/auth/mfa/verify with your authenticator code."
+}
+```
+
+Compute a current 6-digit TOTP from `DefaultAdminMfaSecret` (constant in `DbInitializer.cs`) using any RFC 6238 calculator, or re-enroll the secret into an authenticator app (Google Authenticator, Authy, 1Password — paste the Base32 secret into a manual entry, name it "EduLearn admin").
+
+In Swagger, click 🔒 Authorize and paste the `mfaToken` value (NOT a full JWT — this is the short-lived pending token).
+
+```
+POST /api/auth/mfa/verify
+```
+```json
+{ "code": "482913" }
+```
+Expected: `200 OK` — full session JWT:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "expiry": "2026-05-06T13:00:00Z",
+  "username": "admin",
+  "role": "ITAdmin"
+}
+```
+
+**Re-Authorize Swagger with this new full JWT.** All subsequent admin-gated calls require it.
+
+If the code is wrong:
+```json
+{ "code": "000000" }
+```
+Expected: `401 Unauthorized` — `{ "error": "Invalid MFA code", "code": "MFA_INVALID_CODE" }`. Audit log records `MFAVerifyFailed`.
+
+---
+
+**19.2 Registrar — fresh enrollment**
+
+As ITAdmin (full JWT from 19.1), mint a Registrar:
+
+```
+POST /api/users
+```
+```json
+{
+  "username": "kavya.reg",
+  "fullName": "Kavya Iyer",
+  "email": "kavya@edulearn.com",
+  "phone": "+91-9876543260",
+  "role": "Registrar",
+  "password": "Reg@123"
+}
+```
+Expected: `201 Created` — new user, `MFAEnabled=false` by default.
+
+Login as the new Registrar:
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "kavya.reg",
+  "password": "Reg@123"
+}
+```
+Expected: `200 OK` — challenge with **enrollment** message:
+```json
+{
+  "mfaToken": "eyJhbGciOiJIUzI1NiIs...",
+  "purpose": "mfa_pending",
+  "expiresIn": 300,
+  "message": "MFA enrollment required. POST /api/auth/mfa/setup to begin."
+}
+```
+
+Authorize Swagger with the `mfaToken`, then begin enrollment:
+```
+POST /api/auth/mfa/setup
+```
+*(No request body required — endpoint reads the user from the pending token.)*
+
+Expected: `200 OK`:
+```json
+{
+  "secret": "JBSWY3DPEHPK3PXP",
+  "otpauthUri": "otpauth://totp/EduLearn:kavya.reg?secret=JBSWY3DPEHPK3PXP&issuer=EduLearn"
+}
+```
+
+Paste the `secret` into an authenticator app (or render the `otpauthUri` as a QR with any online QR generator and scan it). The app now produces rolling 6-digit codes.
+
+Verify with the current code:
+```
+POST /api/auth/mfa/verify
+```
+```json
+{ "code": "739204" }
+```
+Expected: `200 OK` — full session JWT (same shape as 19.1). The user's `MFAEnabled` is now `true`. Audit log records `MFAEnrolled`.
+
+Log in again to confirm the **challenge** path now applies:
+```json
+{
+  "username": "kavya.reg",
+  "password": "Reg@123"
+}
+```
+Expected: `200 OK` — challenge with `message: "MFA code required. POST /api/auth/mfa/verify with your authenticator code."` (challenge-mode wording, not enrollment-mode).
+
+---
+
+**19.3 DeptAdmin — same enrollment pattern**
+
+As ITAdmin, mint a DeptAdmin:
+```
+POST /api/users
+```
+```json
+{
+  "username": "mohan.dept",
+  "fullName": "Mohan Reddy",
+  "email": "mohan@edulearn.com",
+  "phone": "+91-9876543270",
+  "role": "DeptAdmin",
+  "password": "Dept@123"
+}
+```
+Expected: `201 Created`.
+
+Login → `mfa_pending` (enrollment) → `POST /api/auth/mfa/setup` → returns `{ secret, otpauthUri }` → compute TOTP → `POST /api/auth/mfa/verify` with the 6-digit code → `200 OK` with full JWT, `MFAEnabled=true`. Subsequent logins yield the challenge-mode message. Same request/response shapes as 19.2.
+
+---
+
+**19.4 Finance — same enrollment pattern (ties into Section 11)**
+
+Section 11 (Finance) created `tanya.fin` (UserID 5) via `POST /api/users` already. With MFA enabled, the Section 11 instruction *"Login as Finance user first"* now requires the full enrollment dance the first time:
+
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "tanya.fin",
+  "password": "Fin@123"
+}
+```
+Expected: `200 OK` — `mfa_pending` with enrollment message (because tanya.fin was created in Section 0.5 before MFA enrollment).
+
+`POST /api/auth/mfa/setup` (with `mfaToken`) → returns `secret` + `otpauthUri` → compute TOTP → `POST /api/auth/mfa/verify` → full JWT. Re-Authorize Swagger with the full JWT, **then** continue with Section 11 (`POST /api/fees`, etc.). Subsequent Finance logins are challenge-mode.
+
+---
+
+**19.5 Auditor — same enrollment pattern (ties into Section 12)**
+
+As ITAdmin, mint an Auditor:
+```
+POST /api/users
+```
+```json
+{
+  "username": "naveen.aud",
+  "fullName": "Naveen Bhat",
+  "email": "naveen@edulearn.com",
+  "phone": "+91-9876543280",
+  "role": "Auditor",
+  "password": "Aud@123"
+}
+```
+Expected: `201 Created`.
+
+Login → `mfa_pending` (enrollment) → `/setup` → `/verify` → full JWT (same shapes as 19.2). With the full Auditor JWT in Swagger, repeat Section 12.1 / 12.2 (`GET /api/audit-log`) — note the new `MFAEnrolled` and `MFAVerifySuccess` rows now visible in the audit log alongside the existing entries.
+
+---
+
+**19.6 Negative — Student and Instructor (no MFA)**
+
+Login as a Student:
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "rahul.s",
+  "password": "Stud@123"
+}
+```
+Expected: `200 OK` — **full** `AuthResponseDto` directly, no `mfaToken`, no `purpose`:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "expiry": "2026-05-06T13:00:00Z",
+  "username": "rahul.s",
+  "role": "Student"
+}
+```
+
+Login as an Instructor:
+```json
+{
+  "username": "dr.priya",
+  "password": "Inst@123"
+}
+```
+Expected: `200 OK` — same shape as the Student response (full JWT, no MFA challenge). Instructor and Student remain single-call logins.
+
+---
+
+**19.7 Admin reset — recovery for lost device**
+
+Scenario: tanya.fin (Finance, UserID 5) lost her phone. ITAdmin clears her MFA so she can re-enroll.
+
+Authorize Swagger with the ITAdmin full JWT (from 19.1).
+
+```
+POST /api/users/5/mfa/reset
+```
+*(No request body.)*
+
+Expected: `204 No Content`. The endpoint:
+- clears `MFASecret` (sets to `null`),
+- sets `MFAEnabled = false`,
+- writes audit row `MFAReset` with `details: { resetBy: 1, targetRole: "Finance" }`,
+- drops a `Warning` notification on tanya.fin's notification list: *"Your MFA was reset by an administrator. You will be asked to enroll again on your next login."*
+
+Verify in audit log (still as ITAdmin):
+```
+GET /api/audit-log?action=MFAReset
+```
+Expected: `200 OK` — at least one entry with `userID: 1`, `action: "MFAReset"`, `resourceType: "User"`, `resourceID: 5`.
+
+Now tanya.fin logs in:
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "tanya.fin",
+  "password": "Fin@123"
+}
+```
+Expected: `200 OK` — `mfa_pending` with **enrollment** message again (because `MFAEnabled` is back to `false`).
+
+She repeats the steps from 19.2: `/setup` → fresh secret + otpauth URI → register in authenticator app → `/verify` with new code → full JWT. Audit log gets a fresh `MFAEnrolled` row.
+
+After that login completes, she can read her notifications:
+```
+GET /api/notifications/me
+```
+Expected: `200 OK` — her notification list includes the reset warning sent earlier.
+
+Idempotency check: calling `POST /api/users/5/mfa/reset` again immediately (target already has no secret) still returns `204 No Content` — no error. Calling against a non-existent user returns `404`.
+
+---
+
 ## Post-Test DB Integrity Check
 
 ```sql
@@ -982,11 +1260,6 @@ WHERE TABLE_NAME = 'Transcripts' AND COLUMN_NAME = 'GPA';
 | Feature | Endpoints | Status |
 |---|---|---|
 | AGI-04 plagiarism tracking | `PUT /api/submissions/{id}/plagiarism-report`, `GET /api/submissions/{id}/integrity-status` | ❌ Not implemented |
-
-### Ashish (IAM)
-| Feature | Endpoints | Status |
-|---|---|---|
-| IAM-03 MFA | `POST /api/auth/mfa/setup`, `POST /api/auth/mfa/verify` | ❌ Not implemented |
 
 ### All Team Members
 | Task | Status |

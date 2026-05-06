@@ -83,9 +83,6 @@ No change. Useful addition.
 ### D-12: SRA-02 has extra `POST /api/students` not in PRD
 No change. Required by Saurav for the registrar's manual create flow.
 
-### D-15: IAM-03 (MFA) not implemented
-No change. [`AuthController.cs`](../EduLearn.API/Controllers/AuthController.cs) has only `register` and `login`. `User.MFAEnabled` column exists but unused.
-
 ### D-16: ETS-01 — prerequisite + timetable conflict checks still not in enroll
 **Carried forward, now with extra weight.** The Timetable controller exists ([`TimetableController.cs`](../EduLearn.API/Controllers/TimetableController.cs)) and the conflict-detection logic works (smoke test module 24 verifies it). But [`EnrollmentsController.cs:41-167`](../EduLearn.API/Controllers/EnrollmentsController.cs#L41) still does not call it. Students must invoke `POST /api/timetable/validate-section` manually as a separate step. Prerequisite check still requires a `PrerequisiteEngine` (D-08).
 

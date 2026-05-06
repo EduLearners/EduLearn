@@ -5,6 +5,16 @@
 : "${SEED_TS:=$(date +%s)}"
 export SEED_TS
 
+# TOTP helper (used by _login_with_mfa for the 5 privileged roles)
+# shellcheck source=lib/totp.sh
+. "$SMOKE_ROOT/lib/totp.sh"
+
+# Fixed test TOTP secret. Matches DbInitializer.DefaultAdminMfaSecret on the
+# backend so smoke tests can compute valid codes for SQL-seeded MFA users.
+# This is also written into Users.MFASecret by _promote() for the 5 privileged
+# accounts so the smoke harness can compute valid codes at /mfa/verify time.
+export SEED_MFA_SECRET='JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'
+
 # Usernames (exported so modules can reference)
 export U_ITADMIN="itadmin_$SEED_TS"
 export U_INSTRUCTOR="instructor_$SEED_TS"
@@ -38,14 +48,53 @@ _login() {
   jget token
 }
 
+# IAM-03: privileged login is two-step.
+#   Login → if response carries `mfaToken` (privileged path), compute TOTP
+#   from $SEED_MFA_SECRET, POST /mfa/verify with bearer=mfaToken, return
+#   the resulting full-session JWT.
+#   If response carries `token` (non-privileged), pass it straight back.
+# Safe to call for any role — Student/Instructor get the single-call path.
+_login_with_mfa() {
+  local user="$1"
+  local body="{\"username\":\"$user\",\"password\":\"$SEED_PWD\"}"
+  http_post /api/auth/login "" "$body" >/dev/null
+  if [[ "$LAST_STATUS" != "200" ]]; then
+    log_fail "seed: login $user (status=$LAST_STATUS)"
+    return 1
+  fi
+  local mfa_token full_token
+  mfa_token=$(jget mfaToken)
+  full_token=$(jget token)
+  if [[ -n "$mfa_token" ]]; then
+    local code
+    code=$(totp_for_secret "$SEED_MFA_SECRET")
+    http_post /api/auth/mfa/verify "$mfa_token" "{\"code\":\"$code\"}" >/dev/null
+    if [[ "$LAST_STATUS" != "200" ]]; then
+      log_fail "seed: mfa/verify $user (status=$LAST_STATUS, code=$code)"
+      return 1
+    fi
+    jget token
+  else
+    echo "$full_token"
+  fi
+}
+
 # HARDENING (C-26): POST /api/auth/register now forces Role=Student server-side (anonymous
 # users cannot self-elevate). Our smoke harness needs privileged users for role-gated tests,
 # so we bootstrap them via SQL — register gives Student, then we UPDATE the role in-place,
 # then we re-login to get a JWT with the new role claim baked in.
+#
+# IAM-03: for the 5 privileged roles we ALSO seed MFASecret + MFAEnabled=1 in the same
+# UPDATE so the re-login path goes through /mfa/verify with a known code.
 _promote() {
-  local user="$1" role="$2"
-  sqlcmd -S '(localdb)\MSSQLLocalDB' -d EduLearnDb -h -1 -W \
-    -Q "SET NOCOUNT ON; UPDATE Users SET Role='$role' WHERE Username='$user';" >/dev/null 2>&1
+  local user="$1" role="$2" with_mfa="${3:-0}"
+  if [[ "$with_mfa" == "1" ]]; then
+    sqlcmd -S '(localdb)\MSSQLLocalDB' -d EduLearnDb -h -1 -W \
+      -Q "SET NOCOUNT ON; UPDATE Users SET Role='$role', MFASecret='$SEED_MFA_SECRET', MFAEnabled=1 WHERE Username='$user';" >/dev/null 2>&1
+  else
+    sqlcmd -S '(localdb)\MSSQLLocalDB' -d EduLearnDb -h -1 -W \
+      -Q "SET NOCOUNT ON; UPDATE Users SET Role='$role' WHERE Username='$user';" >/dev/null 2>&1
+  fi
 }
 
 seed_users() {
@@ -61,19 +110,22 @@ seed_users() {
 
   # C-26 forces all registrations to Student. Promote the 6 privileged accounts via SQL,
   # then re-login so the JWT carries the correct Role claim.
-  _promote "$U_ITADMIN"    ITAdmin
-  _promote "$U_INSTRUCTOR" Instructor
-  _promote "$U_REGISTRAR"  Registrar
-  _promote "$U_DEPTADMIN"  DeptAdmin
-  _promote "$U_FINANCE"    Finance
-  _promote "$U_AUDITOR"    Auditor
+  # IAM-03: for the 5 MFA-gated roles, also seed MFASecret+MFAEnabled in the same UPDATE.
+  # Instructor stays a single-call login (no MFA).
+  _promote "$U_ITADMIN"    ITAdmin    1
+  _promote "$U_INSTRUCTOR" Instructor 0
+  _promote "$U_REGISTRAR"  Registrar  1
+  _promote "$U_DEPTADMIN"  DeptAdmin  1
+  _promote "$U_FINANCE"    Finance    1
+  _promote "$U_AUDITOR"    Auditor    1
 
-  export TOKEN_ITADMIN=$(_login "$U_ITADMIN")
+  # 5 privileged roles → MFA-aware login. Instructor + Students → plain login.
+  export TOKEN_ITADMIN=$(_login_with_mfa "$U_ITADMIN")
   export TOKEN_INSTRUCTOR=$(_login "$U_INSTRUCTOR")
-  export TOKEN_REGISTRAR=$(_login "$U_REGISTRAR")
-  export TOKEN_DEPTADMIN=$(_login "$U_DEPTADMIN")
-  export TOKEN_FINANCE=$(_login "$U_FINANCE")
-  export TOKEN_AUDITOR=$(_login "$U_AUDITOR")
+  export TOKEN_REGISTRAR=$(_login_with_mfa "$U_REGISTRAR")
+  export TOKEN_DEPTADMIN=$(_login_with_mfa "$U_DEPTADMIN")
+  export TOKEN_FINANCE=$(_login_with_mfa "$U_FINANCE")
+  export TOKEN_AUDITOR=$(_login_with_mfa "$U_AUDITOR")
   export TOKEN_STUDENT1=$(_login "$U_STUDENT1")
   export TOKEN_STUDENT2=$(_login "$U_STUDENT2")
 

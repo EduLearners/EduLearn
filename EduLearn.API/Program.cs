@@ -104,6 +104,8 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AuditLogService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<PdfGeneratorService>();
+// MFA CHANGE (IAM-03): TOTP helper (RFC 6238) used by AuthService for setup/verify
+builder.Services.AddScoped<MfaService>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -124,6 +126,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
+            // MFA CHANGE (IAM-03): A token carrying a 'purpose' claim is short-lived and
+            // scoped to a specific flow (currently only mfa_pending for the /api/auth/mfa/*
+            // endpoints). Reject it on any other path so a leaked challenge token cannot be
+            // used as a session token. The two MFA endpoints accept it via inline check
+            // inside AuthController; everything else fails closed here.
+            OnTokenValidated = context =>
+            {
+                var purposeClaim = context.Principal?.FindFirst("purpose")?.Value;
+                if (!string.IsNullOrEmpty(purposeClaim))
+                {
+                    var path = context.Request.Path.Value ?? string.Empty;
+                    if (!path.StartsWith("/api/auth/mfa/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Fail("Purpose-scoped token cannot be used on this endpoint.");
+                    }
+                }
+                return Task.CompletedTask;
+            },
+
             OnChallenge = async context =>
             {
                 context.HandleResponse();

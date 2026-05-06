@@ -56,4 +56,36 @@ public class TokenService
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    // MFA CHANGE (IAM-03): Short-lived JWT for the MFA challenge / enrollment window.
+    // Carries a 'purpose=mfa_pending' claim. The default JWT pipeline rejects any token
+    // with a purpose claim; the two MFA endpoints accept it via inline check. 5-minute
+    // expiry — enough for a user to scan a QR or punch a code, not enough to be useful
+    // if leaked.
+    public string GenerateMfaPendingToken(User user)
+    {
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(_config["Jwt:Secret"]!));
+
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new Claim("purpose", "mfa_pending")
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _config["Jwt:Issuer"],
+            audience: _config["Jwt:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(5),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
 }

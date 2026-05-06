@@ -39,6 +39,9 @@ public class User
 
     public bool MFAEnabled { get; set; } = false;
 
+    [MaxLength(128)]
+    public string? MFASecret { get; set; }
+
     [Required]
     [MaxLength(20)]
     public UserStatus Status { get; set; } = UserStatus.Active;
