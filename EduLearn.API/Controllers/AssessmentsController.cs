@@ -17,7 +17,7 @@ public class AssessmentsController : ControllerBase
     private readonly ICourseRepository _courseRepository;
     private readonly IUserRepository _userRepository;
     private readonly ISectionRepository _sectionRepository;
-    private IAssessmentRepository @object;
+    
 
     public AssessmentsController(
         IAssessmentRepository assessmentRepository,
@@ -36,10 +36,7 @@ public class AssessmentsController : ControllerBase
     /// Validates that the target course and optional section exist before saving.
     /// </summary>
 
-    public AssessmentsController(IAssessmentRepository @object)
-    {
-        this.@object = @object;
-    }
+  
 
 
     [HttpPost]
