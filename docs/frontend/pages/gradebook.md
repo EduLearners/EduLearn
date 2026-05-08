@@ -30,7 +30,29 @@ All fetched in parallel on mount. Submissions data normalised client-side into a
 
 ---
 
-## 3. Layout
+## 3. Educator persona — dark chrome treatment
+
+The gradebook (and **all Educator persona routes**) uses a dark-chrome AppShell. Same `brand-500` (#1f4d2c) as the login left panel — consistent color spec, different application register.
+
+**Sidebar:**
+- Background: `brand-500` (#1f4d2c)
+- Nav item text: `neutral-0` at 85% opacity
+- Active item: `background: rgba(255,255,255,0.10)` + `box-shadow: inset 2px 0 0 #fdfcfa` (2px white inset — same 2px mechanic as Learner sidebar, adapted for dark surface)
+- Hover: `background: rgba(255,255,255,0.06)`
+- No full-width green fill on active items — inset + tint only
+
+**Top bar (Educator):**
+- Background: `brand-700` (≈ oklch(30% 0.09 145) ≈ #142d1c)
+- "EduLearn" wordmark: `neutral-0`, IBM Plex Sans 700
+- Breadcrumb ("CS-301 / GRADEBOOK"): `neutral-0` at 70% opacity; course code segment in Plex Mono
+- Instructor name right: `neutral-0` weight 400
+- Filter Assessments dropdown + Show Ungraded Only toggle sit in the top bar right area (not below page h1)
+
+**Applies to:** all routes under `/teaching/` — dashboard, gradebook, roster, assessment-editor, content-upload.
+
+---
+
+## 4. Layout
 
 ```
 ← Back to CS-301 sec A
@@ -65,7 +87,7 @@ Row avg:              [23.1]   [18.8]   [83.2]      ← pinned footer row
 
 ---
 
-## 4. Score cell interaction
+## 5. Score cell interaction
 
 Each score cell is a `<td>` with `cursor: pointer`, `tabindex="0"`.
 

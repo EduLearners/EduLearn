@@ -30,9 +30,9 @@ First impression before any authenticated surface. Evaluator sees brand identity
 │   platform.           │                       │
 │                       │   Password            │
 │                       │   [_________________] │
-│   brand-500 bg        │                       │
-│   neutral-0 text      │   [Sign in]           │
-│                       │                       │
+│   "The highest        │                       │
+│   education..."       │   [Sign in]           │
+│   — Tagore            │                       │
 │                       │   Forgot your         │
 │                       │   password?           │
 │                       │                       │
@@ -64,7 +64,21 @@ platform.                      neutral-0 at 80% opacity (muted)
                                max-width: 22ch
 ```
 
-Layout within panel: brand mark in upper third (`padding-top: space-16`). Tagline below with `margin-top: space-4`. No other elements. No illustration. No decorative elements. No quote. No feature list.
+Layout within panel: brand mark in upper third (`padding-top: space-16`). Tagline below with `margin-top: space-4`. Tagore quote in the center-left zone. Copyright footer pinned to bottom.
+
+**Tagore quote (adds editorial warmth to the otherwise spare panel):**
+```
+"The highest education is that which does not
+merely give us information but makes our life
+in harmony with all existence."
+
+— Rabindranath Tagore
+```
+- Font: IBM Plex Sans 14px, weight 400, `font-style: italic`
+- Color: `neutral-0` at 65% opacity
+- Attribution line: `neutral-0` at 50% opacity, 12px, non-italic
+- `margin-top: space-16` from tagline; `max-width: 28ch`
+- No decorative quotation marks — plain text only
 
 Footer: `© EduLearn 2026` — caption tier, neutral-0 at 60% opacity, pinned to `position: absolute; bottom: space-8`.
 
@@ -171,6 +185,10 @@ No refresh token. No cookie. Token lives in `sessionStorage` — clears on tab c
       <!-- aria-hidden: purely presentational brand surface -->
       <div class="brand-mark">EduLearn</div>
       <p class="brand-tagline">The modern university platform.</p>
+      <blockquote class="brand-quote">
+        <p>"The highest education is that which does not merely give us information but makes our life in harmony with all existence."</p>
+        <footer>— Rabindranath Tagore</footer>
+      </blockquote>
     </section>
     <section class="form-panel">
       <form method="post" aria-label="Sign in to EduLearn">

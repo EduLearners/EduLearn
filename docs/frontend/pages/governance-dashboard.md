@@ -40,44 +40,50 @@ All parallel via `useQueries()`.
 
 ## 4. Layout — desktop ≥1024px
 
+**Visual direction:** Variant 2+3 merge — full-width content blocks, ALL CAPS section labels, dense information, 4-card KPI row. No max-width constraint on content blocks (governance is a data surface, not a reading surface).
+
 ```
-┌──────┬──────────────────────────────────────────────────────────┐
-│ Rail │  TopBar (56px)                                            │
-│      │  [EduLearn]  [▾ Governance]              [bell] [JD▾]   │
-│ Dsh  │              └──persona switcher──┘                      │
-│ Usr  ├──────────────────────────────────────────────────────────┤
-│ ALog │                                                           │
-│ Tkt  │  Governance — Admin                              ← h1    │
-│ Plg  │  Fall 2026  ·  312 users  ·  5 open tickets  ·  2 flags  │
-│ Rep  │                                                           │
-│ KPI  │  ┌──────────────────────────────────────────────────┐    │
-│ APkg │  │  Open tickets (5)                [View all →]   │    │
-│      │  │  Aarav Mehta  Login issue  High  today       →  │    │
-│      │  │  Diya Bhat    MFA reset    Med   yesterday   →  │    │
-│      │  │  + 3 more                                       │    │
-│      │  └──────────────────────────────────────────────────┘    │
-│      │                                                           │
-│      │  Recent audit events                             ← h2    │
-│      │  ─────────────────────────────────────────────────        │
-│      │  Anjali Iyer  SubmissionGraded  CS-301  2 min ago  →     │
-│      │  Aarav Mehta  EnrollmentDropped  ECO-150  5h ago   →     │
-│      │  Rajan Mehta  InvoiceGenerated  x50  9h ago        →     │
-│      │  [View full audit log →]                                  │
-│      │                                                           │
-│      │  Plagiarism queue (2 pending)                    ← h2    │
-│      │  ─────────────────────────────────────────────────        │
-│      │  CS-301 PSet 3   78%   Anjali Iyer   2d ago    →         │
-│      │  PHIL-220 Essay  62%   Anjali Iyer   yesterday  →        │
-│      │                                                           │
-│      │  KPI snapshot                                    ← h2    │
-│      │  ─────────────────────────────────────────────────        │
-│      │  Enrollment rate  92%  ↑    GPA avg  3.2              │
-│      │  Invoice collection 78%  ↓    Plagiarism flags  2       │
-│      │                                                           │
-│      │  Quick access                                    ← h2    │
-│      │  [Reports]  [Audit Packages]  [User Roster]              │
-└──────┴──────────────────────────────────────────────────────────┘
+┌──────┬──────────────────────────────────────────────────────────────┐
+│ Rail │  TopBar (56px)                                                │
+│      │  [EduLearn]  [▾ Governance]                  [bell] [JD▾]  │
+│ Dsh  │              └── persona switcher ──┘                        │
+│ Usr  ├──────────────────────────────────────────────────────────────┤
+│ ALog │                                                               │
+│ Tkt  │  Governance — Admin                                  ← h1   │
+│ Plg  │  Fall 2026  ·  312 users  ·  5 open tickets  ·  2 flags     │
+│ Rep  │                                                               │
+│ KPI  │  OPEN TICKETS                               [View all →]    │
+│ APkg │  ──────────────────────────────────────────────────────────  │
+│      │  Aanya Patel   Course access denied  [HIGH]   10/24/26  →   │
+│      │  Rahul Sharma  Name change request   [MED]    10/24/26  →   │
+│      │  Priya Singh   Missing grade         [MED]    10/23/26  →   │
+│      │                                                               │
+│      │  RECENT AUDIT EVENTS                                         │
+│      │  ──────────────────────────────────────────────────────────  │
+│      │  26-10-24 14:32  Prof. Mehta   Graded submission  ENG204 →  │
+│      │  26-10-24 14:15  System        Dropped enrollment  HIS301 → │
+│      │  26-10-24 13:40  Admin V.Arora Exported report    Q3 Fin  → │
+│      │  26-10-24 11:20  Prof. Iyer    Modified syllabus  POL101 →  │
+│      │  [View full audit log →]                                      │
+│      │                                                               │
+│      │  PLAGIARISM QUEUE                                            │
+│      │  ──────────────────────────────────────────────────────────  │
+│      │  LIT400  Final Dissertation   [85%]  10/24/26            →  │
+│      │  SOC202  Weekly Response 4    [62%]  10/23/26            →  │
+│      │                                                               │
+│      │  SYSTEM HEALTH KPIS                                          │
+│      │  ──────────────────────────────────────────────────────────  │
+│      │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐          │
+│      │  │92% ↑    │ │3.2  ↑   │ │78%  ↓   │ │2        │          │
+│      │  │Enroll.  │ │Avg GPA  │ │Invoice  │ │Flags    │          │
+│      │  └─────────┘ └─────────┘ └─────────┘ └─────────┘          │
+│      │                                                               │
+│      │  QUICK ACCESS                                                │
+│      │  [Reports]  [Audit Packages]  [User Roster]                  │
+└──────┴──────────────────────────────────────────────────────────────┘
 ```
+
+**Section labels:** ALL CAPS, `0.6875rem` (11px), `letter-spacing: 0.08em`, `neutral-500` color, `font-weight: 600`. NOT h2 — use `<p className="section-label">`. This is the institutional "filing cabinet header" treatment.
 
 **Persona switcher in top bar (ITAdmin only):**
 Dropdown immediately right of brand mark: `[▾ Governance]`. Click → 4 options (Governance ✓, Operations, Educator, Learner). Select = auto-switch persona + toast "Switched to {persona} view." + nav rail repaints (300ms fade). Per routes.md section 4.
@@ -118,40 +124,54 @@ Block hidden for Auditor if they have no tickets of their own.
 
 Append-only — rendered as a read-only time-ordered list. No edit affordances.
 
-Row format: `{userFullName}  {action}  {resourceType}  {relative time}  →`
+Row format: `{timestamp}  {userFullName}  {action}  {resource}  →`
 
-- Action rendered as a human-readable verb (SubmissionGraded → "graded a submission", InvoiceGenerated → "generated invoice"). Verb mappings defined in a `formatAuditAction()` util.
-- `[immutable]` badge NOT rendered (would be noise on a list of 10). Immutability is surfaced in the detail view, not the dashboard preview.
+- Timestamp in Plex Mono (26-10-24 14:32 format — date + time, both fields)
+- Action rendered as a human-readable verb (SubmissionGraded → "Graded submission", InvoiceGenerated → "Generated invoice"). Verb mappings defined in a `formatAuditAction()` util
+- **NO left-border accent on rows.** Zero decorative left-side stripe. Row hover state only: `neutral-50` background on hover. This is an immutable record — the trust comes from density and timestamp precision, not decoration.
+- `[immutable]` badge NOT rendered (would be noise on a list of 4). Immutability is surfaced in the detail view `/admin/audit-log`
 - "View full audit log" link → `/admin/audit-log`
 
 ---
 
 ## 8. Plagiarism queue block (ITAdmin only)
 
-Row format: `{courseCode} {assessmentTitle}  {similarity}%  {flaggedBy}  {relative time}  →`
+Row format: `{courseCode}  {assessmentTitle}  [{similarity}%]  {relative time}  →`
 
 Hidden for Auditor entirely.
 
-Same similarity color logic as Educator's plagiarism block. Click → `/admin/plagiarism/{id}` (with Confirm / Dismiss actions for ITAdmin).
+**Similarity as pill badge** (not plain colored text — badge improves scannability in a dense list):
+```jsx
+<span className={`badge similarity-badge ${score >= 80 ? 'bg-danger-subtle text-danger' : 'bg-warning-subtle text-warning'}`}>
+  {score}%
+</span>
+```
+- ≥80%: `danger-50` background, `danger-500` text
+- 60–79%: `warn-50` background, `warn-500` text
+- <60%: `neutral-100` background, `neutral-600` text
+
+Click → `/admin/plagiarism/{id}` (with Confirm / Dismiss actions for ITAdmin).
 
 ---
 
 ## 9. KPI snapshot section
 
-Not a full DataTable — a 2×2 stat grid with clean numbers. No hero-metric template.
+Not a full DataTable — a **1×4 card row** with clean numbers. No hero-metric template.
 
 ```jsx
-<div className="kpi-grid" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)'}}>
-  <KpiStat label="Enrollment rate" value="92%" delta="+2%" trend="up" />
-  <KpiStat label="Avg GPA" value="3.2" delta="" trend="neutral" />
-  <KpiStat label="Invoice collection" value="78%" delta="-4%" trend="down" />
-  <KpiStat label="Plagiarism flags" value="2" delta="" trend="neutral" />
+<div className="kpi-row" style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-4)'}}>
+  <KpiStat label="Enrollment Rate" value="92%" delta="+2%" trend="up" />
+  <KpiStat label="Average GPA"     value="3.2"  delta="+0.1" trend="up" />
+  <KpiStat label="Invoice Collection" value="78%" delta="-4%" trend="down" />
+  <KpiStat label="Active Flags"    value="2"    delta=""    trend="neutral" />
 </div>
 ```
 
-`<KpiStat>` component: label (caption tier, neutral-600) above value (subhead tier, neutral-900, Plex Mono, tabular-nums). Delta shown inline: `warn-500` for down, `success-500` for up, no delta indicator for neutral.
+`<KpiStat>` component: value (subhead tier, neutral-900, Plex Mono, tabular-nums) + delta inline (Plex Mono, small) + label (caption tier, `neutral-500`) below value. Trend arrow: `success-500` for up, `warn-500` for down.
 
-**NOT the hero-metric template** — no gradient background, no giant number with decorative accent. Just four small labeled stats in a grid.
+Cards: `border: 1px solid neutral-200`, `border-radius: 6px`, `padding: space-4 space-5`, `background: neutral-0`.
+
+**NOT the hero-metric template** — no gradient background, no giant display-size number, no colored card backgrounds. Four compact labeled stats in a row.
 
 ---
 
