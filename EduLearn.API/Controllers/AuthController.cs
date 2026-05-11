@@ -5,18 +5,23 @@
 //   POST /api/auth/register     → Register new user (BCrypt hashes password)
 //   POST /api/auth/login        → Login with username + password → returns JWT or MFA challenge
 //   POST /api/auth/mfa/setup    → (MFA CHANGE IAM-03) generate TOTP secret for enrollment
-//   POST /api/auth/mfa/verify   → (MFA CHANGE IAM-03) verify TOTP code, return full JWT
+//   POST /api/auth/mfa/confirm  → (MFA CHANGE IAM-03) confirm enrollment with first code
+//   POST /api/auth/mfa/verify   → (MFA CHANGE IAM-03) verify TOTP code on subsequent logins
 //
 // Flow (no MFA / Student or Instructor):
 //   1. Register at /register
 //   2. Login at /login → full JWT
 //   3. Use JWT in Authorization header
 //
-// Flow (privileged role with MFA):
-//   1. Login at /login → returns mfa_pending token + Message hint
-//   2. POST /mfa/setup (with mfa_pending token) → returns secret + otpauth URI
-//   3. POST /mfa/verify (with mfa_pending token + code) → returns full JWT
-//   4. Subsequent login → /verify-only (skip /setup since MFAEnabled=true)
+// Flow (privileged role, FIRST-TIME enrollment):
+//   1. Login at /login → returns mfa_pending token ("setup required")
+//   2. POST /mfa/setup    (with mfa_pending) → returns secret + otpauth URI
+//   3. User scans QR / enters secret in authenticator app
+//   4. POST /mfa/confirm  (with mfa_pending + first code) → enrollment done + full JWT
+//
+// Flow (privileged role, SUBSEQUENT logins):
+//   1. Login at /login → returns mfa_pending token ("code required")
+//   2. POST /mfa/verify   (with mfa_pending + code) → returns full JWT
 // ============================================================
 
 using System.Security.Claims;
@@ -104,14 +109,42 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// MFA challenge / enrollment-confirm: verify a 6-digit TOTP code.
-    /// Requires a valid mfa_pending token (issued by /api/auth/login for privileged roles).
-    /// On the first successful verify after enrollment, MFAEnabled flips to true
-    /// (audited as MFAEnrolled). On subsequent successes, audited as MFAVerifySuccess.
-    /// Returns a full session JWT on success, 401 on invalid code, 400 if no secret has
-    /// been initialized for the user.
+    /// MFA enrollment confirmation: verify the FIRST 6-digit TOTP code after /setup.
+    /// This proves the user successfully configured their authenticator app.
+    /// On success: MFAEnabled is set to true, MFAEnrolled audit entry is written,
+    /// and a full session JWT is returned.
+    /// Returns 409 if the user is already enrolled (use /verify instead).
+    /// Returns 400 if /setup has not been called yet.
+    /// Returns 401 if the code is invalid.
     /// </summary>
-    // MFA CHANGE (IAM-03): POST /api/auth/mfa/verify
+    // MFA CHANGE (IAM-03): POST /api/auth/mfa/confirm — FIRST-TIME ENROLLMENT ONLY
+    [HttpPost("mfa/confirm")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    public async Task<IActionResult> ConfirmMfa([FromBody] MfaVerifyDto dto)
+    {
+        var userId = TryGetMfaPendingUserId();
+        if (userId is null)
+            return Unauthorized(new { error = "MFA pending token required", code = "MFA_PENDING_TOKEN_REQUIRED" });
+
+        var (outcome, response) = await _authService.ConfirmMfaAsync(userId.Value, dto.Code);
+        return outcome switch
+        {
+            AuthService.MfaVerifyOutcome.Ok               => Ok(response),
+            AuthService.MfaVerifyOutcome.UserNotFound     => Unauthorized(new { error = "User not found", code = "USER_NOT_FOUND" }),
+            AuthService.MfaVerifyOutcome.NotInitialized   => BadRequest(new { error = "MFA not initialized. Call /api/auth/mfa/setup first.", code = "MFA_NOT_INITIALIZED" }),
+            AuthService.MfaVerifyOutcome.AlreadyEnrolled  => Conflict(new { error = "MFA is already enrolled. Use /api/auth/mfa/verify for login.", code = "MFA_ALREADY_ENROLLED" }),
+            AuthService.MfaVerifyOutcome.InvalidCode      => Unauthorized(new { error = "Invalid MFA code", code = "MFA_INVALID_CODE" }),
+            _                                             => StatusCode(500)
+        };
+    }
+
+    /// <summary>
+    /// MFA login challenge: verify a 6-digit TOTP code for an ALREADY-ENROLLED user.
+    /// Returns a full session JWT on success.
+    /// Returns 400 if the user has not completed enrollment yet (call /confirm instead).
+    /// Returns 401 if the code is invalid.
+    /// </summary>
+    // MFA CHANGE (IAM-03): POST /api/auth/mfa/verify — SUBSEQUENT LOGINS ONLY
     [HttpPost("mfa/verify")]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IActionResult> VerifyMfa([FromBody] MfaVerifyDto dto)
@@ -123,11 +156,12 @@ public class AuthController : ControllerBase
         var (outcome, response) = await _authService.VerifyMfaAsync(userId.Value, dto.Code);
         return outcome switch
         {
-            AuthService.MfaVerifyOutcome.Ok             => Ok(response),
-            AuthService.MfaVerifyOutcome.UserNotFound   => Unauthorized(new { error = "User not found", code = "USER_NOT_FOUND" }),
-            AuthService.MfaVerifyOutcome.NotInitialized => BadRequest(new { error = "MFA not initialized. Call /api/auth/mfa/setup first.", code = "MFA_NOT_INITIALIZED" }),
-            AuthService.MfaVerifyOutcome.InvalidCode    => Unauthorized(new { error = "Invalid MFA code", code = "MFA_INVALID_CODE" }),
-            _                                           => StatusCode(500)
+            AuthService.MfaVerifyOutcome.Ok               => Ok(response),
+            AuthService.MfaVerifyOutcome.UserNotFound     => Unauthorized(new { error = "User not found", code = "USER_NOT_FOUND" }),
+            AuthService.MfaVerifyOutcome.NotInitialized   => BadRequest(new { error = "MFA not initialized. Call /api/auth/mfa/setup first.", code = "MFA_NOT_INITIALIZED" }),
+            AuthService.MfaVerifyOutcome.NotEnrolled      => BadRequest(new { error = "MFA enrollment not complete. Call /api/auth/mfa/confirm with your first code.", code = "MFA_NOT_ENROLLED" }),
+            AuthService.MfaVerifyOutcome.InvalidCode      => Unauthorized(new { error = "Invalid MFA code", code = "MFA_INVALID_CODE" }),
+            _                                             => StatusCode(500)
         };
     }
 

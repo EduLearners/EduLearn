@@ -71,7 +71,9 @@ public class AuthService
         Ok,
         UserNotFound,
         NotInitialized,
-        InvalidCode
+        InvalidCode,
+        NotEnrolled,        // /verify called but user has not completed enrollment yet
+        AlreadyEnrolled     // /confirm called but user is already enrolled
     }
 
     // ════════════════════════════════════════
@@ -246,15 +248,72 @@ public class AuthService
     }
 
     // ════════════════════════════════════════
+    // MFA CONFIRM — POST /api/auth/mfa/confirm  (MFA CHANGE IAM-03)
+    // ════════════════════════════════════════
+    //
+    // FIRST-TIME ENROLLMENT ONLY. User has called /setup and added the secret to their
+    // authenticator app. They submit the first 6-digit code to PROVE they configured
+    // the authenticator correctly. On success:
+    //   - MFAEnabled flips from false to true
+    //   - MFAEnrolled audit log entry written
+    //   - Full session JWT returned (so user doesn't have to login again right away)
+    //
+    // Errors:
+    //   - NotInitialized:   /setup was never called (no secret in DB)
+    //   - AlreadyEnrolled:  user is already enrolled; use /verify instead
+    //   - InvalidCode:      the code does not match
+    public async Task<(MfaVerifyOutcome Outcome, AuthResponseDto? Response)> ConfirmMfaAsync(int userId, string code)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+            return (MfaVerifyOutcome.UserNotFound, null);
+
+        if (string.IsNullOrEmpty(user.MFASecret))
+            return (MfaVerifyOutcome.NotInitialized, null);
+
+        if (user.MFAEnabled)
+            return (MfaVerifyOutcome.AlreadyEnrolled, null);
+
+        if (!_mfaService.VerifyCode(user.MFASecret, code))
+        {
+            await _auditLogService.LogAsync(
+                user.UserID, "MFAConfirmFailed", "User", user.UserID,
+                new { reason = "Invalid code during enrollment" });
+            return (MfaVerifyOutcome.InvalidCode, null);
+        }
+
+        // Flip the flag — enrollment is now complete.
+        user.MFAEnabled = true;
+        await _userRepository.UpdateAsync(user);
+
+        await _auditLogService.LogAsync(
+            user.UserID, "MFAEnrolled", "User", user.UserID,
+            new { role = user.Role.ToString() });
+
+        var token = _tokenService.GenerateToken(user);
+        var expiryMinutes = int.Parse(_config["Jwt:AccessTokenExpiryMinutes"] ?? "60");
+
+        return (MfaVerifyOutcome.Ok, new AuthResponseDto
+        {
+            Token = token,
+            Expiry = DateTime.UtcNow.AddMinutes(expiryMinutes),
+            Role = user.Role.ToString(),
+            Username = user.Username
+        });
+    }
+
+    // ════════════════════════════════════════
     // MFA VERIFY — POST /api/auth/mfa/verify  (MFA CHANGE IAM-03)
     // ════════════════════════════════════════
     //
-    // - If MFASecret is null: return NotInitialized (caller forgot to call /setup).
-    // - If code is invalid:   audit MFAVerifyFailed, return InvalidCode.
-    // - If code is valid:
-    //     * On first verify (MFAEnabled=false): flip MFAEnabled=true, audit MFAEnrolled.
-    //     * On subsequent verify (MFAEnabled=true): audit MFAVerifySuccess.
-    //   Either way: return Ok with a fresh full-session AuthResponseDto.
+    // EVERY SUBSEQUENT LOGIN (user is already enrolled, MFAEnabled = true). User
+    // submits a fresh 6-digit code from their authenticator app and receives a full
+    // session JWT.
+    //
+    // Errors:
+    //   - NotInitialized:  user has no MFASecret (shouldn't happen if enrolled)
+    //   - NotEnrolled:     user hasn't completed enrollment; use /confirm instead
+    //   - InvalidCode:     the code does not match
     public async Task<(MfaVerifyOutcome Outcome, AuthResponseDto? Response)> VerifyMfaAsync(int userId, string code)
     {
         var user = await _userRepository.GetByIdAsync(userId);
@@ -264,33 +323,20 @@ public class AuthService
         if (string.IsNullOrEmpty(user.MFASecret))
             return (MfaVerifyOutcome.NotInitialized, null);
 
+        if (!user.MFAEnabled)
+            return (MfaVerifyOutcome.NotEnrolled, null);
+
         if (!_mfaService.VerifyCode(user.MFASecret, code))
         {
             await _auditLogService.LogAsync(
-                user.UserID,
-                "MFAVerifyFailed",
-                "User",
-                user.UserID,
-                new { reason = "Invalid code" }
-            );
+                user.UserID, "MFAVerifyFailed", "User", user.UserID,
+                new { reason = "Invalid code" });
             return (MfaVerifyOutcome.InvalidCode, null);
         }
 
-        // First-time enrollment finalizes here; subsequent verifies are the challenge path.
-        var wasEnrolling = !user.MFAEnabled;
-        if (wasEnrolling)
-        {
-            user.MFAEnabled = true;
-            await _userRepository.UpdateAsync(user);
-        }
-
         await _auditLogService.LogAsync(
-            user.UserID,
-            wasEnrolling ? "MFAEnrolled" : "MFAVerifySuccess",
-            "User",
-            user.UserID,
-            new { role = user.Role.ToString() }
-        );
+            user.UserID, "MFAVerifySuccess", "User", user.UserID,
+            new { role = user.Role.ToString() });
 
         var token = _tokenService.GenerateToken(user);
         var expiryMinutes = int.Parse(_config["Jwt:AccessTokenExpiryMinutes"] ?? "60");
