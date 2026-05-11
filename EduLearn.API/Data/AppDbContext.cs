@@ -45,6 +45,9 @@ public class AppDbContext : DbContext
     public DbSet<KPI> KPIs => Set<KPI>();
     public DbSet<AuditPackage> AuditPackages => Set<AuditPackage>();
 
+    // ── AGI-04: Academic Integrity ──
+    public DbSet<PlagiarismReport> PlagiarismReports => Set<PlagiarismReport>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -152,6 +155,14 @@ public class AppDbContext : DbContext
         {
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
         });
+
+        // HARDENING (C-23): Composite unique index prevents duplicate enrollments at the DB level.
+        // The controller-side IsAlreadyEnrolledAsync check is insufficient under concurrent POST
+        // requests; this index is the real guard.
+        modelBuilder.Entity<Enrollment>()
+            .HasIndex(e => new { e.StudentID, e.SectionID })
+            .IsUnique()
+            .HasDatabaseName("IX_Enrollments_StudentID_SectionID");
 
         // ════════════════════════════════════════
         // LMS entities
@@ -344,6 +355,25 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<KPI>(entity =>
         {
             entity.Property(k => k.ReportingPeriod).HasConversion<string>().HasMaxLength(20);
+        });
+
+        // ════════════════════════════════════════
+        // AGI-04: Academic Integrity
+        // ════════════════════════════════════════
+
+        modelBuilder.Entity<PlagiarismReport>(entity =>
+        {
+            entity.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
+
+            entity.HasOne(p => p.Submission)
+                  .WithMany()
+                  .HasForeignKey(p => p.SubmissionID)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(p => p.FlaggedBy)
+                  .WithMany()
+                  .HasForeignKey(p => p.FlaggedByUserID)
+                  .OnDelete(DeleteBehavior.NoAction);
         });
     }
 }

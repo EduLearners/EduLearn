@@ -17,7 +17,7 @@ namespace EduLearn.API.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.25")
+                .HasAnnotation("ProductVersion", "8.0.26")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -361,7 +361,9 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("SectionID");
 
-                    b.HasIndex("StudentID");
+                    b.HasIndex("StudentID", "SectionID")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Enrollments_StudentID_SectionID");
 
                     b.ToTable("Enrollments");
                 });
@@ -605,6 +607,47 @@ namespace EduLearn.API.Migrations
                     b.HasIndex("InvoiceID");
 
                     b.ToTable("Payments");
+                });
+
+            modelBuilder.Entity("EduLearn.API.Models.PlagiarismReport", b =>
+                {
+                    b.Property<int>("ReportID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReportID"));
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("FlaggedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FlaggedByUserID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("SimilarityScore")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("SubmissionID")
+                        .HasColumnType("int");
+
+                    b.HasKey("ReportID");
+
+                    b.HasIndex("FlaggedByUserID");
+
+                    b.HasIndex("SubmissionID");
+
+                    b.ToTable("PlagiarismReports");
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Program", b =>
@@ -1024,7 +1067,7 @@ namespace EduLearn.API.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal?>("GPA")
-                        .HasColumnType("decimal(3,2)");
+                        .HasColumnType("decimal(4,2)");
 
                     b.Property<DateTime>("IssuedAt")
                         .HasColumnType("datetime2");
@@ -1071,6 +1114,10 @@ namespace EduLearn.API.Migrations
 
                     b.Property<bool>("MFAEnabled")
                         .HasColumnType("bit");
+
+                    b.Property<string>("MFASecret")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -1265,6 +1312,25 @@ namespace EduLearn.API.Migrations
                         .IsRequired();
 
                     b.Navigation("Invoice");
+                });
+
+            modelBuilder.Entity("EduLearn.API.Models.PlagiarismReport", b =>
+                {
+                    b.HasOne("EduLearn.API.Models.User", "FlaggedBy")
+                        .WithMany()
+                        .HasForeignKey("FlaggedByUserID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("EduLearn.API.Models.Submission", "Submission")
+                        .WithMany()
+                        .HasForeignKey("SubmissionID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("FlaggedBy");
+
+                    b.Navigation("Submission");
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Report", b =>

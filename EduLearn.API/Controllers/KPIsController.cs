@@ -2,12 +2,14 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/kpis")]
+[Authorize]
 public class KPIsController : ControllerBase
 {
     private readonly IReportRepository _reportRepository;
@@ -20,8 +22,11 @@ public class KPIsController : ControllerBase
     }
 
     // ── GET /api/kpis — List all KPIs ──
+    /// <summary>
+    /// List all KPI definitions with their current calculated values. Auditor and ITAdmin only.
+    /// </summary>
     [HttpGet]
-    // [Authorize]
+    [Authorize(Roles = "Auditor,ITAdmin")]
     public async Task<ActionResult<IEnumerable<KPIResponseDto>>> GetAllKPIs(CancellationToken ct)
     {
         var kpis = await _reportRepository.GetAllKPIsAsync(ct);
@@ -29,8 +34,12 @@ public class KPIsController : ControllerBase
     }
 
     // ── POST /api/kpis/recalculate — Recalculate all KPI current values ──
+    /// <summary>
+    /// Recalculate and persist the current values for all KPIs. ITAdmin only.
+    /// Returns the updated KPI list along with the recalculation timestamp.
+    /// </summary>
     [HttpPost("recalculate")]
-    // [Authorize(Roles = "ITAdmin,Auditor")]
+    [Authorize(Roles = "ITAdmin")]
     public async Task<ActionResult<RecalculateResponseDto>> Recalculate(CancellationToken ct)
     {
         var recalculatedAt = DateTime.UtcNow;
@@ -48,8 +57,12 @@ public class KPIsController : ControllerBase
     }
 
     // ── POST /api/kpis/seed — Seed default KPI definitions (idempotent guard) ──
+    /// <summary>
+    /// Seed the default KPI definitions into the database. ITAdmin only.
+    /// Returns 409 Conflict if KPIs have already been seeded.
+    /// </summary>
     [HttpPost("seed")]
-    // [Authorize(Roles = "ITAdmin")]
+    [Authorize(Roles = "ITAdmin")]
     public async Task<IActionResult> SeedKPIs(CancellationToken ct)
     {
         var alreadySeeded = await _reportRepository.AnyKPIsExistAsync(ct);

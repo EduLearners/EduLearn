@@ -1,19 +1,72 @@
-# EduLearn v11.0 — Testing Guide & Next Steps
+# EduLearn v1.0 — Complete Testing Guide & Next Steps
 
-## Current Status (April 10, 2026)
+> **PRD Reference:** `docs/EduLearn-PRD-v1.0_2.docx` — this is the ONLY authoritative PRD. All other versions are deprecated.
 
-### Completed
-- Monolith restructuring complete
-- 25 entities, 10 enum files, AppDbContext fully configured
-- 13 repository interfaces + implementations, all registered in DI
-- 3 controllers with 13 endpoints total
-- `InitialCreate` migration generated and applied — `EduLearnDb` exists with 25 tables
-- API runs on `http://localhost:5000`
+---
 
-### 13 Working Endpoints
-- `UsersController` — POST /api/users, GET /api/users, GET /api/users/{id}, PUT /api/users/{id}, PUT /api/users/{id}/status
-- `CoursesController` — POST /api/courses, GET /api/courses, GET /api/courses/{id}, PUT /api/courses/{id}
-- `EnrollmentsController` — POST /api/enrollment/enroll, DELETE /api/enrollment/{id}/drop, GET /api/enrollment/student/{studentId}, GET /api/enrollment/section/{sectionId}
+## Current Status (May 5, 2026)
+
+### Build Status: ✅ 0 errors, 0 warnings
+
+### Infrastructure
+- ASP.NET Core 8.0 + EF Core 8.0
+- SQL Server LocalDB — `EduLearnDb` with 25 tables
+- JWT Bearer authentication (60 min expiry) + BCrypt password hashing (cost=12)
+- 8 role-based authorization policies
+- Swagger with 🔒 Authorize button + XML doc summaries on all 100 endpoints
+- 21 repository interfaces + 21 implementations
+- 4 services: TokenService, AuthService, AuditLogService, PdfGeneratorService (QuestPDF 2024.x)
+- All controllers secured with `[Authorize]` (except Auth + Health)
+- Global exception middleware returns clean JSON on unhandled errors
+- Security hardening C-1 through C-26: all closed
+
+### Smoke Test Suite
+- **Run:** `bash tests/smoke/run-all.sh`
+- **Coverage:** ~278 assertions across all 26 modules + security sweeps (estimate post-MFA; exact count verified post-run — see SECTION 19)
+- **Status:** ✅ All passing as of `dac2833`
+
+### Controllers — 100 Endpoints
+
+| Module | Owner | Controllers | Status |
+|---|---|---|---|
+| IAM | Ashish | AuthController, UsersController, AuditLogController | ✅ Done |
+| SRA | Saurav | ApplicantsController, StudentsController, TranscriptsController | ✅ Done |
+| ETS | Saurav | EnrollmentsController, SectionsController, RoomsController, TimetableController | ✅ Done |
+| CCM | Vikash | CoursesController, ProgramsController, SyllabiController | ✅ Done |
+| AGI | Vikash | AssessmentsController, SubmissionsController, GradeChangesController | ✅ Done |
+| LMS | Vikash | ContentsController, DiscussionsController | ✅ Done |
+| SFB | Tanya | FeesController, InvoicesController, PaymentsController, ScholarshipsController | ✅ Done |
+| RKA | Utkarsh | ReportsController, KPIsController, AuditPackagesController | ✅ Done |
+| NHT | Swarna | NotificationsController, TicketsController | ✅ Done |
+| System | — | HealthController | ✅ Done |
+
+---
+
+## Known Gaps vs PRD
+
+| What | Owner | Gap | Priority |
+|---|---|---|---|
+| SRA-03 transcript download | Saurav | Returns JSON; PRD requires PDF + QR code | High |
+| AGI-04 plagiarism | Vikash | `PUT /api/submissions/{id}/plagiarism-report` and `GET /api/submissions/{id}/integrity-status` not implemented | High |
+
+---
+
+## Post-Interim Changes (April 24 → May 5, 2026)
+
+### Bug Fixes
+| Fix | Commit | Detail |
+|---|---|---|
+| RKA-01 camelCase downloads | `12fd156` | `JsonSerializer.Serialize` was returning PascalCase fields; added `PropertyNamingPolicy = CamelCase` |
+| R-5 GPA decimal overflow | `12fd156` | `decimal(3,2)` rejected 10.0 (Indian 10-pt CGPA); widened to `decimal(4,2)` via `WidenTranscriptGPA` migration |
+| Audit R-2 scholarship deduction | `3d718f7` | Scholarship fixture date bug caused silent zero deduction |
+| GeneratedByFK attribution (H-3) | `28ef88f` | `POST /api/reports/generate` now resolves `GeneratedByFK` from JWT, ignores body value |
+
+### New Features
+| Feature | Commits | Detail |
+|---|---|---|
+| RKA PDF downloads | `Tasks 1–6` | `GET /api/reports/{id}/download` and `GET /api/audit-packages/{id}/download` now return `application/pdf` by default via QuestPDF. Add `?format=json` to get the old JSON response. |
+| Swagger XML docs | `28ef88f` | All 94 endpoints documented with `<summary>` tags; Swagger UI shows descriptions |
+| Security hardening C-1–C-26 | multiple | See `docs/SECURITY-AUDIT-FINDINGS.md` for full list |
 
 ---
 
@@ -23,11 +76,44 @@
 dotnet run --project EduLearn.API
 ```
 
-Open Swagger: `http://localhost:5000/swagger`
+Open Swagger: `https://localhost:5001/swagger`
 
 ---
 
-## DB Verification in SSMS
+## Authentication Flow (Must Do First)
+
+All endpoints except `/api/auth/*` and `/api/health` require a JWT token.
+
+On a fresh DB, the API auto-seeds a default ITAdmin account on first startup:
+
+| Field    | Value       |
+|----------|-------------|
+| Username | `admin`     |
+| Password | `Admin@123` |
+| Role     | `ITAdmin`   |
+
+The seeder (`EduLearn.API/Data/DbInitializer.cs`) is idempotent — it runs on every `dotnet run` but only creates the account if a user named `admin` does not already exist. Privileged public signup is still locked by design (`POST /api/auth/register` always forces `Role = Student` — C-26 anti-privilege-escalation), so the seeded admin is the Swagger-only entry point for demoing any admin-gated endpoint. Other roles are minted through `POST /api/users` (AdminPolicy — ITAdmin only) once the admin is logged in.
+
+**Step 1 — Login as the seeded admin to get a JWT:**
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "admin",
+  "password": "Admin@123"
+}
+```
+Response contains `"token": "eyJhbGciOiJIUzI1NiIs..."` — copy this.
+
+**Step 2 — Authorize in Swagger:**
+Click the 🔒 **Authorize** button at the top → paste the token → click Authorize.
+
+Now all subsequent requests will include the JWT. Token expires in 60 minutes.
+
+---
+
+## DB Verification
 
 Connect to `(localdb)\MSSQLLocalDB` → `EduLearnDb` and run:
 
@@ -38,47 +124,74 @@ SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';
 -- Must return 31
 SELECT COUNT(*) FROM sys.foreign_keys;
 
--- Must return 0
+-- Must return 0 (all FKs use NO_ACTION)
 SELECT COUNT(*) FROM sys.foreign_keys WHERE delete_referential_action_desc != 'NO_ACTION';
 
 -- All Status columns must be nvarchar, not int
 SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
 FROM INFORMATION_SCHEMA.COLUMNS WHERE COLUMN_NAME = 'Status' ORDER BY TABLE_NAME;
+
+-- GPA must be decimal(4,2) to hold 10-point CGPA
+SELECT COLUMN_NAME, NUMERIC_PRECISION, NUMERIC_SCALE
+FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Transcripts' AND COLUMN_NAME = 'GPA';
 ```
 
 ---
 
-## Swagger Test Sequence
+## Complete Swagger Test Sequence
 
 Run in order — each section depends on data from the previous one.
 
-### SECTION 1 — Users
+> **Important:** After registering and logging in (Section 0), click 🔒 Authorize in Swagger before testing any other endpoint.
 
-**1. Create admin user (POST /api/users)**
+---
+
+### SECTION 0 — Authentication (IAM-01)
+
+On a fresh DB the API auto-seeds an ITAdmin (`admin` / `Admin@123`) at startup. This section logs in as that seeded admin, then creates the rest of the demo users — **Instructor** and **Finance** via `POST /api/users` (AdminPolicy-gated, honors the `role` field), and two **Students** via `POST /api/auth/register` (public signup, which is hard-coded to Student by C-26).
+
+The creation order below produces these stable UserIDs, referenced by every subsequent section:
+
+| UserID | Username   | Role       | Created via               |
+|--------|------------|------------|---------------------------|
+| 1      | admin      | ITAdmin    | startup seeder            |
+| 2      | dr.priya   | Instructor | `POST /api/users`         |
+| 3      | rahul.s    | Student    | `POST /api/auth/register` |
+| 4      | sneha.s    | Student    | `POST /api/auth/register` |
+| 5      | tanya.fin  | Finance    | `POST /api/users`         |
+
+**0.1 Login as seeded ITAdmin (get JWT)**
+```
+POST /api/auth/login
+```
 ```json
 {
-  "username": "ashish.admin",
-  "fullName": "Ashish Kumar",
-  "email": "ashish@edulearn.com",
-  "role": "ITAdmin",
+  "username": "admin",
   "password": "Admin@123"
 }
 ```
-Expected: `201`, `"userID": 1`
+Expected: `200 OK` with `"token": "eyJ..."` — **Copy this token and click 🔒 Authorize in Swagger before continuing.**
 
-**2. Create instructor (POST /api/users)**
+**0.2 Create Instructor (UserID 2)**
+```
+POST /api/users
+```
 ```json
 {
   "username": "dr.priya",
   "fullName": "Dr. Priya Sharma",
   "email": "priya@edulearn.com",
+  "phone": "+91-9876543220",
   "role": "Instructor",
   "password": "Inst@123"
 }
 ```
-Expected: `201`, `"userID": 2`
+Expected: `201 Created` — `userID: 2`, role `"Instructor"`
 
-**3. Create student 1 (POST /api/users)**
+**0.3 Register Student 1 (UserID 3) — public signup**
+```
+POST /api/auth/register
+```
 ```json
 {
   "username": "rahul.s",
@@ -88,9 +201,12 @@ Expected: `201`, `"userID": 2`
   "password": "Stud@123"
 }
 ```
-Expected: `201`, `"userID": 3`
+Expected: `200 OK` — role is always forced to `"Student"` regardless of body (C-26).
 
-**4. Create student 2 (POST /api/users)**
+**0.4 Register Student 2 (UserID 4) — public signup**
+```
+POST /api/auth/register
+```
 ```json
 {
   "username": "sneha.s",
@@ -100,30 +216,61 @@ Expected: `201`, `"userID": 3`
   "password": "Stud@456"
 }
 ```
-Expected: `201`, `"userID": 4`
+Expected: `200 OK`
 
-**5. Duplicate email — negative test (POST /api/users)**
+**0.5 Create Finance Officer (UserID 5)**
+```
+POST /api/users
+```
 ```json
 {
-  "username": "someone.else",
-  "fullName": "Someone",
-  "email": "ashish@edulearn.com",
-  "role": "Student",
-  "password": "Test@123"
+  "username": "tanya.fin",
+  "fullName": "Tanya Singh",
+  "email": "tanya@edulearn.com",
+  "phone": "+91-9876543250",
+  "role": "Finance",
+  "password": "Fin@123"
 }
 ```
-Expected: `409`, `"code": "DUPLICATE_EMAIL"`
+Expected: `201 Created` — `userID: 5`, role `"Finance"`
 
-**6. Get all users (GET /api/users)**
-Expected: `200`, array of 4 users. Verify `"role"` is a string e.g. `"ITAdmin"`, not an integer.
+**0.6 Test 401 — Access without token**
+Click 🔒 Authorize in Swagger and **Logout**, then try:
+```
+GET /api/users
+```
+Expected: `401 Unauthorized` — "Authentication required. Please login at POST /api/auth/login to get a JWT token."
 
-**7. Get user by ID (GET /api/users/1)**
-Expected: `200`, Ashish Kumar
+Re-authorize with the admin token before continuing. (If the token has expired, re-run 0.1 to get a fresh one.)
 
-**8. Get non-existent user — negative test (GET /api/users/999)**
-Expected: `404`, `"code": "USER_NOT_FOUND"`
+---
 
-**9. Update profile (PUT /api/users/3)**
+### SECTION 1 — Users (IAM-02)
+
+> Note: Users were already created via `/api/auth/register`. These tests verify the CRUD endpoints.
+
+**1.1 List all users**
+```
+GET /api/users
+```
+Expected: `200 OK` — returns 5 users. Roles show as strings ("ITAdmin", "Instructor", "Student", "Finance").
+
+**1.2 Get user by ID**
+```
+GET /api/users/1
+```
+Expected: `200 OK` — `fullName: "Default IT Administrator"`, role `"ITAdmin"` (the seeded admin).
+
+**1.3 Get non-existent user**
+```
+GET /api/users/999
+```
+Expected: `404` — `USER_NOT_FOUND`
+
+**1.4 Update user profile**
+```
+PUT /api/users/3
+```
 ```json
 {
   "fullName": "Rahul Kumar Singh",
@@ -131,159 +278,951 @@ Expected: `404`, `"code": "USER_NOT_FOUND"`
   "phone": "+91-9999999999"
 }
 ```
-Expected: `200`, updated `fullName` and `email`, `"updatedAt"` is not null
+Expected: `200 OK` — name and email updated
 
-**10. Update status (PUT /api/users/4/status)**
+**1.5 Update user status**
+```
+PUT /api/users/4/status
+```
 ```json
 { "status": "Suspended" }
 ```
-Expected: `200`, `"status": "Suspended"`
+Expected: `200 OK` — status changed to "Suspended"
 
-> **Note on enum fields:** Swagger shows `role` and `status` as plain text boxes. Type the value exactly — case sensitive. Valid roles: `Student`, `Instructor`, `Registrar`, `DeptAdmin`, `Finance`, `ITAdmin`, `Auditor`. Valid statuses: `Active`, `Inactive`, `Suspended`, `Locked`.
+*(Revert for later tests:)*
+```json
+{ "status": "Active" }
+```
 
 ---
 
-### SECTION 2 — Courses
+### SECTION 2 — Programs (CCM-01)
 
-**11. Create course 1 (POST /api/courses)**
+**2.1 Create program**
+```
+POST /api/programs
+```
+```json
+{
+  "name": "B.Tech Computer Science",
+  "departmentID": 1,
+  "degreeType": "Bachelor",
+  "requiredCoursesJSON": "[1, 2]",
+  "electivesJSON": null,
+  "durationTerms": 8
+}
+```
+Expected: `201 Created` — `programID: 1`
+
+**2.2 List programs**
+```
+GET /api/programs
+```
+Expected: `200 OK` — 1 program
+
+**2.3 Get program**
+```
+GET /api/programs/1
+```
+Expected: `200 OK` — B.Tech CS, status "Active"
+
+**2.4 Update program**
+```
+PUT /api/programs/1
+```
+```json
+{
+  "name": "B.Tech Computer Science",
+  "departmentID": 1,
+  "degreeType": "Bachelor",
+  "requiredCoursesJSON": "[1, 2, 3]",
+  "electivesJSON": null,
+  "durationTerms": 10
+}
+```
+Expected: `200 OK` — durationTerms updated to 10
+
+---
+
+### SECTION 3 — Courses (CCM-01)
+
+**3.1 Create course 1**
+```
+POST /api/courses
+```
 ```json
 {
   "code": "CS101",
   "title": "Introduction to Computer Science",
+  "description": "Fundamentals of computing and programming",
   "credits": 3,
-  "level": "UG"
+  "departmentID": 1,
+  "level": "100-level",
+  "prerequisitesJSON": null
 }
 ```
-Expected: `201`, `"courseID": 1`, `"status": "Active"`
+Expected: `201 Created` — `courseID: 1`
 
-**12. Create course 2 (POST /api/courses)**
+**3.2 Create course 2**
+```
+POST /api/courses
+```
 ```json
 {
-  "code": "MATH201",
-  "title": "Linear Algebra",
+  "code": "CS201",
+  "title": "Data Structures and Algorithms",
   "credits": 4,
-  "level": "UG"
+  "departmentID": 1,
+  "level": "200-level",
+  "prerequisitesJSON": "[1]"
 }
 ```
-Expected: `201`, `"courseID": 2`
+Expected: `201 Created` — `courseID: 2`
 
-**13. Duplicate code — negative test (POST /api/courses)**
+**3.3 Duplicate code check**
+```
+POST /api/courses
+```
 ```json
-{
-  "code": "CS101",
-  "title": "Another CS Course",
-  "credits": 3
-}
+{ "code": "CS101", "title": "Duplicate", "credits": 3 }
 ```
-Expected: `409`, `"code": "DUPLICATE_COURSE_CODE"`
+Expected: `409 Conflict` — `DUPLICATE_COURSE_CODE`
 
-**14. Get all courses (GET /api/courses)**
-Expected: `200`, array of 2 courses, each with `"status": "Active"`
-
-**15. Get course by ID (GET /api/courses/1)**
-Expected: `200`, CS101
-
-**16. Get non-existent course — negative test (GET /api/courses/999)**
-Expected: `404`, `"code": "COURSE_NOT_FOUND"`
-
-**17. Update course (PUT /api/courses/1)**
-```json
-{
-  "code": "CS101",
-  "title": "Intro to CS — Updated",
-  "credits": 4,
-  "level": "UG"
-}
+**3.4 List courses**
 ```
-Expected: `200`, updated `title` and `credits`
+GET /api/courses
+```
+Expected: `200 OK` — 2 courses
 
 ---
 
-### SECTION 3 — Enrollment
+### SECTION 4 — Rooms (ETS-02)
 
-**Seed data required first.** Connect to `(localdb)\MSSQLLocalDB` → `EduLearnDb` in SSMS and run:
-
-```sql
--- Program
-INSERT INTO Programs (Name, DegreeType, DurationTerms, Status)
-VALUES ('B.Tech CS', 'Bachelor', 8, 'Active');
-
--- Room
-INSERT INTO Rooms (Building, RoomNumber, Capacity, Status)
-VALUES ('Block A', 'A101', 60, 'Available');
-
--- Students — use UserID 3 (Rahul) and UserID 4 (Sneha) created above
-INSERT INTO Students (UserID, MRN, Name, DOB, EnrollmentStatus, ProgramID, EntryTerm, CreatedAt)
-VALUES (3, 'STU2026001', 'Rahul Kumar', '2004-05-15', 'Active', 1, 'Fall 2026', GETUTCDATE());
-
-INSERT INTO Students (UserID, MRN, Name, DOB, EnrollmentStatus, ProgramID, EntryTerm, CreatedAt)
-VALUES (4, 'STU2026002', 'Sneha Gupta', '2004-08-22', 'Active', 1, 'Fall 2026', GETUTCDATE());
-
--- Section 1 — capacity 60 (normal enrollment testing)
-INSERT INTO Sections (CourseID, Term, InstructorID, RoomID, Capacity, EnrolledCount, Status)
-VALUES (1, 'Fall 2026', 2, 1, 60, 0, 'Open');
-
--- Section 2 — capacity 1 (waitlist testing)
-INSERT INTO Sections (CourseID, Term, InstructorID, RoomID, Capacity, EnrolledCount, Status)
-VALUES (1, 'Fall 2026', 2, 1, 1, 0, 'Open');
-
--- Verify seed data
-SELECT StudentID, MRN, Name FROM Students;
-SELECT SectionID, CourseID, Capacity, Status FROM Sections;
+**4.1 Create room**
 ```
+POST /api/rooms
+```
+```json
+{
+  "building": "Main Block",
+  "roomNumber": "A101",
+  "capacity": 60,
+  "resourcesJSON": "{\"projector\": true, \"whiteboard\": true}"
+}
+```
+Expected: `201 Created` — `roomID: 1`
 
-**18. Enroll student 1 in section 1 (POST /api/enrollment/enroll)**
+---
+
+### SECTION 5 — Students (SRA-02)
+
+**5.1 Create student 1 (linked to User 3 — Rahul)**
+```
+POST /api/students
+```
+```json
+{
+  "userID": 3,
+  "name": "Rahul Kumar",
+  "dob": "2004-05-15",
+  "gender": "Male",
+  "contactInfoJSON": "{\"phone\": \"+91-9876543211\"}",
+  "programID": 1,
+  "entryTerm": "Fall 2026",
+  "expectedGraduationTerm": "Spring 2030"
+}
+```
+Expected: `201 Created` — `studentID: 1`, auto-generated MRN like "STU-00001"
+
+**5.2 Create student 2 (linked to User 4 — Sneha)**
+```
+POST /api/students
+```
+```json
+{
+  "userID": 4,
+  "name": "Sneha Gupta",
+  "dob": "2004-08-22",
+  "gender": "Female",
+  "contactInfoJSON": null,
+  "programID": 1,
+  "entryTerm": "Fall 2026",
+  "expectedGraduationTerm": null
+}
+```
+Expected: `201 Created` — `studentID: 2`
+
+**5.3 List students**
+```
+GET /api/students
+```
+Expected: `200 OK` — 2 students
+
+---
+
+### SECTION 6 — Sections (ETS-02)
+
+**6.1 Create section (capacity 2 — for waitlist testing)**
+```
+POST /api/sections
+```
+```json
+{
+  "courseID": 1,
+  "term": "Fall 2026",
+  "instructorID": 2,
+  "roomID": 1,
+  "capacity": 2,
+  "scheduleJSON": "[{\"day\": \"Mon\", \"startTime\": \"09:00\", \"endTime\": \"10:30\"}]"
+}
+```
+Expected: `201 Created` — `sectionID: 1`, capacity 2
+
+**6.2 Create section (capacity 60)**
+```
+POST /api/sections
+```
+```json
+{
+  "courseID": 2,
+  "term": "Fall 2026",
+  "instructorID": 2,
+  "roomID": null,
+  "capacity": 60,
+  "scheduleJSON": null
+}
+```
+Expected: `201 Created` — `sectionID: 2`
+
+---
+
+### SECTION 7 — Enrollments (ETS-01)
+
+**7.1 Enroll Rahul in section 1**
+```
+POST /api/enrollment/enroll
+```
 ```json
 { "studentID": 1, "sectionID": 1 }
 ```
-Expected: `201`, `"status": "Enrolled"`, `"studentName": "Rahul Kumar"`, `"waitlistPosition": null`
+Expected: `201` — status "Enrolled"
 
-**19. Duplicate enrollment — negative test (POST /api/enrollment/enroll)**
-Same body again.
-Expected: `409`, `"code": "DUPLICATE_ENROLLMENT"`
-
-**20. Enroll student 2 in section 1 (POST /api/enrollment/enroll)**
+**7.2 Enroll Sneha in section 1 (fills capacity)**
 ```json
 { "studentID": 2, "sectionID": 1 }
 ```
-Expected: `201`, `"status": "Enrolled"`, `"studentName": "Sneha Gupta"`
+Expected: `201` — status "Enrolled" (section now 2/2)
 
-**21. Waitlist test — fill section 2 (POST /api/enrollment/enroll)**
+**7.3 Duplicate enrollment blocked**
 ```json
-{ "studentID": 1, "sectionID": 2 }
+{ "studentID": 1, "sectionID": 1 }
 ```
-Expected: `201`, `"status": "Enrolled"` (section 2 now full, capacity = 1)
+Expected: `409` — `DUPLICATE_ENROLLMENT`
 
-```json
-{ "studentID": 2, "sectionID": 2 }
+**7.4 Section roster**
 ```
-Expected: `201`, `"status": "Waitlisted"`, `"waitlistPosition": 1`
+GET /api/enrollment/section/1
+```
+Expected: `200` — 2 enrollments, both "Enrolled"
 
-**22. Get student 1 enrollments (GET /api/enrollment/student/1)**
-Expected: `200`, 2 enrollments — section 1 Enrolled, section 2 Enrolled.
-Note the `"enrollID"` for student 1's section 2 enrollment — needed for next test.
-
-**23. Drop enrollment and verify auto-promote (DELETE /api/enrollment/{enrollID}/drop)**
-Use the `enrollID` from test 22 for student 1 in section 2.
+**7.5 Drop Rahul (auto-promote if waitlisted students exist)**
+```
+DELETE /api/enrollment/1/drop
+```
 Expected: `204 No Content`
 
-**24. Verify auto-promote (GET /api/enrollment/section/2)**
-Expected: `200`, Sneha's record now shows `"status": "Enrolled"`, `"waitlistPosition": null`
+---
 
-**25. Get section 1 roster (GET /api/enrollment/section/1)**
-Expected: `200`, 2 students — Rahul and Sneha both `"status": "Enrolled"`
+### SECTION 8 — Assessments (AGI-01)
 
-**26. Invalid student — negative test (POST /api/enrollment/enroll)**
-```json
-{ "studentID": 999, "sectionID": 1 }
+**8.1 Create assessment (Draft)**
 ```
-Expected: `400`, `"code": "STUDENT_NOT_FOUND"`
-
-**27. Invalid section — negative test (POST /api/enrollment/enroll)**
-```json
-{ "studentID": 1, "sectionID": 999 }
+POST /api/assessments
 ```
-Expected: `400`, `"code": "SECTION_NOT_FOUND"`
+```json
+{
+  "courseID": 1,
+  "sectionID": null,
+  "title": "Quiz 1 - Programming Basics",
+  "type": "Quiz",
+  "dueAt": "2026-12-01T23:59:00Z",
+  "maxScore": 50.0,
+  "gradingRubricJSON": null,
+  "createdByFK": 2
+}
+```
+Expected: `201` — status "Draft"
+
+**8.2 Publish assessment**
+```
+PUT /api/assessments/1/publish
+```
+```json
+{ "status": "Published" }
+```
+Expected: `200` — status "Published"
+
+**8.3 Cannot update published assessment**
+```
+PUT /api/assessments/1
+```
+Expected: `400` — `ASSESSMENT_NOT_DRAFT`
+
+---
+
+### SECTION 9 — Content (LMS-01)
+
+**9.1 Upload content**
+```
+POST /api/content/upload
+```
+```json
+{
+  "courseID": 1,
+  "title": "Week 1 - Intro to Programming",
+  "type": "Document",
+  "uri": "https://blob.storage/edulearn/week1-notes.pdf",
+  "uploadedByFK": 2,
+  "metadataJSON": "{\"fileSize\": 2048576, \"mimeType\": \"application/pdf\"}"
+}
+```
+Expected: `201` — version 1, status "Active"
+
+**9.2 Version bump**
+```
+PUT /api/content/1/version
+```
+```json
+{
+  "uri": "https://blob.storage/edulearn/week1-notes-v2.pdf",
+  "metadataJSON": null
+}
+```
+Expected: `200` — version bumped to 2
+
+---
+
+### SECTION 10 — Submissions & Grading (AGI-02)
+
+**10.1 Submit work (Rahul)**
+```
+POST /api/submissions
+```
+```json
+{
+  "assessmentID": 1,
+  "studentID": 1,
+  "fileURI": "https://blob.storage/submissions/rahul-quiz1.pdf"
+}
+```
+Expected: `201` — status "Submitted"
+
+**10.2 Grade submission**
+```
+POST /api/submissions/1/grade
+```
+```json
+{
+  "score": 42.0,
+  "graderID": 2,
+  "reason": "Good work"
+}
+```
+Expected: `200` — status "Graded", score 42.0
+
+**10.3 Re-grade (auto-creates GradeChange)**
+```
+POST /api/submissions/1/grade
+```
+```json
+{
+  "score": 45.0,
+  "graderID": 2,
+  "reason": "Found partial credit on Q3"
+}
+```
+Expected: `200` — score updated to 45.0, GradeChange record auto-created in DB
+
+**10.4 Score exceeds max**
+```json
+{ "score": 999.0, "graderID": 2, "reason": "Test" }
+```
+Expected: `400` — `SCORE_EXCEEDS_MAX`
+
+---
+
+### SECTION 11 — Finance (SFB)
+
+> Login as Finance user first: `POST /api/auth/login` with `tanya.fin` / `Fin@123`, then re-authorize in Swagger.
+
+**11.1 Create fee schedule**
+```
+POST /api/fees
+```
+```json
+{
+  "programID": 1,
+  "term": "Fall 2026",
+  "feeItemsJSON": "[{\"item\": \"Tuition\", \"amount\": 50000}, {\"item\": \"Lab Fee\", \"amount\": 5000}]",
+  "effectiveFrom": "2026-06-01",
+  "effectiveTo": "2026-12-31"
+}
+```
+Expected: `201` — status "Draft"
+
+**11.2 Award scholarship**
+```
+POST /api/scholarships
+```
+```json
+{
+  "studentID": 1,
+  "awardType": "Merit",
+  "amount": 10000.00,
+  "validFrom": "2026-06-01",
+  "validTo": "2026-12-31"
+}
+```
+Expected: `201`
+
+**11.3 Generate invoice (auto-deducts scholarship)**
+```
+POST /api/invoices/generate
+```
+```json
+{
+  "studentID": 1,
+  "term": "Fall 2026",
+  "dueDate": "2026-08-15"
+}
+```
+Expected: `201` — amountDue = 45000 (55000 - 10000 scholarship)
+
+**11.4 Record payment**
+```
+POST /api/payments
+```
+```json
+{
+  "invoiceID": 1,
+  "amount": 45000.00,
+  "method": "BankTransfer",
+  "reference": "TXN-2026-001"
+}
+```
+Expected: `201` — invoice status auto-updates to "Paid"
+
+---
+
+### SECTION 12 — Audit Log (IAM-04)
+
+> Login as ITAdmin or Auditor to access this endpoint.
+
+**12.1 Query audit logs**
+```
+GET /api/audit-log
+```
+Expected: `200` — returns recent audit log entries
+
+**12.2 Filter by action**
+```
+GET /api/audit-log?action=LoginSuccess
+```
+Expected: `200` — login audit entries
+
+---
+
+### SECTION 13 — Applicants (SRA-01)
+
+**13.1 Create applicant**
+```
+POST /api/applicants
+```
+```json
+{
+  "name": "Amit Verma",
+  "dob": "2005-03-10",
+  "nationalId": "AADHAAR-1234-5678",
+  "contactInfoJSON": "{\"email\": \"amit@gmail.com\", \"phone\": \"+91-9876543210\"}",
+  "programApplied": "B.Tech Computer Science",
+  "documentsURIJSON": null
+}
+```
+Expected: `201 Created`
+
+**13.2 List applicants**
+```
+GET /api/applicants
+```
+Expected: `200 OK` — returns applicant list
+
+**13.3 Get applicant by ID**
+```
+GET /api/applicants/1
+```
+Expected: `200 OK`
+
+**13.4 Update applicant status**
+```
+PUT /api/applicants/1/status
+```
+```json
+{ "status": "UnderReview" }
+```
+Expected: `200 OK` — status updated
+
+**13.5 Accept applicant**
+```
+PUT /api/applicants/1/status
+```
+```json
+{ "status": "Accepted" }
+```
+Expected: `200 OK`
+
+---
+
+### SECTION 14 — Transcripts (SRA-03)
+
+> Registrar or ITAdmin only.
+
+**14.1 Generate transcript for student 1**
+```
+POST /api/transcripts/generate/1
+```
+Expected: `201 Created` — status "Draft", includes enrolled courses and computed CGPA (10-point scale, `decimal(4,2)`)
+
+**14.2 Get transcripts by student**
+```
+GET /api/transcripts/student/1
+```
+Expected: `200 OK` — returns draft transcript list
+
+**14.3 Publish transcript**
+```
+PUT /api/transcripts/{id}/publish
+```
+Expected: `200 OK` — status changes to "Issued", `issuedAt` populated
+
+**14.4 Download transcript (JSON)**
+```
+GET /api/transcripts/{id}
+```
+Expected: `200 OK` — transcript JSON with GPA, entries, student info
+
+> **Known gap:** PRD requires PDF + QR code download. Currently only JSON is returned. Saurav to implement.
+
+---
+
+### SECTION 15 — Reports (RKA-01)
+
+> Login as ITAdmin or Auditor to access these endpoints. `generatedByFK` is resolved from the JWT — body value is ignored (H-3 hardening).
+
+**15.1 Generate report**
+```
+POST /api/reports/generate
+```
+```json
+{
+  "scope": "Enrollment",
+  "parametersJSON": "{\"term\": \"Fall 2026\"}"
+}
+```
+Expected: `201 Created` — report record created with scope "Enrollment"
+
+**15.2 List all reports**
+```
+GET /api/reports
+```
+Expected: `200 OK` — returns report list
+
+**15.3 Download report as PDF (default)**
+```
+GET /api/reports/1/download
+```
+Expected: `200 OK` — `Content-Type: application/pdf`, binary PDF file via QuestPDF
+
+**15.4 Download report as JSON**
+```
+GET /api/reports/1/download?format=json
+```
+Expected: `200 OK` — `Content-Type: application/json`, camelCase fields (`reportID`, `scope`, `generatedAt`, etc.)
+
+**15.5 Role denial — Student cannot access reports**
+```
+GET /api/reports
+```
+Expected: `403 Forbidden` (when called with Student token)
+
+---
+
+### SECTION 16 — KPIs (RKA-02)
+
+**16.1 Seed default KPIs**
+```
+POST /api/kpis/seed
+```
+Expected: `200 OK` — default KPIs created (idempotent — returns `409 Conflict` if already seeded)
+
+**16.2 List all KPIs**
+```
+GET /api/kpis
+```
+Expected: `200 OK` — returns list of KPIs with names, targets, current values
+
+**16.3 Recalculate KPIs**
+```
+POST /api/kpis/recalculate
+```
+Expected: `200 OK` — KPI values recomputed from current data
+
+---
+
+### SECTION 17 — Audit Packages (RKA-03)
+
+**17.1 Generate audit package**
+```
+POST /api/audit-packages/generate
+```
+```json
+{
+  "periodStart": "2026-01-01",
+  "periodEnd": "2026-06-30"
+}
+```
+Expected: `201 Created` — audit package with contents summary
+
+**17.2 Invalid date range**
+```
+POST /api/audit-packages/generate
+```
+```json
+{
+  "periodStart": "2026-12-31",
+  "periodEnd": "2026-01-01"
+}
+```
+Expected: `400` — `INVALID_DATE_RANGE`
+
+**17.3 Download audit package as PDF (default)**
+```
+GET /api/audit-packages/1/download
+```
+Expected: `200 OK` — `Content-Type: application/pdf`, binary PDF via QuestPDF
+
+**17.4 Download audit package as JSON**
+```
+GET /api/audit-packages/1/download?format=json
+```
+Expected: `200 OK` — `Content-Type: application/json`, camelCase fields (`packageID`, `periodStart`, `periodEnd`, `contentsJSON`, `generatedAt`)
+
+---
+
+### SECTION 18 — Assessment Archival (AGI-01)
+
+**18.1 Close assessment first**
+```
+PUT /api/assessments/1/publish
+```
+```json
+{ "status": "Closed" }
+```
+Expected: `200 OK` — status "Closed"
+
+**18.2 Archive closed assessment**
+```
+PUT /api/assessments/1/publish
+```
+```json
+{ "status": "Archived" }
+```
+Expected: `200 OK` — status "Archived"
+
+**18.3 Cannot archive non-closed assessment**
+Create a new Draft assessment, then try to archive it directly:
+```json
+{ "status": "Archived" }
+```
+Expected: `400` — `INVALID_STATUS_TRANSITION`
+
+---
+
+### SECTION 19 — MFA (IAM-03)
+
+> Privileged roles (Registrar, DeptAdmin, Finance, ITAdmin, Auditor) must complete TOTP MFA on every login. Student and Instructor are exempt.
+>
+> The seeded ITAdmin (`admin`) is pre-enrolled with a fixed test TOTP secret stored in `EduLearn.API/Data/DbInitializer.cs` as `DefaultAdminMfaSecret`. This is a known-secret bootstrap purely for local dev / smoke runs — production deployments would override seeding or run admin reset on first run.
+>
+> Token model recap: privileged login returns a 5-minute JWT with `purpose=mfa_pending` (the `mfaToken`). That token can ONLY call `POST /api/auth/mfa/setup` and `POST /api/auth/mfa/verify`. Successful `/verify` returns the normal full session JWT — paste THAT into Swagger's 🔒 Authorize.
+
+**19.1 ITAdmin login (seeded admin) — challenge mode**
+
+The seeded admin already has `MFAEnabled=true`, so login produces a challenge.
+
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "admin",
+  "password": "Admin@123"
+}
+```
+Expected: `200 OK` — challenge response (note: no full `token` field):
+```json
+{
+  "mfaToken": "eyJhbGciOiJIUzI1NiIs...",
+  "purpose": "mfa_pending",
+  "expiresIn": 300,
+  "message": "MFA code required. POST /api/auth/mfa/verify with your authenticator code."
+}
+```
+
+Compute a current 6-digit TOTP from `DefaultAdminMfaSecret` (constant in `DbInitializer.cs`) using any RFC 6238 calculator, or re-enroll the secret into an authenticator app (Google Authenticator, Authy, 1Password — paste the Base32 secret into a manual entry, name it "EduLearn admin").
+
+In Swagger, click 🔒 Authorize and paste the `mfaToken` value (NOT a full JWT — this is the short-lived pending token).
+
+```
+POST /api/auth/mfa/verify
+```
+```json
+{ "code": "482913" }
+```
+Expected: `200 OK` — full session JWT:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "expiry": "2026-05-06T13:00:00Z",
+  "username": "admin",
+  "role": "ITAdmin"
+}
+```
+
+**Re-Authorize Swagger with this new full JWT.** All subsequent admin-gated calls require it.
+
+If the code is wrong:
+```json
+{ "code": "000000" }
+```
+Expected: `401 Unauthorized` — `{ "error": "Invalid MFA code", "code": "MFA_INVALID_CODE" }`. Audit log records `MFAVerifyFailed`.
+
+---
+
+**19.2 Registrar — fresh enrollment**
+
+As ITAdmin (full JWT from 19.1), mint a Registrar:
+
+```
+POST /api/users
+```
+```json
+{
+  "username": "kavya.reg",
+  "fullName": "Kavya Iyer",
+  "email": "kavya@edulearn.com",
+  "phone": "+91-9876543260",
+  "role": "Registrar",
+  "password": "Reg@123"
+}
+```
+Expected: `201 Created` — new user, `MFAEnabled=false` by default.
+
+Login as the new Registrar:
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "kavya.reg",
+  "password": "Reg@123"
+}
+```
+Expected: `200 OK` — challenge with **enrollment** message:
+```json
+{
+  "mfaToken": "eyJhbGciOiJIUzI1NiIs...",
+  "purpose": "mfa_pending",
+  "expiresIn": 300,
+  "message": "MFA enrollment required. POST /api/auth/mfa/setup to begin."
+}
+```
+
+Authorize Swagger with the `mfaToken`, then begin enrollment:
+```
+POST /api/auth/mfa/setup
+```
+*(No request body required — endpoint reads the user from the pending token.)*
+
+Expected: `200 OK`:
+```json
+{
+  "secret": "JBSWY3DPEHPK3PXP",
+  "otpauthUri": "otpauth://totp/EduLearn:kavya.reg?secret=JBSWY3DPEHPK3PXP&issuer=EduLearn"
+}
+```
+
+Paste the `secret` into an authenticator app (or render the `otpauthUri` as a QR with any online QR generator and scan it). The app now produces rolling 6-digit codes.
+
+Verify with the current code:
+```
+POST /api/auth/mfa/verify
+```
+```json
+{ "code": "739204" }
+```
+Expected: `200 OK` — full session JWT (same shape as 19.1). The user's `MFAEnabled` is now `true`. Audit log records `MFAEnrolled`.
+
+Log in again to confirm the **challenge** path now applies:
+```json
+{
+  "username": "kavya.reg",
+  "password": "Reg@123"
+}
+```
+Expected: `200 OK` — challenge with `message: "MFA code required. POST /api/auth/mfa/verify with your authenticator code."` (challenge-mode wording, not enrollment-mode).
+
+---
+
+**19.3 DeptAdmin — same enrollment pattern**
+
+As ITAdmin, mint a DeptAdmin:
+```
+POST /api/users
+```
+```json
+{
+  "username": "mohan.dept",
+  "fullName": "Mohan Reddy",
+  "email": "mohan@edulearn.com",
+  "phone": "+91-9876543270",
+  "role": "DeptAdmin",
+  "password": "Dept@123"
+}
+```
+Expected: `201 Created`.
+
+Login → `mfa_pending` (enrollment) → `POST /api/auth/mfa/setup` → returns `{ secret, otpauthUri }` → compute TOTP → `POST /api/auth/mfa/verify` with the 6-digit code → `200 OK` with full JWT, `MFAEnabled=true`. Subsequent logins yield the challenge-mode message. Same request/response shapes as 19.2.
+
+---
+
+**19.4 Finance — same enrollment pattern (ties into Section 11)**
+
+Section 11 (Finance) created `tanya.fin` (UserID 5) via `POST /api/users` already. With MFA enabled, the Section 11 instruction *"Login as Finance user first"* now requires the full enrollment dance the first time:
+
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "tanya.fin",
+  "password": "Fin@123"
+}
+```
+Expected: `200 OK` — `mfa_pending` with enrollment message (because tanya.fin was created in Section 0.5 before MFA enrollment).
+
+`POST /api/auth/mfa/setup` (with `mfaToken`) → returns `secret` + `otpauthUri` → compute TOTP → `POST /api/auth/mfa/verify` → full JWT. Re-Authorize Swagger with the full JWT, **then** continue with Section 11 (`POST /api/fees`, etc.). Subsequent Finance logins are challenge-mode.
+
+---
+
+**19.5 Auditor — same enrollment pattern (ties into Section 12)**
+
+As ITAdmin, mint an Auditor:
+```
+POST /api/users
+```
+```json
+{
+  "username": "naveen.aud",
+  "fullName": "Naveen Bhat",
+  "email": "naveen@edulearn.com",
+  "phone": "+91-9876543280",
+  "role": "Auditor",
+  "password": "Aud@123"
+}
+```
+Expected: `201 Created`.
+
+Login → `mfa_pending` (enrollment) → `/setup` → `/verify` → full JWT (same shapes as 19.2). With the full Auditor JWT in Swagger, repeat Section 12.1 / 12.2 (`GET /api/audit-log`) — note the new `MFAEnrolled` and `MFAVerifySuccess` rows now visible in the audit log alongside the existing entries.
+
+---
+
+**19.6 Negative — Student and Instructor (no MFA)**
+
+Login as a Student:
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "rahul.s",
+  "password": "Stud@123"
+}
+```
+Expected: `200 OK` — **full** `AuthResponseDto` directly, no `mfaToken`, no `purpose`:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "expiry": "2026-05-06T13:00:00Z",
+  "username": "rahul.s",
+  "role": "Student"
+}
+```
+
+Login as an Instructor:
+```json
+{
+  "username": "dr.priya",
+  "password": "Inst@123"
+}
+```
+Expected: `200 OK` — same shape as the Student response (full JWT, no MFA challenge). Instructor and Student remain single-call logins.
+
+---
+
+**19.7 Admin reset — recovery for lost device**
+
+Scenario: tanya.fin (Finance, UserID 5) lost her phone. ITAdmin clears her MFA so she can re-enroll.
+
+Authorize Swagger with the ITAdmin full JWT (from 19.1).
+
+```
+POST /api/users/5/mfa/reset
+```
+*(No request body.)*
+
+Expected: `204 No Content`. The endpoint:
+- clears `MFASecret` (sets to `null`),
+- sets `MFAEnabled = false`,
+- writes audit row `MFAReset` with `details: { resetBy: 1, targetRole: "Finance" }`,
+- drops a `Warning` notification on tanya.fin's notification list: *"Your MFA was reset by an administrator. You will be asked to enroll again on your next login."*
+
+Verify in audit log (still as ITAdmin):
+```
+GET /api/audit-log?action=MFAReset
+```
+Expected: `200 OK` — at least one entry with `userID: 1`, `action: "MFAReset"`, `resourceType: "User"`, `resourceID: 5`.
+
+Now tanya.fin logs in:
+```
+POST /api/auth/login
+```
+```json
+{
+  "username": "tanya.fin",
+  "password": "Fin@123"
+}
+```
+Expected: `200 OK` — `mfa_pending` with **enrollment** message again (because `MFAEnabled` is back to `false`).
+
+She repeats the steps from 19.2: `/setup` → fresh secret + otpauth URI → register in authenticator app → `/verify` with new code → full JWT. Audit log gets a fresh `MFAEnrolled` row.
+
+After that login completes, she can read her notifications:
+```
+GET /api/notifications/me
+```
+Expected: `200 OK` — her notification list includes the reset warning sent earlier.
+
+Idempotency check: calling `POST /api/users/5/mfa/reset` again immediately (target already has no secret) still returns `204 No Content` — no error. Calling against a non-existent user returns `404`.
 
 ---
 
@@ -295,40 +1234,53 @@ SELECT UserID, Username, Role, Status FROM Users ORDER BY UserID;
 
 -- Section enrolled counts updated correctly by API
 SELECT SectionID, Capacity, EnrolledCount FROM Sections;
--- Section 1: EnrolledCount = 2
--- Section 2: EnrolledCount = 1 (Sneha promoted)
 
 -- Enrollment statuses stored as strings
 SELECT EnrollID, StudentID, SectionID, Status, WaitlistPosition
 FROM Enrollments ORDER BY EnrollID;
--- Status values must be 'Enrolled', 'Waitlisted', or 'Dropped' — never integers
+
+-- GradeChange audit trail (from re-grading)
+SELECT * FROM GradeChanges;
+
+-- GPA column must be decimal(4,2) — supports 10-point CGPA
+SELECT NUMERIC_PRECISION, NUMERIC_SCALE FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'Transcripts' AND COLUMN_NAME = 'GPA';
 ```
 
 ---
 
-## Commit and Push
+## What's Remaining — Open Gaps
 
-```bash
-git add .
-git commit -m "chore: restructure to monolith, add repository pattern, fix SIS enum conversions"
-git push
-```
+### Saurav (SRA)
+| Feature | Endpoints | Status | Note |
+|---|---|---|---|
+| SRA-03 transcript PDF | `GET /api/transcripts/{id}` (PDF variant) | ❌ Gap | PRD requires PDF + QR code; currently JSON only |
 
----
-
-## Interim Milestone (April 24, 2026) — What Each Member Builds Next
-
-| Member | Features | Controllers to Build |
+### Vikash (CCM + LMS + AGI)
+| Feature | Endpoints | Status |
 |---|---|---|
-| Ashish | IAM-01, IAM-02, IAM-04 | AuthController, AuditLogController |
-| Saurav | SRA-01, SRA-02, ETS-01, ETS-02 | ApplicantsController, StudentsController, SectionsController, RoomsController |
-| Vikash | CCM-01, LMS-01, AGI-01, AGI-02 | ProgramsController, ContentsController, AssessmentsController, SubmissionsController |
-| Utkarsh | RKA-01, RKA-02 | ReportsController, KPIsController |
-| Tanya | SFB-01, SFB-02, SFB-03 | FeesController, InvoicesController, PaymentsController |
-| Swarna | NHT-01, NHT-03 | NotificationsController, TicketsController |
+| AGI-04 plagiarism tracking | `PUT /api/submissions/{id}/plagiarism-report`, `GET /api/submissions/{id}/integrity-status` | ❌ Not implemented |
 
-### Rules When Building a New Controller
-1. Inject the relevant repository interface — never `AppDbContext` directly
-2. Create request/response DTOs in `EduLearn.API/DTOs/`
-3. All 13 existing repos are already registered in `Program.cs` — no changes needed for those
-4. If you need a repo that doesn't exist yet (e.g. `IApplicantRepository`, `IRoomRepository`, `IProgramRepository`), create the interface in `Repositories/Interfaces/`, the implementation in `Repositories/Implementations/`, and add one `AddScoped` line to `Program.cs`
+### All Team Members
+| Task | Status |
+|---|---|
+| React 18 Frontend | ❌ Not started |
+| EduLearn.Tests project (NUnit + Moq) | ❌ Not started |
+| Azure deployment | ❌ Not started |
+
+---
+
+## Rules When Building New Features
+
+1. **Inject repository interfaces** — never `AppDbContext` directly in controllers
+2. **Add `[Authorize]`** to every new controller (except public endpoints)
+3. **Create DTOs** — `CreateXxxDto`, `XxxResponseDto`, `UpdateXxxDto` as needed
+4. **Use `{ error, code }` format** for all error responses
+5. **Use strongly-typed enums** from `Models/Enums/` — no magic strings
+6. **Test via Swagger** — login first, authorize with JWT, then test endpoints
+7. **Reference PRD:** `docs/EduLearn-PRD-v1.0_2.docx` — the ONLY authoritative PRD document
+8. **PDF downloads:** use `PdfGeneratorService` (QuestPDF 2024.x, community license, registered as Scoped) — never return raw JSON when PRD says PDF
+
+---
+
+*Last updated: May 5, 2026 • EduLearn v11.0*

@@ -2,38 +2,51 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/reports")]
+[Authorize]
 public class ReportsController : ControllerBase
 {
     private readonly IReportRepository _reportRepository;
     private readonly ILogger<ReportsController> _logger;
+    private readonly PdfGeneratorService _pdfGenerator;
 
-    public ReportsController(IReportRepository reportRepository, ILogger<ReportsController> logger)
+    public ReportsController(
+        IReportRepository reportRepository,
+        ILogger<ReportsController> logger,
+        PdfGeneratorService pdfGenerator)
     {
         _reportRepository = reportRepository;
         _logger = logger;
+        _pdfGenerator = pdfGenerator;
     }
 
     // ── POST /api/reports/generate — Create a new report record ──
+    /// <summary>
+    /// Generate and persist a new report record. Auditor and ITAdmin only.
+    /// GeneratedByFK is resolved from the caller's JWT to prevent attribution forgery.
+    /// </summary>
     [HttpPost("generate")]
-    // [Authorize]
+    [Authorize(Roles = "Auditor,ITAdmin")]
     public async Task<ActionResult<ReportResponseDto>> GenerateReport(GenerateReportDto dto, CancellationToken ct)
     {
-        if (dto.GeneratedByFK <= 0)
-            return BadRequest(new { error = "GeneratedByFK must be a positive integer", code = "INVALID_USER_ID" });
-
-        // TODO: replace GeneratedByFK with JWT claim after IAM-01 merges
+        // HARDENING (H-3): GeneratedByFK comes from the JWT, not the body.
+        // dto.GeneratedByFK is ignored — previously allowed attribution forgery.
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
 
         var report = new Report
         {
             Scope = dto.Scope,
             ParametersJSON = dto.ParametersJSON,
-            GeneratedByFK = dto.GeneratedByFK
+            GeneratedByFK = callerId
         };
 
         var created = await _reportRepository.CreateReportAsync(report, ct);
@@ -43,8 +56,11 @@ public class ReportsController : ControllerBase
     }
 
     // ── GET /api/reports — List all reports ──
+    /// <summary>
+    /// List all generated reports. Auditor and ITAdmin only.
+    /// </summary>
     [HttpGet]
-    // [Authorize]
+    [Authorize(Roles = "Auditor,ITAdmin")]
     public async Task<ActionResult<IEnumerable<ReportResponseDto>>> GetAllReports(CancellationToken ct)
     {
         var reports = await _reportRepository.GetAllReportsAsync(ct);
@@ -52,18 +68,36 @@ public class ReportsController : ControllerBase
     }
 
     // ── GET /api/reports/{id}/download — Get a single report by ID ──
+    /// <summary>
+    /// Download a report as PDF (default) or JSON (?format=json). Auditor and ITAdmin only.
+    /// </summary>
     [HttpGet("{id}/download")]
-    // [Authorize]
-    public async Task<ActionResult<ReportResponseDto>> Download(int id, CancellationToken ct)
+    [Authorize(Roles = "Auditor,ITAdmin")]
+    public async Task<IActionResult> Download(int id, [FromQuery] string? format, CancellationToken ct)
     {
         var report = await _reportRepository.GetReportByIdAsync(id, ct);
 
         if (report is null)
             return NotFound(new { error = "Report not found", code = "REPORT_NOT_FOUND" });
 
-        // TODO post-interim: generate PDF via QuestPDF, set ReportURI, return file
+        var dto = MapToDto(report);
 
-        return Ok(MapToDto(report));
+        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(dto,
+                new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                });
+            var jsonBytes = System.Text.Encoding.UTF8.GetBytes(json);
+            var jsonFileName = $"report-{id}-{report.Scope}-{report.GeneratedAt:yyyyMMdd}.json";
+            return File(jsonBytes, "application/json", jsonFileName);
+        }
+
+        var pdfBytes = _pdfGenerator.GenerateReportPdf(dto);
+        var fileName = $"report-{id}-{report.Scope}-{report.GeneratedAt:yyyyMMdd}.pdf";
+        return File(pdfBytes, "application/pdf", fileName);
     }
 
     private static ReportResponseDto MapToDto(Report r) => new()

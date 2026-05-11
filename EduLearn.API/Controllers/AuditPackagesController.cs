@@ -1,26 +1,38 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/audit-packages")]
+[Authorize]
 public class AuditPackagesController : ControllerBase
 {
     private readonly IReportRepository _reportRepository;
     private readonly ILogger<AuditPackagesController> _logger;
+    private readonly PdfGeneratorService _pdfGenerator;
 
-    public AuditPackagesController(IReportRepository reportRepository, ILogger<AuditPackagesController> logger)
+    public AuditPackagesController(
+        IReportRepository reportRepository,
+        ILogger<AuditPackagesController> logger,
+        PdfGeneratorService pdfGenerator)
     {
         _reportRepository = reportRepository;
         _logger = logger;
+        _pdfGenerator = pdfGenerator;
     }
 
+    /// <summary>
+    /// Generate an audit package bundling all reports within a date range. Auditor and ITAdmin only.
+    /// Validates that PeriodEnd is after PeriodStart before creating the package record.
+    /// </summary>
     // ── POST /api/audit-packages/generate — Build an audit package for a date range ──
     [HttpPost("generate")]
-    // [Authorize(Roles = "Auditor,ITAdmin")]
+    [Authorize(Roles = "Auditor,ITAdmin")]
     public async Task<ActionResult<AuditPackageResponseDto>> Generate(GenerateAuditPackageDto dto, CancellationToken ct)
     {
         if (dto.PeriodEnd < dto.PeriodStart)
@@ -53,19 +65,37 @@ public class AuditPackagesController : ControllerBase
         return CreatedAtAction(nameof(Download), new { id = created.PackageID }, MapToDto(created));
     }
 
-    // ── GET /api/audit-packages/{id}/download — Retrieve an audit package by ID ──
+    /// <summary>
+    /// Download audit package as PDF (default) or JSON (?format=json). Auditor and ITAdmin only.
+    /// Returns 404 if the package does not exist.
+    /// </summary>
     [HttpGet("{id}/download")]
-    // [Authorize(Roles = "Auditor,ITAdmin")]
-    public async Task<ActionResult<AuditPackageResponseDto>> Download(int id, CancellationToken ct)
+    [Authorize(Roles = "Auditor,ITAdmin")]
+    public async Task<IActionResult> Download(int id, [FromQuery] string? format, CancellationToken ct)
     {
         var package = await _reportRepository.GetAuditPackageByIdAsync(id, ct);
 
         if (package is null)
             return NotFound(new { error = "Audit package not found", code = "AUDIT_PACKAGE_NOT_FOUND" });
 
-        // TODO post-interim: package as ZIP archive, set PackageURI, return file
+        var dto = MapToDto(package);
 
-        return Ok(MapToDto(package));
+        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(dto,
+                new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                });
+            var jsonBytes = System.Text.Encoding.UTF8.GetBytes(json);
+            var jsonFileName = $"audit-package-{id}-{package.PeriodStart:yyyyMMdd}-{package.PeriodEnd:yyyyMMdd}.json";
+            return File(jsonBytes, "application/json", jsonFileName);
+        }
+
+        var pdfBytes = _pdfGenerator.GenerateAuditPackagePdf(dto);
+        var fileName = $"audit-package-{id}-{package.PeriodStart:yyyyMMdd}-{package.PeriodEnd:yyyyMMdd}.pdf";
+        return File(pdfBytes, "application/pdf", fileName);
     }
 
     private static AuditPackageResponseDto MapToDto(AuditPackage p) => new()

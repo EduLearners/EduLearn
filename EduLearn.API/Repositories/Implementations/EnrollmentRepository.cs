@@ -53,11 +53,7 @@ public class EnrollmentRepository : IEnrollmentRepository
             e.SectionID == sectionId &&
             e.Status != EnrollmentStatus.Dropped);
 
-    public async Task<bool> HasActiveEnrollmentAsync(int studentId, int sectionId)
-        => await _context.Enrollments.AnyAsync(e =>
-            e.StudentID == studentId &&
-            e.SectionID == sectionId &&
-            e.Status != EnrollmentStatus.Dropped);
+    // BUG-4 FIX: HasActiveEnrollmentAsync removed — was identical to IsAlreadyEnrolledAsync
 
     public async Task<int> GetMaxWaitlistPositionAsync(int sectionId)
         => await _context.Enrollments
@@ -69,6 +65,20 @@ public class EnrollmentRepository : IEnrollmentRepository
             .Where(e => e.SectionID == sectionId && e.Status == EnrollmentStatus.Waitlisted)
             .OrderBy(e => e.WaitlistPosition)
             .FirstOrDefaultAsync();
+
+    public async Task<IEnumerable<Enrollment>> GetWaitlistedBySectionAsync(int sectionId)
+        => await _context.Enrollments
+            .Where(e => e.SectionID == sectionId && e.Status == EnrollmentStatus.Waitlisted)
+            .OrderBy(e => e.WaitlistPosition)
+            .ToListAsync();
+
+    // FIX: Find a dropped enrollment for re-enrollment (reuse row instead of INSERT)
+    public async Task<Enrollment?> GetDroppedEnrollmentAsync(int studentId, int sectionId)
+        => await _context.Enrollments
+            .FirstOrDefaultAsync(e =>
+                e.StudentID == studentId &&
+                e.SectionID == sectionId &&
+                e.Status == EnrollmentStatus.Dropped);
 
     public async Task<IEnumerable<Enrollment>> GetByStudentIdWithDetailsAsync(int studentId)
         => await _context.Enrollments

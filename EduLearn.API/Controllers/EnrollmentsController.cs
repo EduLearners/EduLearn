@@ -1,37 +1,61 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
-using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Repositories.Interfaces;          // TEAMMATE: added for repository pattern
+using EduLearn.API.Services;                          // NHT-01: INotificationService
+using Microsoft.AspNetCore.Authorization;             // AUTH CHANGE: added for [Authorize]
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/enrollment")]
+[Authorize] // AUTH CHANGE: All endpoints require a valid JWT token
 public class EnrollmentsController : ControllerBase
 {
+    // TEAMMATE: Changed from AppDbContext to repositories
     private readonly IEnrollmentRepository _enrollRepo;
     private readonly IStudentRepository _studentRepo;
     private readonly ISectionRepository _sectionRepo;
+    private readonly INotificationService _notificationService;
+    // AUDIT CHANGE (interim-polish): log enrollment state changes to the append-only audit trail
+    // so the Auditor demo has meaningful IAM-04 content beyond auth events.
+    private readonly AuditLogService _auditLogService;
 
     public EnrollmentsController(
         IEnrollmentRepository enrollRepo,
         IStudentRepository studentRepo,
-        ISectionRepository sectionRepo)
+        ISectionRepository sectionRepo,
+        INotificationService notificationService,
+        AuditLogService auditLogService)
     {
         _enrollRepo = enrollRepo;
         _studentRepo = studentRepo;
         _sectionRepo = sectionRepo;
+        _notificationService = notificationService;
+        _auditLogService = auditLogService;
     }
 
-    // POST /api/enrollment/enroll
+    /// <summary>
+    /// Enroll a student in a section. Student, Registrar, and ITAdmin (EnrollmentPolicy).
+    /// Students may only enroll themselves; auto-waitlists when section capacity is full.
+    /// </summary>
+    // AUTH CHANGE: Student, Registrar, ITAdmin can enroll
     [HttpPost("enroll")]
+    [Authorize(Policy = "EnrollmentPolicy")]
     public async Task<ActionResult<EnrollmentResponseDto>> Enroll(
         CreateEnrollmentDto dto, CancellationToken cancellationToken)
     {
         var student = await _studentRepo.GetByIdAsync(dto.StudentID);
         if (student is null)
             return BadRequest(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
+
+        // HARDENING (C-22): If caller is a Student, dto.StudentID must equal caller's own record.
+        // Registrar/ITAdmin may pass any StudentID (they're doing bulk enrollment).
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        if (callerRole == "Student" && student.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
+            return StatusCode(403, new { error = "Students may only enroll themselves", code = "ENROLLMENT_FORBIDDEN" });
 
         using var transaction = await _enrollRepo.BeginTransactionAsync();
         try
@@ -41,6 +65,17 @@ public class EnrollmentsController : ControllerBase
             {
                 await transaction.RollbackAsync(cancellationToken);
                 return BadRequest(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
+            }
+
+            // BUG-1 FIX: Check section is open before allowing enrollment
+            if (section.Status != SectionStatus.Open)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return BadRequest(new
+                {
+                    error = "Section is not open for enrollment",
+                    code = "SECTION_NOT_OPEN"
+                });
             }
 
             var isDuplicate = await _enrollRepo.IsAlreadyEnrolledAsync(dto.StudentID, dto.SectionID);
@@ -72,7 +107,21 @@ public class EnrollmentsController : ControllerBase
                 WaitlistPosition = waitlistPosition
             };
 
-            await _enrollRepo.CreateAsync(enrollment);
+            // FIX: If student was previously enrolled and dropped, reuse the existing
+            // record instead of creating a new one (unique index on StudentID+SectionID)
+            var existingDropped = await _enrollRepo.GetDroppedEnrollmentAsync(dto.StudentID, dto.SectionID);
+            if (existingDropped is not null)
+            {
+                existingDropped.Status = status;
+                existingDropped.WaitlistPosition = waitlistPosition;
+                existingDropped.EnrolledAt = DateTime.UtcNow;
+                await _enrollRepo.UpdateAsync(existingDropped);
+                enrollment = existingDropped;
+            }
+            else
+            {
+                await _enrollRepo.CreateAsync(enrollment);
+            }
 
             if (status == EnrollmentStatus.Enrolled)
             {
@@ -96,6 +145,23 @@ public class EnrollmentsController : ControllerBase
                 EnrolledAt = enrollment.EnrolledAt
             };
 
+            // NHT-01: notify the student. After commit so a failed notify doesn't undo enrollment.
+            var msg = status == EnrollmentStatus.Waitlisted
+                ? $"Added to waitlist for {section.Course.Title} ({section.Term}) — position #{waitlistPosition}."
+                : $"Enrolled in {section.Course.Title} ({section.Term}).";
+            await _notificationService.NotifyAsync(
+                student.UserID, NotificationCategory.Enrollment, NotificationSeverity.Info,
+                msg, enrollment.EnrollID);
+
+            // AUDIT CHANGE (interim-polish): record the enrollment event for IAM-04.
+            await _auditLogService.LogAsync(
+                int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? throw new InvalidOperationException("NameIdentifier claim missing")),
+                "EnrollmentCreated",
+                "Enrollment",
+                enrollment.EnrollID,
+                new { studentId = enrollment.StudentID, sectionId = enrollment.SectionID, status = enrollment.Status.ToString() });
+
             return StatusCode(StatusCodes.Status201Created, response);
         }
         catch
@@ -105,8 +171,13 @@ public class EnrollmentsController : ControllerBase
         }
     }
 
-    // DELETE /api/enrollment/{id}/drop
+    /// <summary>
+    /// Drop an enrollment by ID. Student, Registrar, and ITAdmin (EnrollmentPolicy).
+    /// Students may only drop their own enrollments; promotes the next waitlisted student automatically.
+    /// </summary>
+    // AUTH CHANGE: Student, Registrar, ITAdmin can drop
     [HttpDelete("{id}/drop")]
+    [Authorize(Policy = "EnrollmentPolicy")]
     public async Task<IActionResult> Drop(int id, CancellationToken cancellationToken)
     {
         using var transaction = await _enrollRepo.BeginTransactionAsync();
@@ -119,9 +190,27 @@ public class EnrollmentsController : ControllerBase
                 return NotFound(new { error = "Enrollment not found", code = "ENROLLMENT_NOT_FOUND" });
             }
 
+            // HARDENING (C-21): If caller is a Student, enrollment must belong to them.
+            // Registrar/ITAdmin may drop any enrollment.
+            var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+            if (callerRole == "Student")
+            {
+                var owner = await _studentRepo.GetByIdAsync(enrollment.StudentID);
+                if (owner?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return StatusCode(403, new { error = "You may only drop your own enrollments", code = "ENROLLMENT_FORBIDDEN" });
+                }
+            }
+
             var wasEnrolled = enrollment.Status == EnrollmentStatus.Enrolled;
             enrollment.Status = EnrollmentStatus.Dropped;
             await _enrollRepo.UpdateAsync(enrollment);
+
+            // AUDIT CHANGE (interim-polish): capture promoted enrollment so we can notify
+            // the waitlisted-then-promoted student AFTER the transaction commits.
+            int? promotedEnrollId = null;
+            int? promotedStudentId = null;
 
             if (wasEnrolled)
             {
@@ -137,6 +226,22 @@ public class EnrollmentsController : ControllerBase
                         nextInLine.WaitlistPosition = null;
                         await _enrollRepo.UpdateAsync(nextInLine);
                         section.EnrolledCount++;
+                        promotedEnrollId = nextInLine.EnrollID;
+                        promotedStudentId = nextInLine.StudentID;
+
+                        // BUG-3 FIX: Flush promoted student to DB before renumbering
+                        // to avoid EF Core returning stale cached data
+                        await _enrollRepo.SaveChangesAsync();
+
+                        // Shift remaining waitlist positions (2,3,4... → 1,2,3...)
+                        var remainingWaitlisted = await _enrollRepo.GetWaitlistedBySectionAsync(enrollment.SectionID);
+                        var newPosition = 1;
+                        foreach (var waitlisted in remainingWaitlisted)
+                        {
+                            waitlisted.WaitlistPosition = newPosition;
+                            await _enrollRepo.UpdateAsync(waitlisted);
+                            newPosition++;
+                        }
                     }
 
                     await _sectionRepo.UpdateAsync(section);
@@ -144,6 +249,44 @@ public class EnrollmentsController : ControllerBase
             }
 
             await transaction.CommitAsync(cancellationToken);
+
+            // NHT-01: notify the student their enrollment was dropped (Warning severity).
+            var droppedStudent = await _studentRepo.GetByIdAsync(enrollment.StudentID);
+            var droppedSection = await _sectionRepo.GetByIdWithCourseAsync(enrollment.SectionID);
+            var courseTitle = droppedSection?.Course.Title ?? $"Section #{enrollment.SectionID}";
+            var term = droppedSection?.Term ?? string.Empty;
+
+            if (droppedStudent is not null)
+            {
+                await _notificationService.NotifyAsync(
+                    droppedStudent.UserID, NotificationCategory.Enrollment, NotificationSeverity.Warning,
+                    $"Dropped from {courseTitle} ({term}).", enrollment.EnrollID);
+            }
+
+            // NHT-01 (interim-polish): notify the promoted waitlist student that they're now enrolled.
+            if (promotedStudentId.HasValue && promotedEnrollId.HasValue)
+            {
+                var promotedStudent = await _studentRepo.GetByIdAsync(promotedStudentId.Value);
+                if (promotedStudent is not null)
+                {
+                    await _notificationService.NotifyAsync(
+                        promotedStudent.UserID,
+                        NotificationCategory.Enrollment,
+                        NotificationSeverity.Info,
+                        $"You have been promoted from the waitlist and are now enrolled in {courseTitle} ({term}).",
+                        promotedEnrollId.Value);
+                }
+            }
+
+            // AUDIT CHANGE (interim-polish): record the drop event for IAM-04.
+            await _auditLogService.LogAsync(
+                int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? throw new InvalidOperationException("NameIdentifier claim missing")),
+                "EnrollmentDropped",
+                "Enrollment",
+                enrollment.EnrollID,
+                new { studentId = enrollment.StudentID, sectionId = enrollment.SectionID, promotedEnrollId });
+
             return NoContent();
         }
         catch
@@ -153,11 +296,25 @@ public class EnrollmentsController : ControllerBase
         }
     }
 
-    // GET /api/enrollment/student/{studentId}
+    /// <summary>
+    /// List all enrollments for a student. EnrollmentViewPolicy (Student, Instructor, Registrar, ITAdmin).
+    /// Students may only view their own enrollment records.
+    /// </summary>
+    // AUTH CHANGE: Student, Instructor, Registrar, ITAdmin can view student enrollments
     [HttpGet("student/{studentId}")]
+    [Authorize(Policy = "EnrollmentViewPolicy")]
     public async Task<ActionResult<IEnumerable<EnrollmentResponseDto>>> GetByStudent(
         int studentId, CancellationToken cancellationToken)
     {
+        // HARDENING (C-14/F-4): Student role may only read their own enrollments.
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        if (callerRole == "Student")
+        {
+            var target = await _studentRepo.GetByIdAsync(studentId);
+            if (target?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
+                return StatusCode(403, new { error = "You may only view your own enrollments", code = "ENROLLMENT_FORBIDDEN" });
+        }
+
         var enrollments = await _enrollRepo.GetByStudentIdAsync(studentId);
 
         var result = enrollments.Select(e => new EnrollmentResponseDto
@@ -177,8 +334,12 @@ public class EnrollmentsController : ControllerBase
         return Ok(result);
     }
 
-    // GET /api/enrollment/section/{sectionId}
+    /// <summary>
+    /// List all enrollments for a section (roster view). RosterViewPolicy (Instructor, Registrar, DeptAdmin, ITAdmin).
+    /// </summary>
+    // AUTH CHANGE: Instructor, Registrar, DeptAdmin, ITAdmin can view section roster
     [HttpGet("section/{sectionId}")]
+    [Authorize(Policy = "RosterViewPolicy")]
     public async Task<ActionResult<IEnumerable<EnrollmentResponseDto>>> GetBySection(
         int sectionId, CancellationToken cancellationToken)
     {

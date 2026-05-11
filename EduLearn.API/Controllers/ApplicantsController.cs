@@ -1,12 +1,16 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+// HARDENING (C-7): PRD §6.2 SRA-01 requires Registrar (or ITAdmin) for applicant CRUD.
+// Previously bare [Authorize] meant any Student could list/read/accept applicants (PII leak).
+[Authorize(Roles = "Registrar,ITAdmin")]
 public class ApplicantsController : ControllerBase
 {
     private readonly IApplicantRepository _applicantRepo;
@@ -16,11 +20,23 @@ public class ApplicantsController : ControllerBase
         _applicantRepo = applicantRepo;
     }
 
+    /// <summary>
+    /// Create a new applicant record. Registrar and ITAdmin only.
+    /// Validates that date of birth is in the past and National ID is unique.
+    /// </summary>
     // POST /api/applicants
     [HttpPost]
     public async Task<ActionResult<ApplicantResponseDto>> CreateApplicant(
         CreateApplicantDto dto, CancellationToken cancellationToken)
     {
+        // BUG-6 FIX: Validate DOB is in the past
+        if (dto.DOB >= DateTime.UtcNow)
+            return BadRequest(new
+            {
+                error = "Date of birth must be in the past",
+                code = "INVALID_DOB"
+            });
+
         // If NationalID is provided, check it is not already registered
         if (!string.IsNullOrWhiteSpace(dto.NationalID))
         {
@@ -48,6 +64,9 @@ public class ApplicantsController : ControllerBase
             new { id = created.ApplicantID }, MapToDto(created));
     }
 
+    /// <summary>
+    /// List all applicant records. Registrar and ITAdmin only.
+    /// </summary>
     // GET /api/applicants
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ApplicantResponseDto>>> GetApplicants(
@@ -57,6 +76,10 @@ public class ApplicantsController : ControllerBase
         return Ok(applicants.Select(MapToDto));
     }
 
+    /// <summary>
+    /// Retrieve a single applicant by ID. Registrar and ITAdmin only.
+    /// Returns 404 if the applicant does not exist.
+    /// </summary>
     // GET /api/applicants/{id}
     [HttpGet("{id}")]
     public async Task<ActionResult<ApplicantResponseDto>> GetApplicant(
@@ -74,6 +97,10 @@ public class ApplicantsController : ControllerBase
         return Ok(MapToDto(applicant));
     }
 
+    /// <summary>
+    /// Update the application status of an existing applicant. Registrar and ITAdmin only.
+    /// Returns 404 if the applicant does not exist.
+    /// </summary>
     // PUT /api/applicants/{id}/status
     [HttpPut("{id}/status")]
     public async Task<ActionResult<ApplicantResponseDto>> UpdateStatus(

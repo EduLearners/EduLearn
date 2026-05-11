@@ -47,15 +47,11 @@ public class StudentRepository : IStudentRepository
         return student;
     }
 
-    public async Task<bool> DeleteAsync(int studentId)
-    {
-        var student = await _context.Students.FindAsync(studentId);
-        if (student is null) return false;
-        _context.Students.Remove(student);
-        await _context.SaveChangesAsync();
-        return true;
-    }
+    // BUG-8 FIX: DeleteAsync removed — students must never be deleted per PRD
 
     public async Task<bool> ExistsAsync(int studentId)
         => await _context.Students.AnyAsync(s => s.StudentID == studentId);
+
+    public async Task<int> GetCountAsync()
+        => await _context.Students.CountAsync();
 }

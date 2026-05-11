@@ -13,6 +13,7 @@ public interface IStudentRepository
     Task<IEnumerable<Student>> GetByStatusAsync(StudentLifecycleStatus status);
     Task<Student> CreateAsync(Student student);
     Task<Student> UpdateAsync(Student student);
-    Task<bool> DeleteAsync(int studentId);
+    // BUG-8 FIX: DeleteAsync removed — students must never be deleted per PRD
     Task<bool> ExistsAsync(int studentId);
+    Task<int> GetCountAsync();
 }

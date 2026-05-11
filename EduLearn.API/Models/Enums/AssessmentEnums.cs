@@ -2,7 +2,7 @@ namespace EduLearn.API.Models.Enums;
 
 public enum AssessmentStatus
 {
-    Draft, Published, Closed
+    Draft, Published, Closed, Archived
 }
 
 public enum AssessmentType
@@ -12,5 +12,13 @@ public enum AssessmentType
 
 public enum SubmissionStatus
 {
-    Submitted, Graded, Late, Plagiarised
+    Submitted, Graded, Returned, Late, Plagiarised
+}
+
+// AGI-04: Plagiarism report lifecycle
+public enum PlagiarismStatus
+{
+    Pending,    // Report filed, awaiting review
+    Confirmed,  // Plagiarism confirmed by ITAdmin
+    Dismissed   // Report reviewed and dismissed
 }

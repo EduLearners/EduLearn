@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using EduLearn.API.Models.Enums;
 
 namespace EduLearn.API.DTOs;
 
@@ -15,4 +16,7 @@ public class UpdateStudentDto
 
     [MaxLength(20)]
     public string? ExpectedGraduationTerm { get; set; }
+
+    // BUG-5 FIX: Allow lifecycle status updates (Active → Graduated/Withdrawn/Suspended)
+    public StudentLifecycleStatus? EnrollmentStatus { get; set; }
 }

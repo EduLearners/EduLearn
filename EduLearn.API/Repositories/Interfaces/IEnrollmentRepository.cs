@@ -13,9 +13,11 @@ public interface IEnrollmentRepository
     Task<IEnumerable<Enrollment>> GetByStatusAsync(EnrollmentStatus status);
     Task<Enrollment?> GetByStudentAndSectionAsync(int studentId, int sectionId);
     Task<bool> IsAlreadyEnrolledAsync(int studentId, int sectionId);
-    Task<bool> HasActiveEnrollmentAsync(int studentId, int sectionId);
+    // BUG-4 FIX: HasActiveEnrollmentAsync removed — was identical to IsAlreadyEnrolledAsync
     Task<int> GetMaxWaitlistPositionAsync(int sectionId);
     Task<Enrollment?> GetFirstWaitlistedAsync(int sectionId);
+    Task<IEnumerable<Enrollment>> GetWaitlistedBySectionAsync(int sectionId);
+    Task<Enrollment?> GetDroppedEnrollmentAsync(int studentId, int sectionId);
     Task<IEnumerable<Enrollment>> GetByStudentIdWithDetailsAsync(int studentId);
     Task<IEnumerable<Enrollment>> GetBySectionIdWithDetailsAsync(int sectionId);
     Task<Enrollment> CreateAsync(Enrollment enrollment);

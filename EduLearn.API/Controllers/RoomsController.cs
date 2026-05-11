@@ -1,12 +1,14 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class RoomsController : ControllerBase
 {
     private readonly IRoomRepository _roomRepo;
@@ -17,7 +19,12 @@ public class RoomsController : ControllerBase
     }
 
     // POST /api/rooms
+    /// <summary>
+    /// Create a new room. DeptAdmin and ITAdmin only.
+    /// Returns 409 Conflict if the building and room number combination already exists.
+    /// </summary>
     [HttpPost]
+    [Authorize(Policy = "DeptAdminPolicy")]
     public async Task<ActionResult<RoomResponseDto>> CreateRoom(
         CreateRoomDto dto, CancellationToken cancellationToken)
     {
@@ -44,6 +51,9 @@ public class RoomsController : ControllerBase
     }
 
     // GET /api/rooms
+    /// <summary>
+    /// List all rooms. All authenticated roles.
+    /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<RoomResponseDto>>> GetRooms(
         CancellationToken cancellationToken)
@@ -53,6 +63,9 @@ public class RoomsController : ControllerBase
     }
 
     // GET /api/rooms/{id}
+    /// <summary>
+    /// Retrieve a single room by ID. All authenticated roles.
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<RoomResponseDto>> GetRoom(
         int id, CancellationToken cancellationToken)

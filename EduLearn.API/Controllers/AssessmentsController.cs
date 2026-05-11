@@ -2,19 +2,22 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class AssessmentsController : ControllerBase
 {
-    // Repository pattern: controller talks to repository interfaces, NOT AppDbContext directly
     private readonly IAssessmentRepository _assessmentRepository;
     private readonly ICourseRepository _courseRepository;
     private readonly IUserRepository _userRepository;
     private readonly ISectionRepository _sectionRepository;
+    
 
     public AssessmentsController(
         IAssessmentRepository assessmentRepository,
@@ -28,17 +31,24 @@ public class AssessmentsController : ControllerBase
         _sectionRepository = sectionRepository;
     }
 
-    // ── POST /api/assessments — Create a new assessment (always starts as Draft) ──
+    /// <summary>
+    /// Create a new assessment for a course. Instructor and ITAdmin only.
+    /// Validates that the target course and optional section exist before saving.
+    /// </summary>
+
+  
+
+
     [HttpPost]
+    [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<AssessmentResponseDto>> CreateAssessment(CreateAssessmentDto dto)
     {
-        // Validate that the course exists using course repository
+       
         var course = await _courseRepository.GetByIdAsync(dto.CourseID);
 
         if (course is null)
             return BadRequest(new { error = "Course not found", code = "COURSE_NOT_FOUND" });
 
-        // Validate that the section exists (only if SectionID is provided) using section repository
         if (dto.SectionID.HasValue)
         {
             var sectionExists = await _sectionRepository.ExistsAsync(dto.SectionID.Value);
@@ -47,13 +57,15 @@ public class AssessmentsController : ControllerBase
                 return BadRequest(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
         }
 
-        // Validate that the creator (instructor) exists using user repository
-        var creator = await _userRepository.GetByIdAsync(dto.CreatedByFK);
+        
+        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
+        var creator = await _userRepository.GetByIdAsync(callerId);
 
         if (creator is null)
             return BadRequest(new { error = "Creator user not found", code = "USER_NOT_FOUND" });
 
-        // Create the assessment entity — Status defaults to Draft from the model
+       
         var assessment = new Assessment
         {
             CourseID = dto.CourseID,
@@ -63,13 +75,13 @@ public class AssessmentsController : ControllerBase
             DueAt = dto.DueAt,
             MaxScore = dto.MaxScore,
             GradingRubricJSON = dto.GradingRubricJSON,
-            CreatedByFK = dto.CreatedByFK
+            CreatedByFK = callerId   
         };
 
-        // Repository handles Add + SaveChanges internally
+        //SaveChange
         await _assessmentRepository.CreateAsync(assessment);
 
-        // Build response with course name and creator name
+       
         var response = new AssessmentResponseDto
         {
             AssessmentID = assessment.AssessmentID,
@@ -90,17 +102,20 @@ public class AssessmentsController : ControllerBase
         return CreatedAtAction(nameof(GetAssessmentsByCourse), new { courseId = assessment.CourseID }, response);
     }
 
-    // ── GET /api/assessments/course/{courseId} — List all assessments for a course ──
+    /// <summary>
+    /// List all assessments for a given course. All authenticated users.
+    /// Returns 404 if the course does not exist.
+    /// </summary>
     [HttpGet("course/{courseId}")]
     public async Task<ActionResult<List<AssessmentResponseDto>>> GetAssessmentsByCourse(int courseId)
     {
-        // Check if the course exists using course repository
+        
         var courseExists = await _courseRepository.ExistsAsync(courseId);
 
         if (!courseExists)
             return NotFound(new { error = "Course not found", code = "COURSE_NOT_FOUND" });
 
-        // Repository returns assessments with Course and CreatedBy navigation properties loaded
+        
         var assessments = await _assessmentRepository.GetByCourseIdWithDetailsAsync(courseId);
 
         var response = assessments.Select(a => new AssessmentResponseDto
@@ -123,21 +138,26 @@ public class AssessmentsController : ControllerBase
         return Ok(response);
     }
 
-    // ── PUT /api/assessments/{id} — Update assessment details (only if still in Draft) ──
+   
+    /// <summary>
+    /// Update an existing assessment. Instructor and ITAdmin only.
+    /// Only assessments in Draft status may be modified.
+    /// </summary>
     [HttpPut("{id}")]
-    public async Task<ActionResult<AssessmentResponseDto>> UpdateAssessment(int id, CreateAssessmentDto dto)
+    [Authorize(Roles = "Instructor,ITAdmin")]
+    public async Task<ActionResult<AssessmentResponseDto>> UpdateAssessment(int id, UpdateAssessmentDto dto)
     {
-        // Repository returns assessment with Course and CreatedBy loaded (for response DTO)
+        
         var assessment = await _assessmentRepository.GetByIdWithDetailsAsync(id);
 
         if (assessment is null)
             return NotFound(new { error = "Assessment not found", code = "ASSESSMENT_NOT_FOUND" });
 
-        // Only Draft assessments can be edited — Published/Closed are locked
+        
         if (assessment.Status != AssessmentStatus.Draft)
             return BadRequest(new { error = "Only Draft assessments can be updated", code = "ASSESSMENT_NOT_DRAFT" });
 
-        // Validate section if provided using section repository
+        
         if (dto.SectionID.HasValue)
         {
             var sectionExists = await _sectionRepository.ExistsAsync(dto.SectionID.Value);
@@ -146,8 +166,7 @@ public class AssessmentsController : ControllerBase
                 return BadRequest(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
         }
 
-        // Update fields from DTO
-        assessment.CourseID = dto.CourseID;
+       
         assessment.SectionID = dto.SectionID;
         assessment.Title = dto.Title;
         assessment.Type = dto.Type;
@@ -155,7 +174,7 @@ public class AssessmentsController : ControllerBase
         assessment.MaxScore = dto.MaxScore;
         assessment.GradingRubricJSON = dto.GradingRubricJSON;
 
-        // Repository calls SaveChanges
+        
         await _assessmentRepository.UpdateAsync(assessment);
 
         return Ok(new AssessmentResponseDto
@@ -176,35 +195,38 @@ public class AssessmentsController : ControllerBase
         });
     }
 
-    // ── PUT /api/assessments/{id}/publish — Change status: Draft → Published → Closed ──
+    
+    /// <summary>
+    /// Transition an assessment through its status lifecycle. Instructor and ITAdmin only.
+    /// Enforces valid transitions: Draft → Published → Closed → Archived.
+    /// </summary>
     [HttpPut("{id}/publish")]
+    [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<AssessmentResponseDto>> PublishAssessment(int id, UpdateAssessmentStatusDto dto)
     {
-        // Repository returns assessment with Course and CreatedBy loaded
+        
         var assessment = await _assessmentRepository.GetByIdWithDetailsAsync(id);
 
         if (assessment is null)
             return NotFound(new { error = "Assessment not found", code = "ASSESSMENT_NOT_FOUND" });
 
-        // Enforce valid status transitions: Draft → Published → Closed
+        
         var validTransition = (assessment.Status, dto.Status) switch
         {
             (AssessmentStatus.Draft, AssessmentStatus.Published) => true,
             (AssessmentStatus.Published, AssessmentStatus.Closed) => true,
+            (AssessmentStatus.Closed, AssessmentStatus.Archived) => true,
             _ => false
         };
 
         if (!validTransition)
             return BadRequest(new
             {
-                error = $"Cannot transition from {assessment.Status} to {dto.Status}. Valid: Draft → Published → Closed",
+                error = $"Cannot transition from {assessment.Status} to {dto.Status}. Valid: Draft → Published → Closed → Archived",
                 code = "INVALID_STATUS_TRANSITION"
             });
-
-        // Apply the status change
         assessment.Status = dto.Status;
 
-        // Repository calls SaveChanges
         await _assessmentRepository.UpdateAsync(assessment);
 
         return Ok(new AssessmentResponseDto
