@@ -1,4 +1,8 @@
 <Solution>
   <Project Path="EduLearn.API/EduLearn.API.csproj" />
+  <Project Path="EduLearn.client/edulearn.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
   <Project Path="EduLearn_Testing/EduLearn_Testing.csproj" Id="2af578a7-70f6-404c-9f33-3ce07a80d07e" />
 </Solution>
