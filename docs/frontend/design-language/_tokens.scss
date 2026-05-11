@@ -1,0 +1,285 @@
+// =============================================================================
+// EduLearn Design Tokens
+// Locked: 2026-05-07 (Shape Brief 01 + tokens.md)
+// Source of truth for all visual decisions.
+// Imported BEFORE Bootstrap so Bootstrap's variables can reference these.
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. COLOR
+// -----------------------------------------------------------------------------
+
+// 1.1 Brand axis — Deep forest green
+// OKLCH(42%, 0.10, 145) — anchor matches Krea/Plaksha tradition
+$brand-50:  #ecf2ec; // OKLCH(95%, 0.020, 145) — hover background tint
+$brand-100: #cee0d2; // OKLCH(88%, 0.040, 145) — active nav bg (8% opacity feel)
+$brand-200: #aaccaf; // OKLCH(78%, 0.060, 145) — selection
+$brand-300: #82b489; // OKLCH(68%, 0.080, 145) — disabled CTA
+$brand-400: #4f8059; // OKLCH(55%, 0.100, 145) — CTA hover lighten
+$brand-500: #1f4d2c; // OKLCH(42%, 0.100, 145) — PRIMARY: CTAs, focus, active nav
+$brand-600: #173e22; // OKLCH(36%, 0.100, 145) — CTA pressed
+$brand-700: #10301a; // OKLCH(30%, 0.090, 145) — body emphasis on brand surface
+$brand-800: #0a2110; // OKLCH(22%, 0.070, 145) — dark mode brand surface (v2)
+$brand-900: #051509; // OKLCH(15%, 0.050, 145) — darkest brand surface
+
+// 1.2 Neutrals — warm cream tinted toward brand
+// chroma 0.008, hue 75 (warm), 12 steps
+$neutral-0:   #fdfcfa; // page background
+$neutral-50:  #faf8f4; // elevated surface (cards, modals)
+$neutral-100: #f4f1ec; // pressed surface (inputs)
+$neutral-200: #e6e2d9; // borders, dividers
+$neutral-300: #cec7b8; // disabled border
+$neutral-400: #ada593; // disabled text, placeholder
+$neutral-500: #918a78; // caption text, secondary icon
+$neutral-600: #756e5d; // secondary text
+$neutral-700: #595442; // body text emphasis
+$neutral-800: #3e3a2c; // body text default ← reading default
+$neutral-900: #2b2820; // headings
+$neutral-950: #1d1a16; // deepest emphasis
+
+// 1.3 Semantic — distinct hues, never overlapping with brand
+$success-500: #1c7a5e; // OKLCH(50%, 0.13, 165) — paired with check icon
+$warn-500:    #b89243; // OKLCH(70%, 0.15,  75) — paired with triangle-exclamation
+$danger-500:  #a83d29; // OKLCH(50%, 0.18,  25) — paired with octagon-exclamation
+$info-500:    #3a72a8; // OKLCH(55%, 0.13, 230) — paired with info-circle
+
+// Tints (for status row backgrounds at ~10% feel)
+$success-50:  #e3f1ec;
+$warn-50:     #f6ecd8;
+$danger-50:   #f5e0db;
+$info-50:     #dde9f3;
+
+// 1.4 Surface tiers (semantic aliases)
+$surface-page:     $neutral-0;
+$surface-elevated: $neutral-50;
+$surface-pressed:  $neutral-100;
+$surface-brand:    $brand-100;
+
+// 1.5 Text aliases
+$text-default:    $neutral-800;
+$text-emphasis:   $neutral-900;
+$text-secondary:  $neutral-600;
+$text-caption:    $neutral-600; // was neutral-500 (4.6:1) — WCAG AA fail at 12px; neutral-600 = 5.8:1 PASS
+$text-disabled:   $neutral-400;
+$text-on-brand:   #ffffff; // white on brand-500 = 7.1:1 (AAA)
+$text-link:       $brand-700;
+$text-link-hover: $brand-600;
+
+// 1.6 Border aliases
+$border-default:  $neutral-200;
+$border-emphasis: $neutral-300;
+$border-brand:    $brand-200;
+$border-focus:    $brand-500;
+
+// -----------------------------------------------------------------------------
+// 2. TYPOGRAPHY
+// -----------------------------------------------------------------------------
+
+// 2.1 Font families — IBM Plex (self-hosted, OFL license)
+$font-family-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+$font-family-mono: 'IBM Plex Mono', 'Cascadia Code', Menlo, Monaco, Consolas, monospace;
+$font-family-base: $font-family-sans;
+
+// 2.2 Type scale — 5 tiers
+$font-size-caption:   0.75rem;   // 12px
+$font-size-secondary: 0.875rem;  // 14px
+$font-size-body:      1rem;      // 16px (base)
+$font-size-subhead:   1.25rem;   // 20px
+$font-size-display:   2rem;      // 32px
+
+// 2.3 Line heights
+$line-height-tight:  1.15;       // display (37px on 32px)
+$line-height-snug:   1.4;        // subhead (28px on 20px)
+$line-height-normal: 1.5;        // body (24px on 16px) ← rhythm anchor
+$line-height-loose:  1.75;       // longform reading (rarely used)
+
+// 2.4 Font weights — three only
+$font-weight-regular:  400;      // body, secondary, caption
+$font-weight-medium:   500;      // emphasis within body, table headers
+$font-weight-semibold: 600;      // subheads, displays, button labels
+
+// 2.5 Letter spacing
+$tracking-tight:   -0.01em;      // displays only
+$tracking-normal:   0;
+$tracking-wide:     0.02em;      // captions on small caps, ALL CAPS labels (rare)
+
+// -----------------------------------------------------------------------------
+// 3. SPATIAL
+// -----------------------------------------------------------------------------
+
+$space-0:   0;
+$space-1:   0.25rem;   //  4px
+$space-2:   0.5rem;    //  8px
+$space-3:   0.75rem;   // 12px
+$space-4:   1rem;      // 16px
+$space-5:   1.25rem;   // 20px
+$space-6:   1.5rem;    // 24px ← vertical rhythm anchor
+$space-8:   2rem;      // 32px
+$space-10:  2.5rem;    // 40px
+$space-12:  3rem;      // 48px
+$space-16:  4rem;      // 64px
+$space-20:  5rem;      // 80px
+$space-24:  6rem;      // 96px
+
+// Containers
+$container-narrow:  640px;
+$container-default: 1200px;
+$container-wide:    1440px;
+
+// Touch target minimum
+$touch-target-min: 44px;
+
+// -----------------------------------------------------------------------------
+// 4. BORDER, RADIUS, SHADOW
+// -----------------------------------------------------------------------------
+
+$border-width-default: 1px;
+$border-width-emphasis: 2px;     // active nav left bar, focus ring
+
+$radius-none: 0;
+$radius-sm:   0.25rem;           //  4px — badges, chips
+$radius-md:   0.5rem;            //  8px — cards, inputs, buttons
+$radius-lg:   0.75rem;           // 12px — modals, dropdowns
+$radius-pill: 9999px;            // status pills
+
+// Shadows — tinted-near-black, never pure black
+$shadow-sm: 0 1px 2px rgba(29, 26, 22, 0.05);
+$shadow-md: 0 2px 8px rgba(29, 26, 22, 0.08);
+$shadow-lg: 0 8px 24px rgba(29, 26, 22, 0.10);
+
+// -----------------------------------------------------------------------------
+// 5. MOTION
+// -----------------------------------------------------------------------------
+
+$motion-instant: 100ms;
+$motion-quick:   200ms;
+$motion-base:    300ms;
+$motion-slow:    500ms;
+
+// Exit = 75% of entry per impeccable rule
+$motion-base-exit: 225ms;        // 300 × 0.75
+$motion-slow-exit: 375ms;        // 500 × 0.75
+
+// Easing — exponential only
+$ease-out-expo:    cubic-bezier(0.19, 1, 0.22, 1);
+$ease-in-expo:     cubic-bezier(0.95, 0.05, 0.795, 0.035);
+$ease-in-out-expo: cubic-bezier(1, 0, 0, 1);
+
+// -----------------------------------------------------------------------------
+// 6. Z-INDEX
+// -----------------------------------------------------------------------------
+
+$z-base:     0;
+$z-elevated: 10;
+$z-dropdown: 100;
+$z-overlay:  500;
+$z-modal:    510;
+$z-toast:    900;
+
+// -----------------------------------------------------------------------------
+// 7. BREAKPOINTS
+// -----------------------------------------------------------------------------
+
+$breakpoint-sm:  640px;
+$breakpoint-md:  768px;          // ← rail collapses to hamburger
+$breakpoint-lg:  1024px;         // ← rail icon-only
+$breakpoint-xl:  1280px;         // ← rail full label
+$breakpoint-2xl: 1536px;
+
+// Bootstrap-compatible map (overrides Bootstrap's $grid-breakpoints)
+$grid-breakpoints: (
+  xs:  0,
+  sm:  $breakpoint-sm,
+  md:  $breakpoint-md,
+  lg:  $breakpoint-lg,
+  xl:  $breakpoint-xl,
+  xxl: $breakpoint-2xl
+);
+
+// -----------------------------------------------------------------------------
+// 8. CSS CUSTOM PROPERTIES (export to runtime)
+// -----------------------------------------------------------------------------
+// Sass values above are compile-time. Some tokens (theme switching, runtime
+// JS access) need CSS custom properties. Implementation phase emits these:
+
+:root {
+  // Colors
+  --color-brand-50:  #{$brand-50};
+  --color-brand-100: #{$brand-100};
+  --color-brand-500: #{$brand-500};
+  --color-brand-600: #{$brand-600};
+  --color-brand-700: #{$brand-700};
+
+  --color-neutral-0:   #{$neutral-0};
+  --color-neutral-50:  #{$neutral-50};
+  --color-neutral-100: #{$neutral-100};
+  --color-neutral-200: #{$neutral-200};
+  --color-neutral-500: #{$neutral-500};
+  --color-neutral-600: #{$neutral-600};
+  --color-neutral-700: #{$neutral-700};
+  --color-neutral-800: #{$neutral-800};
+  --color-neutral-900: #{$neutral-900};
+
+  --color-success: #{$success-500};
+  --color-warn:    #{$warn-500};
+  --color-danger:  #{$danger-500};
+  --color-info:    #{$info-500};
+
+  --surface-page:     #{$surface-page};
+  --surface-elevated: #{$surface-elevated};
+  --surface-pressed:  #{$surface-pressed};
+
+  --text-default:   #{$text-default};
+  --text-secondary: #{$text-secondary};
+  --text-caption:   #{$text-caption};
+
+  // Spacing
+  --space-1:  #{$space-1};
+  --space-2:  #{$space-2};
+  --space-3:  #{$space-3};
+  --space-4:  #{$space-4};
+  --space-6:  #{$space-6};
+  --space-8:  #{$space-8};
+  --space-12: #{$space-12};
+
+  // Radius
+  --radius-sm: #{$radius-sm};
+  --radius-md: #{$radius-md};
+  --radius-lg: #{$radius-lg};
+
+  // Shadow
+  --shadow-sm: #{$shadow-sm};
+  --shadow-md: #{$shadow-md};
+  --shadow-lg: #{$shadow-lg};
+
+  // Motion
+  --motion-instant: #{$motion-instant};
+  --motion-base:    #{$motion-base};
+  --motion-slow:    #{$motion-slow};
+
+  --ease-out-expo:    #{$ease-out-expo};
+  --ease-in-expo:     #{$ease-in-expo};
+  --ease-in-out-expo: #{$ease-in-out-expo};
+}
+
+// -----------------------------------------------------------------------------
+// 9. UTILITIES (used everywhere — kept here so Bootstrap doesn't override)
+// -----------------------------------------------------------------------------
+
+// Tabular numerals — apply to every numeric in IBM Plex Sans contexts
+.tabular,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+// Reduced motion — global
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
