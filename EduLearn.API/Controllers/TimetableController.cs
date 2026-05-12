@@ -1,10 +1,10 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using System.Text.Json;
 
 namespace EduLearn.API.Controllers;
 
@@ -16,15 +16,23 @@ public class TimetableController : ControllerBase
     private readonly IEnrollmentRepository _enrollRepo;
     private readonly IStudentRepository _studentRepo;
     private readonly ISectionRepository _sectionRepo;
+    // BUG-1 FIX: fetch real instructor names instead of "See section details".
+    private readonly IUserRepository _userRepo;
+    // BUG-3 FIX: shared service for schedule parsing + overlap detection.
+    private readonly TimetableConflictService _conflictService;
 
     public TimetableController(
         IEnrollmentRepository enrollRepo,
         IStudentRepository studentRepo,
-        ISectionRepository sectionRepo)
+        ISectionRepository sectionRepo,
+        IUserRepository userRepo,
+        TimetableConflictService conflictService)
     {
         _enrollRepo = enrollRepo;
         _studentRepo = studentRepo;
         _sectionRepo = sectionRepo;
+        _userRepo = userRepo;
+        _conflictService = conflictService;
     }
 
     // GET /api/timetable/student/{studentId}/{term} — Get student's weekly schedule
@@ -55,13 +63,30 @@ public class TimetableController : ControllerBase
             .Where(e => e.Section.Term == term && e.Status == EnrollmentStatus.Enrolled)
             .ToList();
 
+        // BUG-1 FIX: Batch-load the distinct instructors so each timetable entry can
+        // show the real instructor name instead of the previous "See section details"
+        // placeholder. One DB call per unique instructor, not per entry (no N+1).
+        var instructorIds = termEnrollments
+            .Select(e => e.Section.InstructorID)
+            .Distinct()
+            .ToList();
+
+        var instructorNames = new Dictionary<int, string>();
+        foreach (var instructorId in instructorIds)
+        {
+            var instructor = await _userRepo.GetByIdAsync(instructorId);
+            instructorNames[instructorId] = instructor?.FullName ?? string.Empty;
+        }
+
         var entries = termEnrollments.Select(e => new TimetableEntryDto
         {
             SectionID = e.SectionID,
             CourseName = e.Section.Course.Title,
             CourseCode = e.Section.Course.Code,
             Term = e.Section.Term,
-            InstructorName = "See section details",
+            InstructorName = instructorNames.TryGetValue(e.Section.InstructorID, out var n)
+                ? n
+                : string.Empty,
             ScheduleJSON = e.Section.ScheduleJSON,
             Status = e.Status.ToString()
         }).ToList();
@@ -97,109 +122,39 @@ public class TimetableController : ControllerBase
         if (newSection is null)
             return NotFound(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
 
-        // Get student's current enrollments for the same term
-        var enrollments = await _enrollRepo.GetByStudentIdAsync(studentId);
-        var sameTermEnrollments = enrollments
-            .Where(e => e.Section.Term == newSection.Term && e.Status == EnrollmentStatus.Enrolled)
-            .ToList();
+        // BUG-3 FIX: Delegate the parse + overlap detection to TimetableConflictService
+        // so EnrollmentsController can reuse the same logic in PRD §14.1.
+        var conflict = await _conflictService.CheckAsync(studentId, sectionId, cancellationToken);
 
-        // Parse the new section's schedule
-        var newSchedule = ParseSchedule(newSection.ScheduleJSON);
-        if (newSchedule is null)
+        if (conflict is null)
         {
             return Ok(new ConflictCheckResponseDto
             {
                 HasConflict = false,
-                ConflictMessage = "New section has no schedule defined"
+                ConflictMessage = "No schedule conflicts found"
             });
         }
 
-        // Check each existing enrollment for time conflict
-        foreach (var enrollment in sameTermEnrollments)
-        {
-            var existingSchedule = ParseSchedule(enrollment.Section.ScheduleJSON);
-            if (existingSchedule is null) continue;
-
-            // Check if days overlap
-            var newDays = newSchedule.Days?.Split('-', ',', '/')
-                .Select(d => d.Trim().ToLower()).ToHashSet() ?? new HashSet<string>();
-            var existingDays = existingSchedule.Days?.Split('-', ',', '/')
-                .Select(d => d.Trim().ToLower()).ToHashSet() ?? new HashSet<string>();
-
-            var overlappingDays = newDays.Intersect(existingDays).ToList();
-
-            if (overlappingDays.Any() && TimesOverlap(newSchedule.Time, existingSchedule.Time))
-            {
-                return Ok(new ConflictCheckResponseDto
-                {
-                    HasConflict = true,
-                    ConflictMessage = $"Schedule conflict with {enrollment.Section.Course.Title} on {string.Join(", ", overlappingDays)} at {existingSchedule.Time}",
-                    ConflictsWith = new TimetableEntryDto
-                    {
-                        SectionID = enrollment.SectionID,
-                        CourseName = enrollment.Section.Course.Title,
-                        CourseCode = enrollment.Section.Course.Code,
-                        Term = enrollment.Section.Term,
-                        InstructorName = "See section details",
-                        ScheduleJSON = enrollment.Section.ScheduleJSON,
-                        Status = enrollment.Status.ToString()
-                    }
-                });
-            }
-        }
+        // BUG-1 FIX: Resolve the real instructor name for the clashing section.
+        var instructor = await _userRepo.GetByIdAsync(conflict.ConflictingInstructorId);
+        var instructorName = instructor?.FullName ?? string.Empty;
 
         return Ok(new ConflictCheckResponseDto
         {
-            HasConflict = false,
-            ConflictMessage = "No schedule conflicts found"
+            HasConflict = true,
+            ConflictMessage =
+                $"Schedule conflict with {conflict.ConflictingCourseTitle} on " +
+                $"{string.Join(", ", conflict.OverlapDays)} at {conflict.OverlapTime}",
+            ConflictsWith = new TimetableEntryDto
+            {
+                SectionID = conflict.ConflictingSectionId,
+                CourseName = conflict.ConflictingCourseTitle,
+                CourseCode = conflict.ConflictingCourseCode,
+                Term = conflict.ConflictingTerm,
+                InstructorName = instructorName,
+                ScheduleJSON = conflict.ConflictingScheduleJSON,
+                Status = conflict.ConflictingEnrollmentStatus
+            }
         });
-    }
-
-    // Parse ScheduleJSON like {"days":"Mon-Wed-Fri","time":"10:00-11:00"}
-    private static ScheduleInfo? ParseSchedule(string? scheduleJson)
-    {
-        if (string.IsNullOrWhiteSpace(scheduleJson)) return null;
-
-        try
-        {
-            return JsonSerializer.Deserialize<ScheduleInfo>(scheduleJson,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    // Check if two time ranges overlap: "10:00-11:00" vs "10:30-11:30"
-    private static bool TimesOverlap(string? time1, string? time2)
-    {
-        if (string.IsNullOrWhiteSpace(time1) || string.IsNullOrWhiteSpace(time2))
-            return false;
-
-        try
-        {
-            var parts1 = time1.Split('-');
-            var parts2 = time2.Split('-');
-
-            if (parts1.Length != 2 || parts2.Length != 2) return false;
-
-            var start1 = TimeOnly.Parse(parts1[0].Trim());
-            var end1 = TimeOnly.Parse(parts1[1].Trim());
-            var start2 = TimeOnly.Parse(parts2[0].Trim());
-            var end2 = TimeOnly.Parse(parts2[1].Trim());
-
-            return start1 < end2 && start2 < end1;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private class ScheduleInfo
-    {
-        public string? Days { get; set; }
-        public string? Time { get; set; }
     }
 }
