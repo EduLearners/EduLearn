@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { roomService } from '../../services/roomService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
@@ -16,6 +17,7 @@ const emptyForm = {
 };
 
 export default function RoomsPage() {
+    const navigate = useNavigate();
     const [rooms, setRooms] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -174,6 +176,7 @@ export default function RoomsPage() {
                                             <th>Capacity</th>
                                             <th>Resources</th>
                                             <th>Status</th>
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -218,6 +221,15 @@ export default function RoomsPage() {
                                                     </td>
                                                     <td>
                                                         <StatusBadge status={r.status} />
+                                                    </td>
+                                                    <td>
+                                                        <button
+                                                            className="btn btn-sm btn-outline-primary"
+                                                            onClick={() => navigate(`/rooms/${r.roomID}`)}
+                                                            title="View"
+                                                        >
+                                                            <i className="bi bi-eye"></i>
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             );

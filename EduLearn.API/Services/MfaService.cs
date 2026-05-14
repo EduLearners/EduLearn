@@ -49,7 +49,8 @@ public class MfaService
 
     /// <summary>
     /// Verifies a 6-digit TOTP code against the stored Base32 secret.
-    /// Uses Otp.NET default RFC-specified network-delay window (±1 step / 30 seconds).
+    /// Uses a wider verification window (past=2, future=2 steps / ±60 seconds)
+    /// to tolerate development clock skew between server and authenticator app.
     /// Returns false on null/empty inputs or invalid Base32.
     /// </summary>
     public bool VerifyCode(string base32Secret, string code)
@@ -68,6 +69,7 @@ public class MfaService
         }
 
         var totp = new Totp(secretBytes);
-        return totp.VerifyTotp(code, out _, VerificationWindow.RfcSpecifiedNetworkDelay);
+        // VerificationWindow(past, future) allows ±2 steps = ±60s clock skew tolerance
+        return totp.VerifyTotp(code, out _, new VerificationWindow(2, 2));
     }
 }

@@ -135,21 +135,36 @@ export default function MfaSetupPage() {
                                         required
                                         autoFocus
                                         style={{ letterSpacing: '0.5rem', fontFamily: 'monospace' }}
+                                        placeholder="000000"
                                     />
+                                    <div className="form-text text-muted">
+                                        <i className="bi bi-clock me-1"></i>
+                                        Wait for your app to show a fresh code (codes refresh every 30 seconds).
+                                    </div>
                                 </div>
 
-                                <ErrorAlert error={error} />
+                                <ErrorAlert error={error} onDismiss={() => setError('')} />
 
                                 <button
                                     type="submit"
-                                    className="btn btn-primary-edulearn w-100"
+                                    className="btn btn-primary-edulearn w-100 mb-2"
                                     disabled={loading || code.length !== 6}
                                 >
                                     {loading ? 'Confirming...' : 'Confirm Enrollment'}
                                 </button>
                                 <button
                                     type="button"
-                                    className="btn btn-link w-100 mt-2"
+                                    className="btn btn-outline-secondary w-100 mb-2"
+                                    onClick={() => {
+                                        setCode('');
+                                        setError('');
+                                    }}
+                                >
+                                    <i className="bi bi-arrow-clockwise me-2"></i>Clear &amp; Try a Fresh Code
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-link w-100"
                                     onClick={() => navigate('/login')}
                                 >
                                     Cancel

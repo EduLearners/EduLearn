@@ -1,17 +1,29 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { studentService } from '../../services/studentService';
+import { programService } from '../../services/programService';
+import { userService } from '../../services/userService';
 import ErrorAlert from '../../components/ErrorAlert';
+import Loading from '../../components/Loading';
 
 export default function NewStudentPage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [saving, setSaving] = useState(false);
+    const [pageLoading, setPageLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [programs, setPrograms] = useState([]);
+    const [users, setUsers] = useState([]);
+
+    // Pre-fill from applicant redirect query params
+    const fromApplicantName = searchParams.get('name') || '';
+    const fromApplicantDob = searchParams.get('dob') || '';
+    const fromApplicantID = searchParams.get('applicantID') || '';
 
     const [form, setForm] = useState({
         userID: '',
-        name: '',
-        dob: '',
+        name: fromApplicantName,
+        dob: fromApplicantDob,
         gender: '',
         email: '',
         phone: '',
@@ -19,6 +31,26 @@ export default function NewStudentPage() {
         entryTerm: '',
         expectedGraduationTerm: '',
     });
+
+    useEffect(() => {
+        loadDropdowns();
+    }, []);
+
+    const loadDropdowns = async () => {
+        try {
+            setPageLoading(true);
+            const [programData, userData] = await Promise.allSettled([
+                programService.getAll(),
+                userService.getByRole('Student'),
+            ]);
+            if (programData.status === 'fulfilled') setPrograms(programData.value || []);
+            if (userData.status === 'fulfilled') setUsers(userData.value || []);
+        } catch {
+            // dropdowns failing should not block the form
+        } finally {
+            setPageLoading(false);
+        }
+    };
 
     const handleChange = (field) => (e) => {
         setForm({ ...form, [field]: e.target.value });
@@ -30,7 +62,6 @@ export default function NewStudentPage() {
         setSaving(true);
 
         try {
-            // Build the contactInfoJSON from email + phone
             const contactInfo = {};
             if (form.email) contactInfo.email = form.email;
             if (form.phone) contactInfo.phone = form.phone;
@@ -55,6 +86,8 @@ export default function NewStudentPage() {
         }
     };
 
+    if (pageLoading) return <Loading message="Loading form..." />;
+
     return (
         <div>
             <button className="btn btn-link p-0 mb-3" onClick={() => navigate('/students')}>
@@ -67,43 +100,74 @@ export default function NewStudentPage() {
 
             <div className="card shadow-sm">
                 <div className="card-body">
+
+                    {/* Show applicant link banner if coming from applicant accept flow */}
+                    {fromApplicantID && (
+                        <div className="alert alert-success mb-3">
+                            <i className="bi bi-check-circle me-2"></i>
+                            Creating student record for accepted applicant{' '}
+                            <strong>#{fromApplicantID}</strong>. Name and DOB have been
+                            pre-filled. Select the User account and Program to complete.
+                        </div>
+                    )}
+
                     <div className="alert alert-info">
                         <i className="bi bi-info-circle me-2"></i>
-                        Make sure the User (with role = Student) already exists. You'll need their
-                        <strong> User ID</strong> to link the student record.
+                        Select the <strong>User account</strong> (role = Student) and
+                        the <strong>Program</strong> to link this student record.
                     </div>
 
                     <form onSubmit={handleSubmit}>
                         <div className="row g-3">
-                            {/* User ID */}
-                            <div className="col-md-4">
-                                <label className="form-label fw-bold">User ID *</label>
-                                <input
-                                    type="number"
-                                    className="form-control"
+
+                            {/* User Dropdown */}
+                            <div className="col-md-6">
+                                <label className="form-label fw-bold">
+                                    User Account <span className="text-danger">*</span>
+                                </label>
+                                <select
+                                    className="form-select"
                                     value={form.userID}
                                     onChange={handleChange('userID')}
                                     required
-                                    placeholder="e.g. 2"
-                                />
+                                >
+                                    <option value="">-- Select Student User --</option>
+                                    {users.map(u => (
+                                        <option key={u.userID} value={u.userID}>
+                                            #{u.userID} — {u.fullName} ({u.username})
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="form-text">
+                                    Only active users with Student role are shown.
+                                </div>
                             </div>
 
-                            {/* Program ID */}
-                            <div className="col-md-4">
-                                <label className="form-label fw-bold">Program ID *</label>
-                                <input
-                                    type="number"
-                                    className="form-control"
+                            {/* Program Dropdown */}
+                            <div className="col-md-6">
+                                <label className="form-label fw-bold">
+                                    Program <span className="text-danger">*</span>
+                                </label>
+                                <select
+                                    className="form-select"
                                     value={form.programID}
                                     onChange={handleChange('programID')}
                                     required
-                                    placeholder="e.g. 1"
-                                />
+                                >
+                                    <option value="">-- Select Program --</option>
+                                    {programs.map(p => (
+                                        <option key={p.programID} value={p.programID}>
+                                            {p.name} ({p.degreeType})
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
 
                             {/* Entry Term */}
                             <div className="col-md-4">
-                                <label className="form-label fw-bold">Entry Term *</label>
+                                <label className="form-label fw-bold">
+                                    Entry Term <span className="text-danger">*</span>
+                                </label>
                                 <input
                                     type="text"
                                     className="form-control"
@@ -114,9 +178,11 @@ export default function NewStudentPage() {
                                 />
                             </div>
 
-                            {/* Name */}
+                            {/* Full Name */}
                             <div className="col-md-8">
-                                <label className="form-label fw-bold">Full Name *</label>
+                                <label className="form-label fw-bold">
+                                    Full Name <span className="text-danger">*</span>
+                                </label>
                                 <input
                                     type="text"
                                     className="form-control"
@@ -145,7 +211,9 @@ export default function NewStudentPage() {
 
                             {/* DOB */}
                             <div className="col-md-4">
-                                <label className="form-label fw-bold">Date of Birth *</label>
+                                <label className="form-label fw-bold">
+                                    Date of Birth <span className="text-danger">*</span>
+                                </label>
                                 <input
                                     type="date"
                                     className="form-control"
@@ -180,8 +248,10 @@ export default function NewStudentPage() {
                             </div>
 
                             {/* Expected Graduation */}
-                            <div className="col-md-6">
-                                <label className="form-label fw-bold">Expected Graduation Term</label>
+                            <div className="col-md-4">
+                                <label className="form-label fw-bold">
+                                    Expected Graduation Term
+                                </label>
                                 <input
                                     type="text"
                                     className="form-control"
@@ -190,6 +260,7 @@ export default function NewStudentPage() {
                                     placeholder="e.g. 2030-Spring"
                                 />
                             </div>
+
                         </div>
 
                         <hr className="my-4" />
@@ -197,11 +268,21 @@ export default function NewStudentPage() {
                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
 
                         <div className="d-flex gap-2">
-                            <button type="submit" className="btn btn-primary-edulearn" disabled={saving}>
+                            <button
+                                type="submit"
+                                className="btn btn-primary-edulearn"
+                                disabled={saving}
+                            >
                                 {saving ? (
-                                    <><span className="spinner-border spinner-border-sm me-2"></span>Creating...</>
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2"></span>
+                                        Creating...
+                                    </>
                                 ) : (
-                                    <><i className="bi bi-check-lg me-2"></i>Create Student</>
+                                    <>
+                                        <i className="bi bi-check-lg me-2"></i>
+                                        Create Student
+                                    </>
                                 )}
                             </button>
                             <button

@@ -124,6 +124,30 @@ public class StudentsController : ControllerBase
         return Ok(students.Select(MapToDto));
     }
 
+    /// <summary>
+    /// Returns the student record for the currently authenticated Student user.
+    /// Resolves StudentID from the JWT UserID claim — no ID needed in the URL.
+    /// </summary>
+    [HttpGet("me")]
+    [Authorize(Roles = "Student")]
+    public async Task<ActionResult<StudentResponseDto>> GetMyStudentRecord()
+    {
+        var callerId = int.Parse(
+            User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
+
+        var student = await _studentRepo.GetByUserIdAsync(callerId);
+
+        if (student is null)
+            return NotFound(new
+            {
+                error = "No student record found for your account. Please contact the Registrar.",
+                code = "STUDENT_NOT_FOUND"
+            });
+
+        return Ok(MapToDto(student));
+    }
+
     // GET /api/students/{id}
     /// <summary>
     /// Retrieve a single student record by ID. Any authenticated user may call this endpoint.

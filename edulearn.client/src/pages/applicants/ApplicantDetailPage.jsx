@@ -14,14 +14,13 @@ export default function ApplicantDetailPage() {
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
     const [error, setError] = useState(null);
-    const [confirmAction, setConfirmAction] = useState(null); // 'Accepted' | 'Rejected' | 'Waitlisted' | 'UnderReview'
+    const [confirmAction, setConfirmAction] = useState(null);
 
     const { role } = authService.getCurrentUser();
     const canDecide = ['Registrar', 'ITAdmin'].includes(role);
 
     useEffect(() => {
         loadApplicant();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     const loadApplicant = async () => {
@@ -53,7 +52,16 @@ export default function ApplicantDetailPage() {
         }
     };
 
-    // Parse JSON safely
+    const handleCreateStudent = () => {
+        // Pass applicant name and dob as query params to pre-fill NewStudentPage
+        const params = new URLSearchParams({
+            name: applicant.name || '',
+            dob: applicant.dob ? applicant.dob.split('T')[0] : '',
+            applicantID: applicant.applicantID,
+        });
+        navigate(`/students/new?${params.toString()}`);
+    };
+
     const contactInfo = (() => {
         if (!applicant?.contactInfoJSON) return {};
         try { return JSON.parse(applicant.contactInfoJSON); } catch { return {}; }
@@ -80,7 +88,6 @@ export default function ApplicantDetailPage() {
         );
     }
 
-    // Confirm dialog config
     const confirmConfig = {
         Accepted: {
             title: 'Accept Applicant',
@@ -118,8 +125,10 @@ export default function ApplicantDetailPage() {
 
             {/* Title */}
             <div className="d-flex align-items-center mb-4">
-                <div className="rounded-circle bg-primary-edulearn d-flex align-items-center justify-content-center me-3"
-                    style={{ width: 60, height: 60 }}>
+                <div
+                    className="rounded-circle bg-primary-edulearn d-flex align-items-center justify-content-center me-3"
+                    style={{ width: 60, height: 60 }}
+                >
                     <i className="bi bi-person-fill text-white" style={{ fontSize: '2rem' }}></i>
                 </div>
                 <div>
@@ -147,12 +156,16 @@ export default function ApplicantDetailPage() {
 
                                 <dt className="col-sm-5 text-muted">Date of Birth</dt>
                                 <dd className="col-sm-7">
-                                    {applicant.dob ? new Date(applicant.dob).toLocaleDateString() : '—'}
+                                    {applicant.dob
+                                        ? new Date(applicant.dob).toLocaleDateString()
+                                        : '—'}
                                 </dd>
 
                                 <dt className="col-sm-5 text-muted">National ID</dt>
                                 <dd className="col-sm-7">
-                                    {applicant.nationalID ? <code>{applicant.nationalID}</code> : '—'}
+                                    {applicant.nationalID
+                                        ? <code>{applicant.nationalID}</code>
+                                        : '—'}
                                 </dd>
 
                                 <dt className="col-sm-5 text-muted">Email</dt>
@@ -192,7 +205,6 @@ export default function ApplicantDetailPage() {
                                 </dd>
                             </dl>
 
-                            {/* Documents */}
                             {documents.length > 0 && (
                                 <>
                                     <hr className="my-3" />
@@ -228,8 +240,8 @@ export default function ApplicantDetailPage() {
                     </div>
                     <div className="card-body">
                         <p className="text-muted mb-3">
-                            Choose an action for this applicant. Accept and Reject are terminal — they
-                            can't be undone easily.
+                            Choose an action for this applicant. Accept and Reject are
+                            terminal — they cannot be undone easily.
                         </p>
                         <div className="d-flex gap-2 flex-wrap">
                             {applicant.applicationStatus !== 'UnderReview' && (
@@ -267,14 +279,31 @@ export default function ApplicantDetailPage() {
                 </div>
             )}
 
-            {/* Already decided */}
-            {isTerminalStatus && (
-                <div className={`alert alert-${applicant.applicationStatus === 'Accepted' ? 'success' : 'secondary'} mt-4`}>
-                    <i className={`bi bi-${applicant.applicationStatus === 'Accepted' ? 'check' : 'x'}-circle me-2`}></i>
-                    This applicant has been <strong>{applicant.applicationStatus}</strong>.
-                    {applicant.applicationStatus === 'Accepted' && (
-                        <> Next step: create a User account (role Student) and link a Student record.</>
-                    )}
+            {/* Accepted — show Create Student Record button */}
+            {applicant.applicationStatus === 'Accepted' && canDecide && (
+                <div className="alert alert-success mt-4">
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                        <div>
+                            <i className="bi bi-check-circle me-2"></i>
+                            <strong>Application Accepted.</strong> Next step: create a
+                            Student record linked to a User account.
+                        </div>
+                        <button
+                            className="btn btn-success"
+                            onClick={handleCreateStudent}
+                        >
+                            <i className="bi bi-person-plus me-2"></i>
+                            Create Student Record
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Rejected */}
+            {applicant.applicationStatus === 'Rejected' && (
+                <div className="alert alert-secondary mt-4">
+                    <i className="bi bi-x-circle me-2"></i>
+                    This application has been <strong>Rejected</strong>.
                 </div>
             )}
 

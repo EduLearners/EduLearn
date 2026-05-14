@@ -334,17 +334,17 @@ export default function SectionsPage() {
                                                         <td className="text-end pe-3">
                                                             <button
                                                                 className="btn btn-sm btn-outline-primary me-1"
+                                                                onClick={() => navigate(`/sections/${s.sectionID}`)}
+                                                                title="View"
+                                                            >
+                                                                <i className="bi bi-eye"></i>
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-sm btn-outline-secondary me-1"
                                                                 onClick={() => openEditModal(s)}
                                                                 title="Edit"
                                                             >
                                                                 <i className="bi bi-pencil"></i>
-                                                            </button>
-                                                            <button
-                                                                className="btn btn-sm btn-outline-secondary"
-                                                                onClick={() => navigate(`/enrollment/section/${s.sectionID}`)}
-                                                                title="View roster"
-                                                            >
-                                                                <i className="bi bi-list-ul"></i>
                                                             </button>
                                                         </td>
                                                     )}
