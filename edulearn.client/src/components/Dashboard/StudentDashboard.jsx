@@ -5,7 +5,7 @@ import { enrollmentService } from '../../services/enrollmentService';
 import { submissionService } from '../../services/submissionService';
 import { notificationService } from '../../services/notificationService';
 import { transcriptService } from '../../services/transcriptService';
-import Loading from '../../components/Loading';
+import Loading from '../Loading';
 import axiosClient from '../../api/axiosClient';
 
 const TERM = '2026-Spring';

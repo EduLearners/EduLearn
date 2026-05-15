@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import MfaSetupPage from './pages/MfaSetupPage';
 import MfaVerifyPage from './pages/MfaVerifyPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import LandingPage from './pages/LandingPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
@@ -87,6 +89,8 @@ export default function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/mfa/setup" element={<MfaSetupPage />} />
                 <Route path="/mfa/verify" element={<MfaVerifyPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                 {/* Protected routes */}
                 <Route element={

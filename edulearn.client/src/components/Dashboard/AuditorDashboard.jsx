@@ -5,7 +5,7 @@ import { reportService } from '../../services/reportService';
 import { kpiService } from '../../services/kpiService';
 import { auditLogService } from '../../services/auditLogService';
 import { ticketService } from '../../services/ticketService';
-import Loading from '../../components/Loading';
+import Loading from '../Loading';
 
 const TERM = '2026-Spring';
 

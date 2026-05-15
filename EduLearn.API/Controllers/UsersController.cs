@@ -198,6 +198,67 @@ public class UsersController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Change password for a logged-in user using their current password.
+    /// </summary>
+    [HttpPut("{id}/password")]
+    public async Task<IActionResult> ChangePassword(int id, ChangePasswordDto dto)
+    {
+        // Only the user themselves can change their own password
+        var callerId = int.Parse(
+            User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
+
+        if (id != callerId)
+            return StatusCode(403, new
+            {
+                error = "You can only change your own password.",
+                code = "USER_FORBIDDEN"
+            });
+
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user is null)
+            return NotFound(new { error = "User not found.", code = "USER_NOT_FOUND" });
+
+        // Verify current password matches stored BCrypt hash
+        if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
+            return BadRequest(new
+            {
+                error = "Current password is incorrect.",
+                code = "WRONG_CURRENT_PASSWORD"
+            });
+
+        // Check new password and confirm match
+        if (dto.NewPassword != dto.ConfirmPassword)
+            return BadRequest(new
+            {
+                error = "New password and confirm password do not match.",
+                code = "PASSWORD_MISMATCH"
+            });
+
+        // Check new password is not same as current
+        if (BCrypt.Net.BCrypt.Verify(dto.NewPassword, user.PasswordHash))
+            return BadRequest(new
+            {
+                error = "New password must be different from current password.",
+                code = "SAME_PASSWORD"
+            });
+
+        // Hash and save the new password
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user);
+
+        // Audit log
+        await _auditLogService.LogAsync(
+            callerId,
+            "PasswordChanged",
+            "User",
+            user.UserID,
+            null);
+
+        return Ok(new { message = "Password changed successfully." });
+    }
     private static UserResponseDto MapToDto(User user) => new()
     {
         UserID = user.UserID,

@@ -4,6 +4,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -17,6 +18,10 @@ public class TimetableControllerTest
     private Mock<IEnrollmentRepository> _enrollRepoMock;
     private Mock<IStudentRepository> _studentRepoMock;
     private Mock<ISectionRepository> _sectionRepoMock;
+    private Mock<IUserRepository> _userRepoMock;
+
+    // ── Real service ──
+    private TimetableConflictService _conflictService;
 
     // ── Controller under test ──
     private TimetableController _controller;
@@ -34,11 +39,17 @@ public class TimetableControllerTest
         _enrollRepoMock = new Mock<IEnrollmentRepository>();
         _studentRepoMock = new Mock<IStudentRepository>();
         _sectionRepoMock = new Mock<ISectionRepository>();
+        _userRepoMock = new Mock<IUserRepository>();
+
+        // BUG-1/BUG-3 FIX: TimetableController now requires IUserRepository and TimetableConflictService
+        _conflictService = new TimetableConflictService(_enrollRepoMock.Object, _sectionRepoMock.Object);
 
         _controller = new TimetableController(
             _enrollRepoMock.Object,
             _studentRepoMock.Object,
-            _sectionRepoMock.Object);
+            _sectionRepoMock.Object,
+            _userRepoMock.Object,
+            _conflictService);
 
         _testStudent = new Student
         {

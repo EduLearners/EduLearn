@@ -55,6 +55,21 @@ export const authService = {
         );
         return data;
     },
+    // POST /api/auth/forgot-password — Anonymous
+    forgotPassword: async (email) => {
+        const { data } = await axiosClient.post('/auth/forgot-password', { email });
+        return data;
+    },
+
+    // POST /api/auth/reset-password — Anonymous
+    resetPassword: async (token, newPassword, confirmPassword) => {
+        const { data } = await axiosClient.post('/auth/reset-password', {
+            token,
+            newPassword,
+            confirmPassword,
+        });
+        return data;
+    },
 
     // Local session helpers — also extracts userID + email from the JWT
     saveSession: (token, role, username) => {

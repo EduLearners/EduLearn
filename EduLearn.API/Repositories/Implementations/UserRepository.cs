@@ -27,6 +27,9 @@ public class UserRepository : IUserRepository
     public async Task<User?> GetByEmailAsync(string email)
         => await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 
+    public async Task<User?> GetByResetTokenAsync(string token)
+        => await _context.Users.FirstOrDefaultAsync(u => u.PasswordResetToken == token);
+
     public async Task<IEnumerable<User>> GetByRoleAsync(UserRole role)
         => await _context.Users.Where(u => u.Role == role).ToListAsync();
 

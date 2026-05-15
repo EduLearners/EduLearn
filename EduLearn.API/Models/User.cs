@@ -42,6 +42,12 @@ public class User
     [MaxLength(128)]
     public string? MFASecret { get; set; }
 
+    // Password Reset fields
+    [MaxLength(256)]
+    public string? PasswordResetToken { get; set; }
+
+    public DateTime? PasswordResetExpiry { get; set; }
+
     [Required]
     [MaxLength(20)]
     public UserStatus Status { get; set; } = UserStatus.Active;

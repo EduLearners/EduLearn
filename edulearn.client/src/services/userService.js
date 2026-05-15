@@ -41,4 +41,15 @@ export const userService = {
     resetMfa: async (id) => {
         await axiosClient.post(`/users/${id}/mfa/reset`);
     },
+
+    // PUT /api/users/:id/password — Any authenticated user (own only)
+    // Requires current password verification on the backend
+        changePassword: async (id, currentPassword, newPassword, confirmPassword) => {
+            const { data } = await axiosClient.put(`/users/${id}/password`, {
+                currentPassword,
+                newPassword,
+                confirmPassword,
+            });
+            return data;
+        },
 };

@@ -107,7 +107,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<PdfGeneratorService>();
 // MFA CHANGE (IAM-03): TOTP helper (RFC 6238) used by AuthService for setup/verify
 builder.Services.AddScoped<MfaService>();
-
+builder.Services.AddScoped<EmailService>();
 // JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

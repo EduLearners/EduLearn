@@ -19,6 +19,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using System.Security.Cryptography;
 
 namespace EduLearn.API.Services;
 
@@ -31,19 +32,23 @@ public class AuthService
     private readonly AuditLogService _auditLogService;
     // MFA CHANGE (IAM-03): TOTP secret + verify helper
     private readonly MfaService _mfaService;
+    // PASSWORD RESET: Email service for sending reset links
+    private readonly EmailService _emailService;
 
     public AuthService(
         IUserRepository userRepository,
         TokenService tokenService,
         IConfiguration config,
-        AuditLogService auditLogService,  // AUDIT CHANGE: added parameter
-        MfaService mfaService)             // MFA CHANGE (IAM-03): added parameter
+        AuditLogService auditLogService,
+        MfaService mfaService,
+        EmailService emailService)   // PASSWORD RESET: added parameter
     {
         _userRepository = userRepository;
         _tokenService = tokenService;
         _config = config;
-        _auditLogService = auditLogService;  // AUDIT CHANGE: stored
-        _mfaService = mfaService;             // MFA CHANGE (IAM-03): stored
+        _auditLogService = auditLogService;
+        _mfaService = mfaService;
+        _emailService = emailService;  // PASSWORD RESET: stored
     }
 
     // MFA CHANGE (IAM-03): Roles that MUST complete MFA before getting a full JWT.
@@ -348,5 +353,91 @@ public class AuthService
             Role = user.Role.ToString(),
             Username = user.Username
         });
+    }
+
+    // ════════════════════════════════════════
+    // FORGOT PASSWORD — POST /api/auth/forgot-password
+    // ════════════════════════════════════════
+    //
+    // Generates a secure random token, saves it to the user with a 15-minute
+    // expiry, and sends a reset link to the user's email via EmailService.
+    // Always returns Ok (even if email not found) to prevent email enumeration.
+    public enum ForgotPasswordOutcome { Ok }
+
+    public async Task<ForgotPasswordOutcome> ForgotPasswordAsync(ForgotPasswordDto dto)
+    {
+        var user = await _userRepository.GetByEmailAsync(dto.Email);
+
+        // Always return Ok — never reveal whether the email exists
+        if (user == null)
+            return ForgotPasswordOutcome.Ok;
+
+        // Generate a secure 64-char hex token
+        var tokenBytes = new byte[32];
+        using (var rng = RandomNumberGenerator.Create())
+            rng.GetBytes(tokenBytes);
+        var resetToken = Convert.ToHexString(tokenBytes).ToLower();
+
+        // Save token + 15-minute expiry
+        user.PasswordResetToken  = resetToken;
+        user.PasswordResetExpiry = DateTime.UtcNow.AddMinutes(15);
+        await _userRepository.UpdateAsync(user);
+
+        // Build the reset link pointing to the frontend
+        var frontendUrl = _config["Email:FrontendBaseUrl"] ?? "http://localhost:5173";
+        var resetLink = $"{frontendUrl}/reset-password?token={resetToken}";
+
+        // Send the email — fire and forget errors so the response stays fast
+        try
+        {
+            await _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetLink);
+        }
+        catch
+        {
+            // Log silently — do not expose SMTP errors to the caller
+        }
+
+        await _auditLogService.LogAsync(
+            user.UserID, "PasswordResetRequested", "User", user.UserID, null);
+
+        return ForgotPasswordOutcome.Ok;
+    }
+
+    // ════════════════════════════════════════
+    // RESET PASSWORD — POST /api/auth/reset-password
+    // ════════════════════════════════════════
+    //
+    // Validates the token and expiry, hashes the new password, saves it,
+    // and clears the reset token so it cannot be reused.
+    public enum ResetPasswordOutcome
+    {
+        Ok,
+        InvalidToken,     // token not found or already used
+        TokenExpired,     // token found but past 15-minute window
+        PasswordMismatch  // NewPassword != ConfirmPassword
+    }
+
+    public async Task<ResetPasswordOutcome> ResetPasswordAsync(ResetPasswordDto dto)
+    {
+        if (dto.NewPassword != dto.ConfirmPassword)
+            return ResetPasswordOutcome.PasswordMismatch;
+
+        var user = await _userRepository.GetByResetTokenAsync(dto.Token);
+        if (user == null)
+            return ResetPasswordOutcome.InvalidToken;
+
+        if (user.PasswordResetExpiry == null || user.PasswordResetExpiry < DateTime.UtcNow)
+            return ResetPasswordOutcome.TokenExpired;
+
+        // Hash and save the new password
+        user.PasswordHash        = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        user.PasswordResetToken  = null;  // invalidate token
+        user.PasswordResetExpiry = null;
+        await _userRepository.UpdateAsync(user);
+
+        await _auditLogService.LogAsync(
+            user.UserID, "PasswordResetCompleted", "User", user.UserID, null);
+
+        return ResetPasswordOutcome.Ok;
     }
 }

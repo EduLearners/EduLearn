@@ -17,6 +17,7 @@ public class AuthControllerTest
     private Mock<IUserRepository> _userRepoMock;
     private Mock<IAuditLogRepository> _auditLogRepoMock;
     private Mock<MfaService> _mfaServiceMock;
+    private Mock<EmailService> _emailServiceMock;
 
     // ── Real services (with mocked inner dependencies) ──
     private IConfiguration _config;
@@ -46,19 +47,23 @@ public class AuthControllerTest
             .AddInMemoryCollection(configData)
             .Build();
 
+        // EmailService mock — initialized after _config is built
+        _emailServiceMock = new Mock<EmailService>(_config);
+
         // Real TokenService — generates actual JWT tokens
         _tokenService = new TokenService(_config);
 
         // Real AuditLogService with mocked repository
         _auditLogService = new AuditLogService(_auditLogRepoMock.Object);
 
-        // Real AuthService with mocked IUserRepository + real Token + real AuditLog + mocked MFA
+        // Real AuthService with mocked IUserRepository + real Token + real AuditLog + mocked MFA + mocked Email
         _authService = new AuthService(
             _userRepoMock.Object,
             _tokenService,
             _config,
             _auditLogService,
-            _mfaServiceMock.Object);
+            _mfaServiceMock.Object,
+            _emailServiceMock.Object);
 
         // Controller with real AuthService
         _controller = new AuthController(_authService);

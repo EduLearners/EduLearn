@@ -165,10 +165,7 @@ public class AuthController : ControllerBase
         };
     }
 
-    // MFA CHANGE (IAM-03): Inline helper — read the calling user's UserID, but only if
-    // the JWT carries a purpose=mfa_pending claim. The default JWT pipeline rejects any
-    // token with a purpose claim from regular endpoints (see Program.cs OnTokenValidated),
-    // and these two endpoints are the only callsites that explicitly accept it.
+    // MFA CHANGE (IAM-03): Inline helper
     private int? TryGetMfaPendingUserId()
     {
         var purpose = User.FindFirst("purpose")?.Value;
@@ -180,5 +177,39 @@ public class AuthController : ControllerBase
             return null;
 
         return userId;
+    }
+
+    /// <summary>
+    /// Sends a password reset email to the given address.
+    /// Always returns 200 OK regardless of whether the email exists (prevents enumeration).
+    /// The reset link expires in 15 minutes.
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    {
+        await _authService.ForgotPasswordAsync(dto);
+        // Always 200 — never reveal whether the email is registered
+        return Ok(new { message = "If this email is registered, a reset link has been sent. Check your inbox." });
+    }
+
+    /// <summary>
+    /// Resets the user's password using the token received by email.
+    /// Token is valid for 15 minutes and can only be used once.
+    /// Returns 400 if token is invalid, expired, or passwords don't match.
+    /// </summary>
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+    {
+        var outcome = await _authService.ResetPasswordAsync(dto);
+        return outcome switch
+        {
+            AuthService.ResetPasswordOutcome.Ok              => Ok(new { message = "Password reset successfully. You can now log in with your new password." }),
+            AuthService.ResetPasswordOutcome.PasswordMismatch => BadRequest(new { error = "Passwords do not match.", code = "PASSWORD_MISMATCH" }),
+            AuthService.ResetPasswordOutcome.TokenExpired    => BadRequest(new { error = "Reset link has expired. Please request a new one.", code = "TOKEN_EXPIRED" }),
+            AuthService.ResetPasswordOutcome.InvalidToken    => BadRequest(new { error = "Invalid or already used reset link.", code = "INVALID_TOKEN" }),
+            _                                                => StatusCode(500)
+        };
     }
 }

@@ -1,11 +1,11 @@
 import { authService } from '../../services/authService';
-import StudentDashboard    from './StudentDashboard';
-import InstructorDashboard from './InstructorDashboard';
-import RegistrarDashboard  from './RegistrarDashboard';
-import DeptAdminDashboard  from './DeptAdminDashboard';
-import FinanceDashboard    from './FinanceDashboard';
-import ITAdminDashboard    from './ITAdminDashboard';
-import AuditorDashboard    from './AuditorDashboard';
+import StudentDashboard    from '../../components/Dashboard/StudentDashboard';
+import InstructorDashboard from '../../components/Dashboard/InstructorDashboard';
+import RegistrarDashboard  from '../../components/Dashboard/RegistrarDashboard';
+import DeptAdminDashboard  from '../../components/Dashboard/DeptAdminDashboard';
+import FinanceDashboard    from '../../components/Dashboard/FinanceDashboard';
+import ITAdminDashboard    from '../../components/Dashboard/ITAdminDashboard';
+import AuditorDashboard    from '../../components/Dashboard/AuditorDashboard';
 
 export default function DashboardPage() {
     const { role } = authService.getCurrentUser();

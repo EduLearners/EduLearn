@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import ErrorAlert from '../components/ErrorAlert';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function MfaSetupPage() {
     const [secret, setSecret] = useState('');
@@ -88,40 +89,48 @@ export default function MfaSetupPage() {
 
                     {step === 'confirm' && (
                         <>
-                            <div className="alert alert-info">
-                                <i className="bi bi-info-circle me-2"></i>
-                                <strong>Step 1:</strong> Add this secret to your authenticator app
-                                (Google Authenticator, Microsoft Authenticator, or
-                                <a href="https://totp.danhersam.com" target="_blank" rel="noreferrer"> this online TOTP site</a>).
-                            </div>
+                    {/* QR Code — always visible */}
+                    <div className="text-center mb-3">
+                        <div className="d-inline-block p-3 border rounded bg-white shadow-sm">
+                            <QRCodeSVG
+                                value={otpauthUri}
+                                size={180}
+                                level="M"
+                                includeMargin={true}
+                            />
+                        </div>
+                        <div className="mt-2">
+                            <small className="text-muted">
+                                Scan with <strong>Google Authenticator</strong> or <strong>Microsoft Authenticator</strong>
+                            </small>
+                        </div>
+                    </div>
 
-                            <div className="mb-3">
-                                <label className="form-label fw-bold">Your Secret Key</label>
-                                <div className="input-group">
-                                    <input
-                                        type="text"
-                                        className="form-control font-monospace"
-                                        value={secret}
-                                        readOnly
-                                    />
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-secondary"
-                                        onClick={() => navigator.clipboard.writeText(secret)}
-                                        title="Copy to clipboard"
-                                    >
-                                        <i className="bi bi-clipboard"></i>
-                                    </button>
-                                </div>
-                                <small className="text-muted">
-                                    Account name: <code>EduLearn:{authService.getCurrentUser().username || 'user'}</code>
-                                </small>
-                            </div>
-
-                            <div className="alert alert-warning">
-                                <i className="bi bi-exclamation-triangle me-2"></i>
-                                <strong>Step 2:</strong> Enter the current 6-digit code from your authenticator app to confirm enrollment.
-                            </div>
+                    {/* Secret Key — always visible */}
+                    <div className="mb-4">
+                        <label className="form-label fw-bold">
+                            <i className="bi bi-key me-2"></i>Secret Key
+                        </label>
+                        <div className="input-group">
+                            <input
+                                type="text"
+                                className="form-control font-monospace"
+                                value={secret}
+                                readOnly
+                            />
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary"
+                                onClick={() => navigator.clipboard.writeText(secret)}
+                                title="Copy to clipboard"
+                            >
+                                <i className="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                        <small className="text-muted">
+                            Account name: <code>EduLearn:{authService.getCurrentUser().username || 'user'}</code>
+                        </small>
+                    </div>
 
                             <form onSubmit={handleConfirm}>
                                 <div className="mb-3">

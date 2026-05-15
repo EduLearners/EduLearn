@@ -5,7 +5,7 @@ import { courseService } from '../../services/courseService';
 import { assessmentService } from '../../services/assessmentService';
 import { submissionService } from '../../services/submissionService';
 import { studentService } from '../../services/studentService';
-import Loading from '../../components/Loading';
+import Loading from '../Loading';
 
 const TERM = '2026-Spring';
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
-import Loading from '../../components/Loading';
+import Loading from '../Loading';
 
 const TERM = '2026-Spring';
 

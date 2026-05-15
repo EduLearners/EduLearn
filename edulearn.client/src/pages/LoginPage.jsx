@@ -12,6 +12,8 @@ export default function LoginPage() {
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        // Guard: prevent empty credential submission from browser autofill/remount
+       if (!username.trim() || !password.trim()) return;
         setError('');
         setLoading(true);
 
@@ -111,6 +113,17 @@ export default function LoginPage() {
                     </form>
 
                     <hr />
+                    
+                    <div className="text-center mb-2">
+                        <button
+                            type="button"
+                            className="btn btn-link text-muted p-0 small"
+                            onClick={() => navigate('/forgot-password')}
+                        >
+                            <i className="bi bi-question-circle me-1"></i>
+                            Forgot your password?
+                        </button>
+                    </div>
                     <p className="text-center text-muted small mb-0">
                         Don't have an account? <a href="/register">Register here</a>
                     </p>

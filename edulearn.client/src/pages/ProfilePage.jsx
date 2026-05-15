@@ -5,6 +5,7 @@ import { userService } from '../services/userService';
 import Loading from '../components/Loading';
 import ErrorAlert from '../components/ErrorAlert';
 import StatusBadge from '../components/StatusBadge';
+import ChangePasswordForm from '../components/ChangePasswordForm';
 
 export default function ProfilePage() {
     const navigate = useNavigate();
@@ -13,7 +14,7 @@ export default function ProfilePage() {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
+    const [showChangePassword, setShowChangePassword] = useState(false);
     useEffect(() => {
         loadProfile();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -267,11 +268,35 @@ export default function ProfilePage() {
                         </div>
                     </div>
 
-                    {/* Footer note */}
-                    <div className="alert alert-light border mt-4 mb-0 small">
-                        <i className="bi bi-info-circle me-2 text-muted"></i>
-                        To change your password or update personal details, contact your IT administrator.
+                    {/* Security Actions */}
+                    <div className="card shadow-sm mt-4">
+                        <div className="card-header bg-primary-edulearn text-white">
+                            <i className="bi bi-gear me-2"></i>Security Actions
+                        </div>
+                        <div className="card-body">
+                            <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                <div>
+                                    <h6 className="mb-1 fw-bold">Reset Password</h6>
+                                    <p className="text-muted small mb-0">
+                                        Receive a password reset link on your registered email address.
+                                    </p>
+                                </div>
+                                <button className="btn btn-outline-primary btn-sm"
+                                   onClick={() => setShowChangePassword(true)}>
+                                  <i className="bi bi-key me-2"></i>
+                                   Reset Password
+                                 </button>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Change Password */}
+                    {showChangePassword && (
+                        <ChangePasswordForm
+                            userId={userId}
+                            onClose={() => setShowChangePassword(false)}
+                        />
+                    )}
                 </>
             )}
         </div>

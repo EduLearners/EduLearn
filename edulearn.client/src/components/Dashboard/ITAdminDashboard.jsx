@@ -5,9 +5,9 @@ import { userService } from '../../services/userService';
 import { studentService } from '../../services/studentService';
 import { courseService } from '../../services/courseService';
 import { ticketService } from '../../services/ticketService';
-import Loading from '../../components/Loading';
-import ErrorAlert from '../../components/ErrorAlert';
-import StatusBadge from '../../components/StatusBadge';
+import Loading from '../Loading';
+import ErrorAlert from '../ErrorAlert';
+import StatusBadge from '../StatusBadge';
 import axiosClient from '../../api/axiosClient';
 
 const TERM = '2026-Spring';

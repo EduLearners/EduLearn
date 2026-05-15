@@ -77,3 +77,20 @@ public class MfaVerifyDto
     [Required]
     public string Code { get; set; } = string.Empty;
 }
+
+// CHANGE PASSWORD: What the user sends to PUT /api/users/{id}/password
+// Available to all authenticated roles — user can only change their own password.
+// CurrentPassword is verified against the stored BCrypt hash before updating.
+public class ChangePasswordDto
+{
+    [Required]
+    public string CurrentPassword { get; set; } = string.Empty;
+
+    [Required]
+    [MinLength(8, ErrorMessage = "New password must be at least 8 characters.")]
+    public string NewPassword { get; set; } = string.Empty;
+
+    [Required]
+    [MinLength(8)]
+    public string ConfirmPassword { get; set; } = string.Empty;
+}
