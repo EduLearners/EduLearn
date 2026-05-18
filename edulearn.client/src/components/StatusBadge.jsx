@@ -19,9 +19,6 @@ export default function StatusBadge({ status }) {
         Late:           'warning',
         Plagiarised:    'danger',
 
-        // Content
-        Active:         'success',
-
         // Program / Section / Room
         Suspended:      'warning',
         Discontinued:   'danger',
@@ -32,7 +29,9 @@ export default function StatusBadge({ status }) {
         Maintenance:    'secondary',
 
         // User
+        Inactive:       'secondary',
         Locked:         'danger',
+        Withdrawn:      'dark',
 
         // Applicant
         Pending:        'secondary',
@@ -40,6 +39,24 @@ export default function StatusBadge({ status }) {
         Accepted:       'success',
         Rejected:       'danger',
         Waitlisted:     'warning',
+
+        // Enrollment
+        Enrolled:       'success',
+        Dropped:        'danger',
+        Completed:      'info',
+
+        // Transcript
+        Issued:         'success',
+
+        // Fee Schedule
+        Superseded:     'secondary',
+
+        // Invoice / Payment
+        Unpaid:         'danger',
+        Partial:        'warning',
+        Paid:           'success',
+        Overdue:        'danger',
+        Refunded:       'info',
     };
 
     const variant = map[status] || 'secondary';

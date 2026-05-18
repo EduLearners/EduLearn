@@ -6,7 +6,7 @@ import StatusBadge from '../../components/StatusBadge';
 import ConfirmDialog from '../../components/ConfirmDialog';
 
 const ALL_ROLES = ['Student', 'Instructor', 'Registrar', 'DeptAdmin', 'Finance', 'ITAdmin', 'Auditor'];
-const ALL_STATUSES = ['Active', 'Suspended', 'Locked'];
+const ALL_STATUSES = ['Active', 'Inactive', 'Suspended', 'Locked', 'Withdrawn'];
 
 const ROLE_BADGE_STYLE = {
     Student:    { bg: '#E6F1FB', color: '#0C447C' },
@@ -34,31 +34,26 @@ export default function UsersPage() {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState('');
 
-    // Filters
     const [search, setSearch] = useState('');
     const [filterRole, setFilterRole] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
 
-    // Create modal
     const [showCreate, setShowCreate] = useState(false);
     const [createForm, setCreateForm] = useState(EMPTY_FORM);
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState(null);
 
-    // Edit modal
     const [showEdit, setShowEdit] = useState(false);
     const [editTarget, setEditTarget] = useState(null);
     const [editForm, setEditForm] = useState({ fullName: '', email: '', phone: '' });
     const [editing, setEditing] = useState(false);
     const [editError, setEditError] = useState(null);
 
-    // Status modal
     const [showStatus, setShowStatus] = useState(false);
     const [statusTarget, setStatusTarget] = useState(null);
     const [newStatus, setNewStatus] = useState('');
     const [statusSaving, setStatusSaving] = useState(false);
 
-    // MFA reset confirm
     const [mfaResetTarget, setMfaResetTarget] = useState(null);
     const [mfaResetting, setMfaResetting] = useState(false);
 
@@ -77,7 +72,6 @@ export default function UsersPage() {
         }
     };
 
-    // ── Create User ──────────────────────────────────────────────
     const handleCreate = async (e) => {
         e.preventDefault();
         setCreateError(null);
@@ -102,7 +96,6 @@ export default function UsersPage() {
         }
     };
 
-    // ── Edit User ─────────────────────────────────────────────────
     const openEdit = (user) => {
         setEditTarget(user);
         setEditForm({ fullName: user.fullName, email: user.email, phone: user.phone || '' });
@@ -126,7 +119,6 @@ export default function UsersPage() {
         }
     };
 
-    // ── Update Status ─────────────────────────────────────────────
     const openStatus = (user) => {
         setStatusTarget(user);
         setNewStatus(user.status);
@@ -148,7 +140,6 @@ export default function UsersPage() {
         }
     };
 
-    // ── Reset MFA ─────────────────────────────────────────────────
     const handleMfaReset = async () => {
         setMfaResetting(true);
         try {
@@ -164,7 +155,6 @@ export default function UsersPage() {
         }
     };
 
-    // ── Filtered list ─────────────────────────────────────────────
     const filtered = users.filter(u => {
         const matchSearch =
             u.username?.toLowerCase().includes(search.toLowerCase()) ||
@@ -177,7 +167,6 @@ export default function UsersPage() {
 
     return (
         <div>
-            {/* Page Header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
                     <i className="bi bi-people me-2"></i>User Management
@@ -190,7 +179,6 @@ export default function UsersPage() {
                 </button>
             </div>
 
-            {/* Success */}
             {success && (
                 <div className="alert alert-success d-flex align-items-center justify-content-between mb-4">
                     <span><i className="bi bi-check-circle me-2"></i>{success}</span>
@@ -198,7 +186,6 @@ export default function UsersPage() {
                 </div>
             )}
 
-            {/* Filters */}
             <div className="card shadow-sm mb-4">
                 <div className="card-body">
                     <div className="row g-3">
@@ -255,7 +242,6 @@ export default function UsersPage() {
             <ErrorAlert error={error} onDismiss={() => setError(null)} />
             {loading && <Loading message="Loading users..." />}
 
-            {/* Empty */}
             {!loading && !error && filtered.length === 0 && (
                 <div className="text-center py-5 text-muted">
                     <i className="bi bi-people display-4 d-block mb-3"></i>
@@ -263,7 +249,6 @@ export default function UsersPage() {
                 </div>
             )}
 
-            {/* Users Table */}
             {!loading && filtered.length > 0 && (
                 <div className="card shadow-sm">
                     <div className="card-header bg-light d-flex align-items-center justify-content-between">
@@ -298,12 +283,8 @@ export default function UsersPage() {
                                             <td><code>#{u.userID}</code></td>
                                             <td className="fw-bold">{u.username}</td>
                                             <td>{u.fullName}</td>
-                                            <td>
-                                                <small>{u.email}</small>
-                                            </td>
-                                            <td>
-                                                <small>{u.phone || '—'}</small>
-                                            </td>
+                                            <td><small>{u.email}</small></td>
+                                            <td><small>{u.phone || '—'}</small></td>
                                             <td>
                                                 <span
                                                     className="badge"
@@ -321,9 +302,7 @@ export default function UsersPage() {
                                                     <span className="badge bg-secondary">Off</span>
                                                 )}
                                             </td>
-                                            <td>
-                                                <StatusBadge status={u.status} />
-                                            </td>
+                                            <td><StatusBadge status={u.status} /></td>
                                             <td>
                                                 <small className="text-muted">
                                                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
@@ -331,7 +310,6 @@ export default function UsersPage() {
                                             </td>
                                             <td>
                                                 <div className="d-flex gap-1">
-                                                    {/* Edit */}
                                                     <button
                                                         className="btn btn-sm btn-outline-secondary"
                                                         onClick={() => openEdit(u)}
@@ -339,7 +317,6 @@ export default function UsersPage() {
                                                     >
                                                         <i className="bi bi-pencil"></i>
                                                     </button>
-                                                    {/* Status */}
                                                     <button
                                                         className="btn btn-sm btn-outline-primary"
                                                         onClick={() => openStatus(u)}
@@ -347,7 +324,6 @@ export default function UsersPage() {
                                                     >
                                                         <i className="bi bi-toggle-on"></i>
                                                     </button>
-                                                    {/* MFA Reset — only for MFA-enabled users */}
                                                     {u.mfaEnabled && (
                                                         <button
                                                             className="btn btn-sm btn-outline-warning"
@@ -468,15 +444,15 @@ export default function UsersPage() {
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">
                                                     Password <span className="text-danger">*</span>
-                                                    <small className="text-muted fw-normal ms-2">(min 6 chars)</small>
+                                                    <small className="text-muted fw-normal ms-2">(min 8 chars)</small>
                                                 </label>
                                                 <input
                                                     type="password"
                                                     className="form-control"
                                                     value={createForm.password}
                                                     onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
-                                                    placeholder="Min 6 characters"
-                                                    minLength={6}
+                                                    placeholder="Min 8 characters"
+                                                    minLength={8}
                                                     required
                                                 />
                                             </div>
@@ -636,7 +612,7 @@ export default function UsersPage() {
                                         Current status: <StatusBadge status={statusTarget.status} />
                                     </p>
                                     <label className="form-label fw-bold">New Status</label>
-                                    <div className="d-flex gap-3">
+                                    <div className="d-flex flex-wrap gap-3">
                                         {ALL_STATUSES.map(s => (
                                             <div key={s} className="form-check">
                                                 <input
@@ -664,6 +640,12 @@ export default function UsersPage() {
                                         <div className="alert alert-warning mt-3 mb-0">
                                             <i className="bi bi-exclamation-triangle me-2"></i>
                                             Suspended users cannot access the system.
+                                        </div>
+                                    )}
+                                    {newStatus === 'Withdrawn' && (
+                                        <div className="alert alert-secondary mt-3 mb-0">
+                                            <i className="bi bi-info-circle me-2"></i>
+                                            Withdrawn users have left the institution and cannot log in.
                                         </div>
                                     )}
                                 </div>

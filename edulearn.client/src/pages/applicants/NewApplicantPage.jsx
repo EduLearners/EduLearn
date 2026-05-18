@@ -1,12 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { applicantService } from '../../services/applicantService';
+import { programService } from '../../services/programService';
 import ErrorAlert from '../../components/ErrorAlert';
+import Loading from '../../components/Loading';
 
 export default function NewApplicantPage() {
     const navigate = useNavigate();
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
+
+    // Programs dropdown state
+    const [programs, setPrograms] = useState([]);
+    const [loadingPrograms, setLoadingPrograms] = useState(true);
+    const [programsError, setProgramsError] = useState(null);
 
     const [form, setForm] = useState({
         name: '',
@@ -17,6 +24,26 @@ export default function NewApplicantPage() {
         address: '',
         programApplied: '',
     });
+
+    // Load all active programs on mount
+    useEffect(() => {
+        const fetchPrograms = async () => {
+            try {
+                setLoadingPrograms(true);
+                setProgramsError(null);
+                const data = await programService.getAll();
+                // Only show Active programs in the dropdown
+                const active = (data || []).filter(p => p.status === 'Active');
+                setPrograms(active);
+            } catch (err) {
+                setProgramsError('Could not load programs. You can still type the program name manually.');
+                setPrograms([]);
+            } finally {
+                setLoadingPrograms(false);
+            }
+        };
+        fetchPrograms();
+    }, []);
 
     const handleChange = (field) => (e) => {
         setForm({ ...form, [field]: e.target.value });
@@ -151,19 +178,65 @@ export default function NewApplicantPage() {
 
                         <div className="row g-3">
                             <div className="col-12">
-                                <label className="form-label fw-bold">Program Applied *</label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    value={form.programApplied}
-                                    onChange={handleChange('programApplied')}
-                                    required
-                                    placeholder="e.g. B.Tech Computer Science"
-                                    maxLength={100}
-                                />
-                                <small className="text-muted">
-                                    Enter the full program name the applicant is applying for.
-                                </small>
+                                <label className="form-label fw-bold">
+                                    Program Applied *
+                                </label>
+
+                                {loadingPrograms ? (
+                                    <div className="d-flex align-items-center gap-2 mt-1">
+                                        <span className="spinner-border spinner-border-sm text-primary-edulearn"></span>
+                                        <small className="text-muted">Loading programs...</small>
+                                    </div>
+                                ) : programs.length > 0 ? (
+                                    <>
+                                        <select
+                                            className="form-select"
+                                            value={form.programApplied}
+                                            onChange={handleChange('programApplied')}
+                                            required
+                                        >
+                                            <option value="">— Select a program —</option>
+                                            {programs.map(p => (
+                                                <option key={p.programID} value={p.name}>
+                                                    {p.name}
+                                                    {p.degreeType ? ` (${p.degreeType})` : ''}
+                                                    {p.department ? ` — ${p.department}` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <small className="text-muted">
+                                            <i className="bi bi-mortarboard me-1"></i>
+                                            Showing {programs.length} active program{programs.length !== 1 ? 's' : ''}.
+                                        </small>
+                                    </>
+                                ) : (
+                                    <>
+                                        {programsError && (
+                                            <div className="alert alert-warning py-2 small mb-2">
+                                                <i className="bi bi-exclamation-triangle me-1"></i>
+                                                {programsError}
+                                            </div>
+                                        )}
+                                        {!programsError && (
+                                            <div className="alert alert-warning py-2 small mb-2">
+                                                <i className="bi bi-exclamation-triangle me-1"></i>
+                                                No active programs found. Please create programs first or type the name manually.
+                                            </div>
+                                        )}
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            value={form.programApplied}
+                                            onChange={handleChange('programApplied')}
+                                            required
+                                            placeholder="e.g. B.Tech Computer Science"
+                                            maxLength={100}
+                                        />
+                                        <small className="text-muted">
+                                            Enter the full program name the applicant is applying for.
+                                        </small>
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -172,7 +245,7 @@ export default function NewApplicantPage() {
                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
 
                         <div className="d-flex gap-2">
-                            <button type="submit" className="btn btn-primary-edulearn" disabled={saving}>
+                            <button type="submit" className="btn btn-primary-edulearn" disabled={saving || loadingPrograms}>
                                 {saving ? (
                                     <><span className="spinner-border spinner-border-sm me-2"></span>Submitting...</>
                                 ) : (

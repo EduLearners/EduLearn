@@ -131,9 +131,10 @@ export default function ITAdminDashboard() {
                 </div>
             </div>
 
+            {/* Stat Cards — all clickable */}
             <div className="row g-3 mb-4">
                 <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light">
+                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/users')}>
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Total Users</div>
                             <div className="display-5 fw-bold" style={{ color: '#185FA5' }}>{stats.users ?? '—'}</div>
@@ -262,7 +263,7 @@ export default function ITAdminDashboard() {
                             </thead>
                             <tbody>
                                 {recentUsers.map(u => (
-                                    <tr key={u.userID}>
+                                    <tr key={u.userID} style={{ cursor: 'pointer' }} onClick={() => navigate('/users')}>
                                         <td><code>#{u.userID}</code></td>
                                         <td className="fw-bold">{u.username}</td>
                                         <td>{u.fullName}</td>
@@ -387,7 +388,7 @@ export default function ITAdminDashboard() {
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">
                                                     Password <span className="text-danger">*</span>
-                                                    <small className="text-muted fw-normal ms-2">(min 6 chars)</small>
+                                                    <small className="text-muted fw-normal ms-2">(min 8 chars)</small>
                                                 </label>
                                                 <input
                                                     type="password"
@@ -395,8 +396,8 @@ export default function ITAdminDashboard() {
                                                     name="password"
                                                     value={userForm.password}
                                                     onChange={handleChange}
-                                                    placeholder="Min 6 characters"
-                                                    minLength={6}
+                                                    placeholder="Min 8 characters"
+                                                    minLength={8}
                                                     required
                                                 />
                                             </div>

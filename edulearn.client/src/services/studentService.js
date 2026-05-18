@@ -9,6 +9,12 @@ export const studentService = {
         const { data } = await axiosClient.get(`/students/${id}`);
         return data;
     },
+    // Resolves the Student record for the currently logged-in Student user
+    // using the JWT UserID claim (GET /api/students/me).
+    getMe: async () => {
+        const { data } = await axiosClient.get('/students/me');
+        return data;
+    },
     create: async (student) => {
         const { data } = await axiosClient.post('/students', student);
         return data;

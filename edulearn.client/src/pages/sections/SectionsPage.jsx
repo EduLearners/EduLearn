@@ -35,23 +35,19 @@ const emptyForm = {
 export default function SectionsPage() {
     const navigate = useNavigate();
 
-    // Lookup data for dropdowns
     const [courses, setCourses] = useState([]);
     const [instructors, setInstructors] = useState([]);
     const [rooms, setRooms] = useState([]);
 
-    // Filter state
     const [filterCourseId, setFilterCourseId] = useState('');
     const [filterTerm, setFilterTerm] = useState('2026-Spring');
 
-    // Results
     const [sections, setSections] = useState([]);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [error, setError] = useState(null);
     const [loadingLookups, setLoadingLookups] = useState(true);
 
-    // Modal state
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState(emptyForm);
@@ -61,7 +57,6 @@ export default function SectionsPage() {
     const { role } = authService.getCurrentUser();
     const canManage = ['Registrar', 'DeptAdmin', 'ITAdmin'].includes(role);
 
-    // Load lookup data on mount
     useEffect(() => {
         loadLookups();
     }, []);
@@ -69,16 +64,31 @@ export default function SectionsPage() {
     const loadLookups = async () => {
         try {
             setLoadingLookups(true);
-            const [coursesData, instructorsData, roomsData] = await Promise.all([
+
+            const [coursesResult, instructorsResult, roomsResult] = await Promise.allSettled([
                 courseService.getAll(),
                 userService.getByRole('Instructor'),
                 roomService.getAll(),
             ]);
-            setCourses(coursesData || []);
-            setInstructors(instructorsData || []);
-            setRooms(roomsData || []);
-        } catch (err) {
-            setError(err);
+
+            if (coursesResult.status === 'fulfilled') {
+                setCourses(coursesResult.value || []);
+            } else {
+                console.error('[Sections] Failed to load courses:', coursesResult.reason);
+                setError(coursesResult.reason);
+            }
+
+            if (instructorsResult.status === 'fulfilled') {
+                setInstructors(instructorsResult.value || []);
+            } else {
+                console.warn('[Sections] Failed to load instructors:', instructorsResult.reason);
+            }
+
+            if (roomsResult.status === 'fulfilled') {
+                setRooms(roomsResult.value || []);
+            } else {
+                console.warn('[Sections] Failed to load rooms:', roomsResult.reason);
+            }
         } finally {
             setLoadingLookups(false);
         }
@@ -96,7 +106,6 @@ export default function SectionsPage() {
             setSections(data || []);
             setHasSearched(true);
         } catch (err) {
-            // 404 SECTIONS_NOT_FOUND is expected when no sections exist — show empty state instead
             if (err.response?.status === 404 && err.response?.data?.code === 'SECTIONS_NOT_FOUND') {
                 setSections([]);
                 setHasSearched(true);
@@ -110,17 +119,12 @@ export default function SectionsPage() {
 
     const openCreateModal = () => {
         setEditingId(null);
-        setForm({
-            ...emptyForm,
-            courseID: filterCourseId || '',
-            term: filterTerm || '',
-        });
+        setForm({ ...emptyForm, courseID: filterCourseId || '', term: filterTerm || '' });
         setFormError(null);
         setShowModal(true);
     };
 
     const openEditModal = (section) => {
-        // Parse existing schedule
         let days = 'Mon-Wed-Fri';
         let time = '10:00-11:00';
         if (section.scheduleJSON) {
@@ -130,7 +134,6 @@ export default function SectionsPage() {
                 if (sched.time) time = sched.time;
             } catch { /* ignore */ }
         }
-
         setEditingId(section.sectionID);
         setForm({
             courseID: section.courseID,
@@ -155,31 +158,21 @@ export default function SectionsPage() {
         e.preventDefault();
         setFormError(null);
         setSaving(true);
-
         try {
-            const schedule = {
-                days: form.scheduleDays,
-                time: form.scheduleTime,
-            };
-
             const payload = {
                 courseID: parseInt(form.courseID, 10),
                 term: form.term,
                 instructorID: parseInt(form.instructorID, 10),
                 roomID: form.roomID ? parseInt(form.roomID, 10) : null,
                 capacity: parseInt(form.capacity, 10),
-                scheduleJSON: JSON.stringify(schedule),
+                scheduleJSON: JSON.stringify({ days: form.scheduleDays, time: form.scheduleTime }),
             };
-
             if (editingId) {
                 await sectionService.update(editingId, payload);
             } else {
                 await sectionService.create(payload);
             }
-
             setShowModal(false);
-
-            // Refresh the search if it matches what we just changed
             if (payload.courseID === parseInt(filterCourseId, 10) && payload.term === filterTerm.trim()) {
                 await handleSearch();
             }
@@ -197,23 +190,17 @@ export default function SectionsPage() {
 
     return (
         <div>
-            {/* Page header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
                     <i className="bi bi-collection me-2"></i>Sections
                 </h2>
                 {canManage && (
-                    <button
-                        className="btn btn-primary-edulearn"
-                        onClick={openCreateModal}
-                        disabled={loadingLookups}
-                    >
+                    <button className="btn btn-primary-edulearn" onClick={openCreateModal} disabled={loadingLookups}>
                         <i className="bi bi-plus-lg me-2"></i>New Section
                     </button>
                 )}
             </div>
 
-            {/* Filter card — required to search */}
             <div className="card shadow-sm mb-3">
                 <div className="card-body">
                     <p className="text-muted small mb-3">
@@ -222,9 +209,7 @@ export default function SectionsPage() {
                     </p>
                     <div className="row g-3 align-items-end">
                         <div className="col-md-6">
-                            <label className="form-label fw-bold">
-                                <i className="bi bi-book me-1"></i>Course
-                            </label>
+                            <label className="form-label fw-bold"><i className="bi bi-book me-1"></i>Course</label>
                             <select
                                 className="form-select"
                                 value={filterCourseId}
@@ -239,11 +224,8 @@ export default function SectionsPage() {
                                 ))}
                             </select>
                         </div>
-
                         <div className="col-md-4">
-                            <label className="form-label fw-bold">
-                                <i className="bi bi-calendar me-1"></i>Term
-                            </label>
+                            <label className="form-label fw-bold"><i className="bi bi-calendar me-1"></i>Term</label>
                             <input
                                 type="text"
                                 className="form-control"
@@ -252,7 +234,6 @@ export default function SectionsPage() {
                                 placeholder="e.g. 2026-Spring"
                             />
                         </div>
-
                         <div className="col-md-2">
                             <button
                                 className="btn btn-primary-edulearn w-100"
@@ -268,18 +249,17 @@ export default function SectionsPage() {
 
             <ErrorAlert error={error} onDismiss={() => setError(null)} />
 
-            {(loading || loadingLookups) && <Loading message={loadingLookups ? 'Loading reference data...' : 'Searching...'} />}
+            {(loading || loadingLookups) && (
+                <Loading message={loadingLookups ? 'Loading reference data...' : 'Searching...'} />
+            )}
 
-            {/* Results */}
             {!loading && hasSearched && (
                 <div className="card shadow-sm">
                     <div className="card-body p-0">
                         {sections.length === 0 ? (
                             <div className="text-center py-5 text-muted">
                                 <i className="bi bi-inbox" style={{ fontSize: '3rem' }}></i>
-                                <p className="mt-3 mb-0">
-                                    No sections found for this course and term.
-                                </p>
+                                <p className="mt-3 mb-0">No sections found for this course and term.</p>
                                 {canManage && (
                                     <button className="btn btn-link mt-2" onClick={openCreateModal}>
                                         <i className="bi bi-plus-lg me-1"></i>Create the first one
@@ -327,20 +307,11 @@ export default function SectionsPage() {
                                                             {s.enrolledCount}/{s.capacity}
                                                         </span>
                                                     </td>
-                                                    <td>
-                                                        <StatusBadge status={s.status} />
-                                                    </td>
+                                                    <td><StatusBadge status={s.status} /></td>
                                                     {canManage && (
                                                         <td className="text-end pe-3">
                                                             <button
-                                                                className="btn btn-sm btn-outline-primary me-1"
-                                                                onClick={() => navigate(`/sections/${s.sectionID}`)}
-                                                                title="View"
-                                                            >
-                                                                <i className="bi bi-eye"></i>
-                                                            </button>
-                                                            <button
-                                                                className="btn btn-sm btn-outline-secondary me-1"
+                                                                className="btn btn-sm btn-outline-secondary"
                                                                 onClick={() => openEditModal(s)}
                                                                 title="Edit"
                                                             >
@@ -364,7 +335,6 @@ export default function SectionsPage() {
                 </div>
             )}
 
-            {/* Create/Edit Modal */}
             {showModal && (
                 <>
                     <div className="modal-backdrop fade show"></div>
@@ -397,7 +367,6 @@ export default function SectionsPage() {
                                                     ))}
                                                 </select>
                                             </div>
-
                                             <div className="col-md-4">
                                                 <label className="form-label fw-bold">Term *</label>
                                                 <input
@@ -410,7 +379,6 @@ export default function SectionsPage() {
                                                     maxLength={20}
                                                 />
                                             </div>
-
                                             <div className="col-md-8">
                                                 <label className="form-label fw-bold">Instructor *</label>
                                                 <select
@@ -433,7 +401,6 @@ export default function SectionsPage() {
                                                     </small>
                                                 )}
                                             </div>
-
                                             <div className="col-md-4">
                                                 <label className="form-label fw-bold">Capacity *</label>
                                                 <input
@@ -446,7 +413,6 @@ export default function SectionsPage() {
                                                     max={500}
                                                 />
                                             </div>
-
                                             <div className="col-md-12">
                                                 <label className="form-label fw-bold">Room</label>
                                                 <select
@@ -465,7 +431,6 @@ export default function SectionsPage() {
                                         </div>
 
                                         <hr className="my-4" />
-
                                         <h6 className="text-muted text-uppercase small mb-3">Schedule</h6>
 
                                         <div className="row g-3">
@@ -481,7 +446,6 @@ export default function SectionsPage() {
                                                     ))}
                                                 </select>
                                             </div>
-
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">Time</label>
                                                 <input
@@ -498,7 +462,6 @@ export default function SectionsPage() {
 
                                         <ErrorAlert error={formError} onDismiss={() => setFormError(null)} />
                                     </div>
-
                                     <div className="modal-footer">
                                         <button type="button" className="btn btn-outline-secondary" onClick={closeModal} disabled={saving}>
                                             Cancel

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
+import { studentService } from '../services/studentService';
 import Loading from '../components/Loading';
 import ErrorAlert from '../components/ErrorAlert';
 import StatusBadge from '../components/StatusBadge';
@@ -15,6 +16,10 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showChangePassword, setShowChangePassword] = useState(false);
+
+    // Student-specific record (studentID, MRN, program) — only fetched when role === Student
+    const [studentRecord, setStudentRecord] = useState(null);
+
     useEffect(() => {
         loadProfile();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -26,7 +31,6 @@ export default function ProfilePage() {
             setError(null);
 
             if (!userId) {
-                // Fallback if userId wasn't decoded from JWT (older session)
                 setProfile({
                     username,
                     role,
@@ -39,9 +43,20 @@ export default function ProfilePage() {
 
             const data = await userService.getById(userId);
             setProfile(data);
+
+            // If this is a Student, also fetch their Student record so we can
+            // show the StudentID and MRN — needed for Enrollment, Timetable, etc.
+            if (data.role === 'Student' || role === 'Student') {
+                try {
+                    const student = await studentService.getMe();
+                    setStudentRecord(student);
+                } catch {
+                    // Non-fatal: student record may not exist yet (just created user)
+                    setStudentRecord(null);
+                }
+            }
         } catch (err) {
             setError(err);
-            // Still show what we have from localStorage as a graceful fallback
             setProfile({
                 username,
                 role,
@@ -54,7 +69,6 @@ export default function ProfilePage() {
         }
     };
 
-    // Initials for the big avatar
     const initials = (profile?.fullName || profile?.username || username || '?')
         .split(/[\s_-]+/)
         .filter(Boolean)
@@ -62,7 +76,6 @@ export default function ProfilePage() {
         .map(p => p[0]?.toUpperCase())
         .join('');
 
-    // Map role → display description for context
     const roleDescriptions = {
         Student: 'Can enroll in sections, view own timetable, and download own transcripts.',
         Instructor: 'Teaches sections, grades submissions, and can flag plagiarism.',
@@ -90,9 +103,8 @@ export default function ProfilePage() {
 
             {!loading && profile && (
                 <>
-                    {/* Hero card with big avatar */}
+                    {/* Hero card */}
                     <div className="card shadow-sm mb-4 border-0 overflow-hidden">
-                        {/* Gradient banner with avatar centered on its bottom edge */}
                         <div
                             className="position-relative"
                             style={{
@@ -123,7 +135,6 @@ export default function ProfilePage() {
                             </div>
                         </div>
 
-                        {/* Name + role section, fully BELOW the banner so nothing overlaps */}
                         <div className="card-body" style={{ paddingTop: 64, paddingLeft: 32 }}>
                             <h3 className="text-primary-edulearn mb-1">
                                 {profile.fullName || profile.username}
@@ -147,7 +158,7 @@ export default function ProfilePage() {
                         </div>
                     </div>
 
-                    {/* Profile details — two columns */}
+                    {/* Profile details */}
                     <div className="row g-4">
                         {/* Account info */}
                         <div className="col-md-6">
@@ -165,6 +176,52 @@ export default function ProfilePage() {
                                                 <code>#{userId}</code>
                                             ) : '—'}
                                         </dd>
+
+                                        {/* Student ID + MRN — only shown for Student role */}
+                                        {(profile.role === 'Student' || role === 'Student') && (
+                                            <>
+                                                <dt className="col-sm-5 text-muted">
+                                                    Student ID
+                                                    <i
+                                                        className="bi bi-info-circle ms-1 text-muted"
+                                                        title="Use this ID on the Enrollment and Timetable pages"
+                                                    ></i>
+                                                </dt>
+                                                <dd className="col-sm-7">
+                                                    {studentRecord ? (
+                                                        <span className="d-flex align-items-center gap-2">
+                                                            <code className="text-primary-edulearn fw-bold">
+                                                                #{studentRecord.studentID}
+                                                            </code>
+                                                            <span className="badge bg-info text-dark" style={{ fontSize: 10 }}>
+                                                                Use for Enrollment
+                                                            </span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted fst-italic small">
+                                                            No student record yet — contact Registrar
+                                                        </span>
+                                                    )}
+                                                </dd>
+
+                                                <dt className="col-sm-5 text-muted">MRN</dt>
+                                                <dd className="col-sm-7">
+                                                    {studentRecord?.mrn ? (
+                                                        <code>{studentRecord.mrn}</code>
+                                                    ) : '—'}
+                                                </dd>
+
+                                                <dt className="col-sm-5 text-muted">Program</dt>
+                                                <dd className="col-sm-7">
+                                                    {studentRecord?.programName || '—'}
+                                                </dd>
+
+                                                <dt className="col-sm-5 text-muted">Entry Term</dt>
+                                                <dd className="col-sm-7">
+                                                    {studentRecord?.entryTerm || '—'}
+                                                </dd>
+                                            </>
+                                        )}
 
                                         <dt className="col-sm-5 text-muted">Username</dt>
                                         <dd className="col-sm-7">
@@ -281,11 +338,13 @@ export default function ProfilePage() {
                                         Receive a password reset link on your registered email address.
                                     </p>
                                 </div>
-                                <button className="btn btn-outline-primary btn-sm"
-                                   onClick={() => setShowChangePassword(true)}>
-                                  <i className="bi bi-key me-2"></i>
-                                   Reset Password
-                                 </button>
+                                <button
+                                    className="btn btn-outline-primary btn-sm"
+                                    onClick={() => setShowChangePassword(true)}
+                                >
+                                    <i className="bi bi-key me-2"></i>
+                                    Reset Password
+                                </button>
                             </div>
                         </div>
                     </div>

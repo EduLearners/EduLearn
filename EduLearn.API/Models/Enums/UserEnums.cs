@@ -7,5 +7,5 @@ public enum UserRole
 
 public enum UserStatus
 {
-    Active, Inactive, Suspended, Locked
+    Active, Inactive, Suspended, Locked, Withdrawn
 }

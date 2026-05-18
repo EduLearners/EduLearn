@@ -17,7 +17,6 @@ export default function MfaVerifyPage() {
 
     useEffect(() => {
         if (!mfaToken) {
-            console.log('[MFA] No mfaToken on mount → redirecting to /login');
             navigate('/login');
         }
         // Empty deps: run ONLY on mount, never again.
@@ -29,12 +28,8 @@ export default function MfaVerifyPage() {
         setError('');
         setLoading(true);
 
-        console.log('[MFA] Submitting code:', code);
-
         try {
             const data = await authService.verifyMfa(mfaToken, code);
-
-            console.log('[MFA] ✅ Verify success, role:', data.role);
 
             if (!data?.token) {
                 setError('Server did not return a token.');
@@ -45,10 +40,8 @@ export default function MfaVerifyPage() {
             sessionStorage.removeItem('mfaToken');
             sessionStorage.removeItem('mfaMessage');
 
-            console.log('[MFA] Navigating to /dashboard...');
             navigate('/dashboard', { replace: true });
         } catch (err) {
-            console.error('[MFA] Verify failed:', err.response?.data || err.message);
             setError(err);
         } finally {
             setLoading(false);
