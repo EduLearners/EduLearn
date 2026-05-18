@@ -16,6 +16,7 @@ const EMPTY_USER_FORM = {
     email: '',
     phone: '',
     password: '',
+    sendInvite: true,
 };
 
 export default function RegistrarDashboard() {
@@ -76,19 +77,24 @@ export default function RegistrarDashboard() {
         setCreateSuccess('');
         setCreatedUser(null);
         setCreating(true);
-        try {
+            try {
             const { data } = await axiosClient.post('/auth/register', {
                 username: userForm.username,
                 fullName: userForm.fullName,
                 email: userForm.email,
                 phone: userForm.phone || null,
                 password: userForm.password,
+                sendInvite: userForm.sendInvite,
             });
             setCreatedUser(data);
             setCreateSuccess(
-                `User "${userForm.username}" created successfully with Student role. User ID: #${data.userId}`
+                userForm.sendInvite
+                    ? `User "${userForm.username}" created. Welcome email sent to ${userForm.email}. User ID: #${data.userId}`
+                    : `User "${userForm.username}" created successfully with Student role. User ID: #${data.userId}`
             );
             setUserForm(EMPTY_USER_FORM);
+            
+
         } catch (err) {
             setCreateError(err);
         } finally {
@@ -484,6 +490,29 @@ export default function RegistrarDashboard() {
                                                 <div className="form-text text-muted">
                                                     <i className="bi bi-lock me-1"></i>
                                                     Role is always Student via this endpoint.
+                                                </div>
+                                            </div>
+                                            {/* Send Invite Checkbox */}
+                                            <div className="col-12">
+                                                <div className="p-3 bg-light rounded d-flex align-items-start gap-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="form-check-input mt-1"
+                                                        id="sendInviteCheckRegistrar"
+                                                        checked={userForm.sendInvite}
+                                                        onChange={e => setUserForm({ ...userForm, sendInvite: e.target.checked })}
+                                                        disabled={creating}
+                                                    />
+                                                    <label htmlFor="sendInviteCheckRegistrar" style={{ cursor: 'pointer' }}>
+                                                        <div className="fw-bold">
+                                                            <i className="bi bi-envelope me-2"></i>
+                                                            Send welcome email
+                                                        </div>
+                                                        <small className="text-muted">
+                                                            Sends login details (username, login URL and
+                                                            temporary password) to {userForm.email || 'the student\'s email'}.
+                                                        </small>
+                                                    </label>
                                                 </div>
                                             </div>
                                         </div>

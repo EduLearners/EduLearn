@@ -15,9 +15,9 @@ function decodeJwtPayload(token) {
 
 export const authService = {
     // POST /api/auth/login
-    login: async (username, password) => {
-        const { data } = await axiosClient.post('/auth/login', { username, password });
-        return data;
+    login: async (usernameOrEmail, password) => {
+         const { data } = await axiosClient.post('/auth/login', { usernameOrEmail, password });
+         return data;
     },
 
     // POST /api/auth/register

@@ -4,7 +4,8 @@ import { authService } from '../services/authService';
 import ErrorAlert from '../components/ErrorAlert';
 
 export default function LoginPage() {
-    const [username, setUsername] = useState('');
+    //const [username, setUsername] = useState('');
+    const [usernameOrEmail, setUsernameOrEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -13,12 +14,13 @@ export default function LoginPage() {
     const handleLogin = async (e) => {
         e.preventDefault();
         // Guard: prevent empty credential submission from browser autofill/remount
-       if (!username.trim() || !password.trim()) return;
+      // if (!username.trim() || !password.trim()) return;
+      if (!usernameOrEmail.trim() || !password.trim()) return;
         setError('');
         setLoading(true);
 
         try {
-            const data = await authService.login(username, password);
+            const data = await authService.login(usernameOrEmail, password);
 
             // Privileged role -> MFA flow
             if (data.purpose === 'mfa_pending') {
@@ -60,15 +62,16 @@ export default function LoginPage() {
 
                     <form onSubmit={handleLogin}>
                         <div className="mb-3">
-                            <label className="form-label">Username</label>
+                            <label className="form-label">Username or Email</label>
                             <div className="input-group">
                                 <span className="input-group-text">
                                     <i className="bi bi-person"></i>
                                 </span>
                                 <input
                                     className="form-control"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
+                                    value={usernameOrEmail}
+                                    onChange={(e) => setUsernameOrEmail(e.target.value)}
+                                    placeholder="Enter Username or email"
                                     required
                                     autoFocus
                                 />
@@ -86,6 +89,7 @@ export default function LoginPage() {
                                     className="form-control"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Enter password"
                                     required
                                 />
                             </div>

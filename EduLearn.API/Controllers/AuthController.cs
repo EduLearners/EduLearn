@@ -38,11 +38,17 @@ namespace EduLearn.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
+    private readonly EmailService _emailService;
+    private readonly IConfiguration _config;
 
-    // AUTH CHANGE: AuthService injected by DI (registered in Program.cs)
-    public AuthController(AuthService authService)
+    public AuthController(
+        AuthService authService,
+        EmailService emailService,
+        IConfiguration config)
     {
         _authService = authService;
+        _emailService = emailService;
+        _config = config;
     }
 
     /// <summary>
@@ -51,13 +57,31 @@ public class AuthController : ControllerBase
     /// </summary>
     // POST /api/auth/register — BCrypt hashes password before saving
     [HttpPost("register")]
-    [AllowAnonymous]  // HARDENING (C-25): explicit opt-out from FallbackPolicy
+    [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
         var (success, result) = await _authService.RegisterAsync(dto);
 
         if (!success)
             return BadRequest(result);
+
+        // INVITE: Send welcome email if requested
+        if (dto.SendInvite)
+        {
+            var loginUrl = _config["Email:FrontendBaseUrl"] ?? "http://localhost:5173/login";
+            try
+            {
+                await _emailService.SendWelcomeEmailAsync(
+                    toEmail      : dto.Email,
+                    toName       : dto.FullName,
+                    username     : dto.Username,
+                    role         : "Student",
+                    loginUrl     : loginUrl,
+                    tempPassword : dto.Password
+                );
+            }
+            catch { /* silent fail — don't block registration if email fails */ }
+        }
 
         return Ok(result);
     }

@@ -42,6 +42,12 @@ export const userService = {
         await axiosClient.post(`/users/${id}/mfa/reset`);
     },
 
+    // POST /api/users/:id/invite — ITAdmin only — sends welcome email to existing user
+    inviteUser: async (id) => {
+        const { data } = await axiosClient.post(`/users/${id}/invite`);
+        return data;
+    },
+
     // PUT /api/users/:id/password — Any authenticated user (own only)
     // Requires current password verification on the backend
         changePassword: async (id, currentPassword, newPassword, confirmPassword) => {

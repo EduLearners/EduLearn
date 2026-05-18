@@ -66,7 +66,7 @@ public class AuthControllerTest
             _emailServiceMock.Object);
 
         // Controller with real AuthService
-        _controller = new AuthController(_authService);
+        _controller = new AuthController(_authService, _emailServiceMock.Object, _config);
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -258,7 +258,7 @@ public class AuthControllerTest
         };
         _userRepoMock.Setup(r => r.GetByUsernameAsync("rahul.s")).ReturnsAsync(user);
 
-        var dto = new LoginDto { Username = "rahul.s", Password = "Student@123" };
+        var dto = new LoginDto { UsernameOrEmail = "rahul.s", Password = "Student@123" };
 
         // Act
         var result = await _controller.Login(dto);
@@ -292,7 +292,7 @@ public class AuthControllerTest
         };
         _userRepoMock.Setup(r => r.GetByUsernameAsync("rahul.s")).ReturnsAsync(user);
 
-        var dto = new LoginDto { Username = "rahul.s", Password = "WrongPassword" };
+        var dto = new LoginDto { UsernameOrEmail = "rahul.s", Password = "WrongPassword" };
 
         // Act
         var result = await _controller.Login(dto);
@@ -310,7 +310,7 @@ public class AuthControllerTest
         _userRepoMock.Setup(r => r.GetByUsernameAsync("ghost"))
             .ReturnsAsync((User?)null);
 
-        var dto = new LoginDto { Username = "ghost", Password = "Test@123" };
+        var dto = new LoginDto { UsernameOrEmail = "ghost", Password = "Test@123" };
 
         // Act
         var result = await _controller.Login(dto);
@@ -338,7 +338,7 @@ public class AuthControllerTest
         };
         _userRepoMock.Setup(r => r.GetByUsernameAsync("suspended.user")).ReturnsAsync(user);
 
-        var dto = new LoginDto { Username = "suspended.user", Password = "Test@123" };
+        var dto = new LoginDto { UsernameOrEmail = "suspended.user", Password = "Test@123" };
 
         // Act
         var result = await _controller.Login(dto);
@@ -367,7 +367,7 @@ public class AuthControllerTest
         };
         _userRepoMock.Setup(r => r.GetByUsernameAsync("admin")).ReturnsAsync(user);
 
-        var dto = new LoginDto { Username = "admin", Password = "Admin@123" };
+        var dto = new LoginDto { UsernameOrEmail = "admin", Password = "Admin@123" };
 
         // Act
         var result = await _controller.Login(dto);
@@ -400,7 +400,7 @@ public class AuthControllerTest
         };
         _userRepoMock.Setup(r => r.GetByUsernameAsync("dr.priya")).ReturnsAsync(user);
 
-        var dto = new LoginDto { Username = "dr.priya", Password = "Inst@123" };
+        var dto = new LoginDto { UsernameOrEmail = "dr.priya", Password = "Inst@123" };
 
         // Act
         var result = await _controller.Login(dto);

@@ -25,6 +25,7 @@ const EMPTY_FORM = {
     phone: '',
     role: 'Student',
     password: '',
+    sendInvite: true,
 };
 
 export default function UsersPage() {
@@ -72,7 +73,7 @@ export default function UsersPage() {
         }
     };
 
-    const handleCreate = async (e) => {
+   const handleCreate = async (e) => {
         e.preventDefault();
         setCreateError(null);
         setCreating(true);
@@ -84,8 +85,13 @@ export default function UsersPage() {
                 phone: createForm.phone || null,
                 role: createForm.role,
                 password: createForm.password,
+                sendInvite: createForm.sendInvite,
             });
-            setSuccess(`User "${createForm.username}" created successfully.`);
+            setSuccess(
+                createForm.sendInvite
+                    ? `User "${createForm.username}" created. Welcome email sent to ${createForm.email}.`
+                    : `User "${createForm.username}" created successfully.`
+            );
             setCreateForm(EMPTY_FORM);
             setShowCreate(false);
             loadUsers();
@@ -95,7 +101,6 @@ export default function UsersPage() {
             setCreating(false);
         }
     };
-
     const openEdit = (user) => {
         setEditTarget(user);
         setEditForm({ fullName: user.fullName, email: user.email, phone: user.phone || '' });
@@ -152,6 +157,15 @@ export default function UsersPage() {
             setMfaResetTarget(null);
         } finally {
             setMfaResetting(false);
+        }
+    };
+
+    const handleInvite = async (user) => {
+        try {
+            await userService.inviteUser(user.userID);
+            setSuccess(`Invite email sent to ${user.email}.`);
+        } catch (err) {
+            setError(err);
         }
     };
 
@@ -324,6 +338,13 @@ export default function UsersPage() {
                                                     >
                                                         <i className="bi bi-toggle-on"></i>
                                                     </button>
+                                                    <button
+                                                        className="btn btn-sm btn-outline-success"
+                                                        onClick={() => handleInvite(u)}
+                                                        title="Send invite email"
+                                                    >
+                                                        <i className="bi bi-envelope"></i>
+                                                    </button>
                                                     {u.mfaEnabled && (
                                                         <button
                                                             className="btn btn-sm btn-outline-warning"
@@ -455,6 +476,29 @@ export default function UsersPage() {
                                                     minLength={8}
                                                     required
                                                 />
+                                            </div>
+
+                                            {/* Send Invite Checkbox */}
+                                            <div className="col-12">
+                                                <div className="p-3 bg-light rounded d-flex align-items-start gap-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="form-check-input mt-1"
+                                                        id="sendInviteCheck"
+                                                        checked={createForm.sendInvite}
+                                                        onChange={e => setCreateForm({ ...createForm, sendInvite: e.target.checked })}
+                                                    />
+                                                    <label htmlFor="sendInviteCheck" style={{ cursor: 'pointer' }}>
+                                                        <div className="fw-bold">
+                                                            <i className="bi bi-envelope me-2"></i>
+                                                            Send welcome email
+                                                        </div>
+                                                        <small className="text-muted">
+                                                            Sends login details (username, role, login URL
+                                                            and temporary password) to {createForm.email || 'the user\'s email'}.
+                                                        </small>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                         <ErrorAlert error={createError} onDismiss={() => setCreateError(null)} />

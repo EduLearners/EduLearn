@@ -28,14 +28,21 @@ public class RegisterDto
     public string FullName { get; set; } = string.Empty;
 
     public string? Phone { get; set; }
-
+    // INVITE: If true, backend sends a welcome email with login details
+    public bool SendInvite { get; set; } = false;
 }
 
 // AUTH CHANGE: What the user sends to POST /api/auth/login
 public class LoginDto
 {
+    //[Required]
+    //public string Username { get; set; } = string.Empty;
+
+    //// AUTH CHANGE: Plain text password — BCrypt.Verify compares with stored hash
+    //[Required]
+    //public string Password { get; set; } = string.Empty;
     [Required]
-    public string Username { get; set; } = string.Empty;
+    public string UsernameOrEmail { get; set; } = string.Empty;
 
     // AUTH CHANGE: Plain text password — BCrypt.Verify compares with stored hash
     [Required]

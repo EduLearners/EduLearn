@@ -153,8 +153,11 @@ public class AuthService
     public async Task<object?> LoginAsync(LoginDto dto)
     {
         // Find user by username
-        var user = await _userRepository.GetByUsernameAsync(dto.Username);
-
+        //var user = await _userRepository.GetByUsernameAsync(dto.Username);
+        var isEmail = dto.UsernameOrEmail.Contains('@');
+        var user = isEmail
+            ? await _userRepository.GetByEmailAsync(dto.UsernameOrEmail)
+            : await _userRepository.GetByUsernameAsync(dto.UsernameOrEmail);
         // HARDENING (C-24): Always run BCrypt.Verify — against a dummy hash when the user
         // does not exist — so response time for "user not found" matches "wrong password".
         // Without this, valid usernames respond ~300ms slower than invalid ones, leaking
