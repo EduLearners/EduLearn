@@ -192,6 +192,9 @@ export default function StudentDetailPage() {
                                     <dt className="col-sm-4 text-muted">Name</dt>
                                     <dd className="col-sm-8">{student.name}</dd>
 
+                                    <dt className="col-sm-4 text-muted">Student ID</dt>
+                                    <dd className="col-sm-8"><code>#{student.studentID}</code></dd>
+
                                     <dt className="col-sm-4 text-muted">MRN</dt>
                                     <dd className="col-sm-8"><code>{student.mrn}</code></dd>
 

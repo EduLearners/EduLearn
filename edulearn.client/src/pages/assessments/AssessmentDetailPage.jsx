@@ -111,9 +111,12 @@ export default function AssessmentDetailPage() {
                             <div className="row g-4">
                                 <div className="col-md-6">
                                     <dl className="row mb-0">
-                                        <dt className="col-sm-5 text-muted">Title</dt>
+                                    <dt className="col-sm-5 text-muted">Assessment ID</dt>
+                                    <dd className="col-sm-7"><code>#{assessment.assessmentID}</code></dd>
+
+                                    <dt className="col-sm-5 text-muted">Title</dt>
                                         <dd className="col-sm-7 fw-bold">
-                                            {assessment.title}
+                                        {assessment.title}
                                         </dd>
 
                                         <dt className="col-sm-5 text-muted">Type</dt>

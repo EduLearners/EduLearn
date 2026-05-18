@@ -23,10 +23,20 @@ export const assessmentService = {
             .flatMap(r => r.value);
     },
 
-    // GET /api/assessments/:id
+    // No GET /api/assessments/:id exists on the backend.
+    // Workaround: fetch all courses, then search all assessments by course until we find the matching id.
     getById: async (id) => {
-        const { data } = await axiosClient.get(`/assessments/${id}`);
-        return data;
+        const { data: courses } = await axiosClient.get('/courses');
+        for (const course of courses) {
+            try {
+                const { data: assessments } = await axiosClient.get(`/assessments/course/${course.courseID}`);
+                const found = assessments.find(a => String(a.assessmentID) === String(id));
+                if (found) return found;
+            } catch {
+                // skip courses that fail
+            }
+        }
+        throw new Error('Assessment not found');
     },
 
     // GET /api/assessments/section/:sectionId
@@ -53,9 +63,9 @@ export const assessmentService = {
         return data;
     },
 
-    // GET /api/assessments/:id/submissions
+    // GET /api/submissions/assessment/:assessmentId
     getSubmissions: async (id) => {
-        const { data } = await axiosClient.get(`/assessments/${id}/submissions`);
+        const { data } = await axiosClient.get(`/submissions/assessment/${id}`);
         return data;
     },
 

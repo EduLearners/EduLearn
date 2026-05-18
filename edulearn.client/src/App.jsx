@@ -79,6 +79,7 @@ import TicketsPage from './pages/notifications/TicketsPage';
 
 // IAM — User Management (ITAdmin)
 import UsersPage from './pages/users/UsersPage';
+import UserDetailPage from './pages/users/UserDetailPage';
 
 export default function App() {
     return (
@@ -173,6 +174,7 @@ export default function App() {
 
                     {/* IAM — User Management (ITAdmin) */}
                     <Route path="/users" element={<UsersPage />} />
+                    <Route path="/users/:id" element={<UserDetailPage />} />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" replace />} />

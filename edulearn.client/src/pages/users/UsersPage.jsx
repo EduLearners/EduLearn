@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { userService } from '../../services/userService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -57,6 +58,8 @@ export default function UsersPage() {
 
     const [mfaResetTarget, setMfaResetTarget] = useState(null);
     const [mfaResetting, setMfaResetting] = useState(false);
+
+    const navigate = useNavigate();
 
     useEffect(() => { loadUsers(); }, []);
 
@@ -293,7 +296,11 @@ export default function UsersPage() {
                                 {filtered.map(u => {
                                     const roleStyle = ROLE_BADGE_STYLE[u.role] || { bg: '#F1EFE8', color: '#444441' };
                                     return (
-                                        <tr key={u.userID}>
+                                        <tr
+                                            key={u.userID}
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => navigate(`/users/${u.userID}`)}
+                                        >
                                             <td><code>#{u.userID}</code></td>
                                             <td className="fw-bold">{u.username}</td>
                                             <td>{u.fullName}</td>
@@ -326,21 +333,21 @@ export default function UsersPage() {
                                                 <div className="d-flex gap-1">
                                                     <button
                                                         className="btn btn-sm btn-outline-secondary"
-                                                        onClick={() => openEdit(u)}
+                                                        onClick={(e) => { e.stopPropagation(); openEdit(u); }}
                                                         title="Edit profile"
                                                     >
                                                         <i className="bi bi-pencil"></i>
                                                     </button>
                                                     <button
                                                         className="btn btn-sm btn-outline-primary"
-                                                        onClick={() => openStatus(u)}
+                                                        onClick={(e) => { e.stopPropagation(); openStatus(u); }}
                                                         title="Change status"
                                                     >
                                                         <i className="bi bi-toggle-on"></i>
                                                     </button>
                                                     <button
                                                         className="btn btn-sm btn-outline-success"
-                                                        onClick={() => handleInvite(u)}
+                                                        onClick={(e) => { e.stopPropagation(); handleInvite(u); }}
                                                         title="Send invite email"
                                                     >
                                                         <i className="bi bi-envelope"></i>
@@ -348,7 +355,7 @@ export default function UsersPage() {
                                                     {u.mfaEnabled && (
                                                         <button
                                                             className="btn btn-sm btn-outline-warning"
-                                                            onClick={() => setMfaResetTarget(u)}
+                                                            onClick={(e) => { e.stopPropagation(); setMfaResetTarget(u); }}
                                                             title="Reset MFA"
                                                         >
                                                             <i className="bi bi-shield-x"></i>
