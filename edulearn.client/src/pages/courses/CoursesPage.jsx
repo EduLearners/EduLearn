@@ -17,8 +17,8 @@ export default function CoursesPage() {
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
 
-    // Backend CourseManagerPolicy: Instructor + ITAdmin only (no DeptAdmin)
-    const canManage = ['Instructor', 'ITAdmin'].includes(role);
+    // Backend CourseManagerPolicy: Instructor + DeptAdmin + ITAdmin
+    const canManage = ['Instructor', 'DeptAdmin', 'ITAdmin'].includes(role);
 
     useEffect(() => {
         loadCourses();

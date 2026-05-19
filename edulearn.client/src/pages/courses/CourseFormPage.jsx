@@ -18,8 +18,8 @@ export default function CourseFormPage() {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState('');
 
-    // Backend CourseManagerPolicy: Instructor + ITAdmin only (no DeptAdmin)
-    const canManage = ['Instructor', 'ITAdmin'].includes(role);
+    // Backend CourseManagerPolicy: Instructor + DeptAdmin + ITAdmin
+    const canManage = ['Instructor', 'DeptAdmin', 'ITAdmin'].includes(role);
 
     useEffect(() => {
         if (isEditMode) loadCourse();
@@ -133,7 +133,11 @@ export default function CourseFormPage() {
                                     placeholder="e.g. CS101"
                                     maxLength={20}
                                     required
+                                    disabled={isEditMode}
                                 />
+                                {isEditMode && (
+                                    <small className="text-muted">Course code cannot be changed after creation.</small>
+                                )}
                             </div>
 
                             <div className="col-md-8">
@@ -171,7 +175,7 @@ export default function CourseFormPage() {
                             <div className="col-md-3">
                                 <label className="form-label fw-bold">
                                     Level
-                                    <small className="text-muted fw-normal ms-2">(e.g. Undergraduate)</small>
+                                    <small className="text-muted fw-normal ms-2">(e.g. UG / PG)</small>
                                 </label>
                                 <input
                                     type="text"
@@ -179,7 +183,7 @@ export default function CourseFormPage() {
                                     name="level"
                                     value={form.level}
                                     onChange={handleChange}
-                                    placeholder="e.g. Undergraduate"
+                                    placeholder="e.g. UG"
                                     maxLength={20}
                                 />
                             </div>
@@ -220,7 +224,7 @@ export default function CourseFormPage() {
                                     value={form.prerequisitesJSON}
                                     onChange={handleChange}
                                     rows={4}
-                                    placeholder='e.g. ["CS100", "MATH101"]'
+                                    placeholder='e.g. {"courses":["CS100","MATH101"]}'
                                 />
                             </div>
 
