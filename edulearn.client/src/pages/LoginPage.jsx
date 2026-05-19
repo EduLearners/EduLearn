@@ -4,7 +4,6 @@ import { authService } from '../services/authService';
 import ErrorAlert from '../components/ErrorAlert';
 
 export default function LoginPage() {
-    //const [username, setUsername] = useState('');
     const [usernameOrEmail, setUsernameOrEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -13,9 +12,7 @@ export default function LoginPage() {
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        // Guard: prevent empty credential submission from browser autofill/remount
-      // if (!username.trim() || !password.trim()) return;
-      if (!usernameOrEmail.trim() || !password.trim()) return;
+        if (!usernameOrEmail.trim() || !password.trim()) return;
         setError('');
         setLoading(true);
 
@@ -27,7 +24,6 @@ export default function LoginPage() {
                 sessionStorage.setItem('mfaToken', data.mfaToken);
                 sessionStorage.setItem('mfaMessage', data.message);
 
-                // If message says "enrollment required", go to setup page
                 if (data.message?.toLowerCase().includes('enrollment')) {
                     navigate('/mfa/setup');
                 } else {
@@ -60,7 +56,8 @@ export default function LoginPage() {
                         <p className="text-muted mb-0">University Management System</p>
                     </div>
 
-                    <form onSubmit={handleLogin}>
+                    {/* autoComplete="off" on both form and inputs prevents browser autofill */}
+                    <form onSubmit={handleLogin} autoComplete="off">
                         <div className="mb-3">
                             <label className="form-label">Username or Email</label>
                             <div className="input-group">
@@ -74,6 +71,7 @@ export default function LoginPage() {
                                     placeholder="Enter Username or email"
                                     required
                                     autoFocus
+                                    autoComplete="off"
                                 />
                             </div>
                         </div>
@@ -91,6 +89,7 @@ export default function LoginPage() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Enter password"
                                     required
+                                    autoComplete="new-password"
                                 />
                             </div>
                         </div>
@@ -117,7 +116,7 @@ export default function LoginPage() {
                     </form>
 
                     <hr />
-                    
+
                     <div className="text-center mb-2">
                         <button
                             type="button"
@@ -128,9 +127,6 @@ export default function LoginPage() {
                             Forgot your password?
                         </button>
                     </div>
-                    <p className="text-center text-muted small mb-0">
-                        Don't have an account? <a href="/register">Register here</a>
-                    </p>
                 </div>
             </div>
         </div>
