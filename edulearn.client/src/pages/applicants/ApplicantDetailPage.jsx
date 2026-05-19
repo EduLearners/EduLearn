@@ -7,6 +7,15 @@ import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
 import ConfirmDialog from '../../components/ConfirmDialog';
 
+const emptyUserForm = {
+    username: '',
+    fullName: '',
+    email: '',
+    phone: '',
+    password: '',
+    sendInvite: true,
+};
+
 export default function ApplicantDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -15,6 +24,13 @@ export default function ApplicantDetailPage() {
     const [updating, setUpdating] = useState(false);
     const [error, setError] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null);
+
+    // Create Student User modal state
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [userForm, setUserForm] = useState(emptyUserForm);
+    const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState(null);
+    const [createSuccess, setCreateSuccess] = useState(null); // { userID, username }
 
     const { role } = authService.getCurrentUser();
     const canDecide = ['Registrar', 'ITAdmin'].includes(role);
@@ -52,8 +68,53 @@ export default function ApplicantDetailPage() {
         }
     };
 
-    const handleCreateStudent = () => {
-        // Pass applicant name and dob as query params to pre-fill NewStudentPage
+    // Open the Create Student User modal, pre-filling from applicant data
+    const openUserModal = () => {
+        const contactInfo = (() => {
+            if (!applicant?.contactInfoJSON) return {};
+            try { return JSON.parse(applicant.contactInfoJSON); } catch { return {}; }
+        })();
+
+        setUserForm({
+            username: '',
+            fullName: applicant.name || '',
+            email: contactInfo.email || '',
+            phone: contactInfo.phone || '',
+            password: '',
+            sendInvite: true,
+        });
+        setCreateError(null);
+        setCreateSuccess(null);
+        setShowUserModal(true);
+    };
+
+    const handleCreateUser = async (e) => {
+        e.preventDefault();
+        setCreateError(null);
+        setCreating(true);
+
+        try {
+            const result = await authService.register({
+                username: userForm.username,
+                fullName: userForm.fullName,
+                email: userForm.email,
+                phone: userForm.phone || null,
+                password: userForm.password,
+                role: 'Student',       // always Student via this endpoint
+                sendInvite: userForm.sendInvite,
+            });
+
+            // result contains { userID, username, message }
+            setCreateSuccess(result);
+        } catch (err) {
+            setCreateError(err);
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const handleGoToCreateRecord = () => {
+        // Navigate to New Student page, pre-filling applicant data
         const params = new URLSearchParams({
             name: applicant.name || '',
             dob: applicant.dob ? applicant.dob.split('T')[0] : '',
@@ -153,27 +214,18 @@ export default function ApplicantDetailPage() {
                             <dl className="row mb-0">
                                 <dt className="col-sm-5 text-muted">Full Name</dt>
                                 <dd className="col-sm-7">{applicant.name}</dd>
-
                                 <dt className="col-sm-5 text-muted">Date of Birth</dt>
                                 <dd className="col-sm-7">
-                                    {applicant.dob
-                                        ? new Date(applicant.dob).toLocaleDateString()
-                                        : '—'}
+                                    {applicant.dob ? new Date(applicant.dob).toLocaleDateString() : '—'}
                                 </dd>
-
                                 <dt className="col-sm-5 text-muted">National ID</dt>
                                 <dd className="col-sm-7">
-                                    {applicant.nationalID
-                                        ? <code>{applicant.nationalID}</code>
-                                        : '—'}
+                                    {applicant.nationalID ? <code>{applicant.nationalID}</code> : '—'}
                                 </dd>
-
                                 <dt className="col-sm-5 text-muted">Email</dt>
                                 <dd className="col-sm-7">{contactInfo.email || '—'}</dd>
-
                                 <dt className="col-sm-5 text-muted">Phone</dt>
                                 <dd className="col-sm-7">{contactInfo.phone || '—'}</dd>
-
                                 <dt className="col-sm-5 text-muted">Address</dt>
                                 <dd className="col-sm-7">{contactInfo.address || '—'}</dd>
                             </dl>
@@ -191,12 +243,10 @@ export default function ApplicantDetailPage() {
                             <dl className="row mb-0">
                                 <dt className="col-sm-5 text-muted">Program Applied</dt>
                                 <dd className="col-sm-7 fw-bold">{applicant.programApplied}</dd>
-
                                 <dt className="col-sm-5 text-muted">Status</dt>
                                 <dd className="col-sm-7">
                                     <StatusBadge status={applicant.applicationStatus} />
                                 </dd>
-
                                 <dt className="col-sm-5 text-muted">Submitted</dt>
                                 <dd className="col-sm-7">
                                     {applicant.submittedAt
@@ -279,22 +329,31 @@ export default function ApplicantDetailPage() {
                 </div>
             )}
 
-            {/* Accepted — show Create Student Record button */}
+            {/* Accepted — show Create Student User Account button */}
             {applicant.applicationStatus === 'Accepted' && canDecide && (
-                <div className="alert alert-success mt-4">
+                <div className="alert alert-success mt-4 mb-0">
                     <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
                         <div>
                             <i className="bi bi-check-circle me-2"></i>
-                            <strong>Application Accepted.</strong> Next step: create a
-                            Student record linked to a User account.
+                            <strong>Application Accepted.</strong> Next step: create a Student User Account
+                            so the applicant can log in, then create their Student record.
                         </div>
-                        <button
-                            className="btn btn-success"
-                            onClick={handleCreateStudent}
-                        >
-                            <i className="bi bi-person-plus me-2"></i>
-                            Create Student Record
-                        </button>
+                        <div className="d-flex gap-2 flex-wrap">
+                            <button
+                                className="btn btn-success"
+                                onClick={openUserModal}
+                            >
+                                <i className="bi bi-person-plus me-2"></i>
+                                Create Student User Account
+                            </button>
+                            <button
+                                className="btn btn-outline-success"
+                                onClick={handleGoToCreateRecord}
+                            >
+                                <i className="bi bi-card-list me-2"></i>
+                                Create Student Record
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -305,6 +364,235 @@ export default function ApplicantDetailPage() {
                     <i className="bi bi-x-circle me-2"></i>
                     This application has been <strong>Rejected</strong>.
                 </div>
+            )}
+
+            {/* ── Create Student User Account Modal ────────────────── */}
+            {showUserModal && (
+                <>
+                    <div className="modal-backdrop fade show"></div>
+                    <div className="modal fade show d-block" tabIndex="-1">
+                        <div className="modal-dialog modal-dialog-centered modal-lg">
+                            <div className="modal-content">
+                                <div className="modal-header bg-primary-edulearn text-white">
+                                    <h5 className="modal-title">
+                                        <i className="bi bi-person-plus me-2"></i>
+                                        Create Student User Account
+                                    </h5>
+                                    <button
+                                        type="button"
+                                        className="btn-close btn-close-white"
+                                        onClick={() => { setShowUserModal(false); setCreateSuccess(null); }}
+                                        disabled={creating}
+                                    />
+                                </div>
+
+                                <div className="modal-body">
+                                    {/* Success state */}
+                                    {createSuccess ? (
+                                        <div>
+                                            <div className="alert alert-success">
+                                                <i className="bi bi-check-circle-fill me-2"></i>
+                                                <strong>Student user account created successfully!</strong>
+                                            </div>
+                                            <dl className="row">
+                                                <dt className="col-sm-4 text-muted">User ID</dt>
+                                                <dd className="col-sm-8">
+                                                    <code className="text-primary-edulearn fw-bold fs-6">
+                                                        #{createSuccess.userID}
+                                                    </code>
+                                                    <span className="ms-2 badge bg-info text-dark">
+                                                        Use this when creating the Student record
+                                                    </span>
+                                                </dd>
+                                                <dt className="col-sm-4 text-muted">Username</dt>
+                                                <dd className="col-sm-8"><code>{createSuccess.username}</code></dd>
+                                            </dl>
+                                            <div className="alert alert-info mb-0">
+                                                <i className="bi bi-arrow-right-circle me-2"></i>
+                                                <strong>Next:</strong> Go to <strong>Students → New Student</strong> and
+                                                select this user account to create the Student record.
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        /* Form state */
+                                        <form onSubmit={handleCreateUser} autoComplete="off" id="createUserForm">
+                                            <div className="alert alert-info mb-4">
+                                                <i className="bi bi-info-circle me-2"></i>
+                                                This registers a new user with <strong>Student role</strong> via{' '}
+                                                <code>POST /api/auth/register</code>. The backend enforces
+                                                Student role — no other role can be selected here.<br />
+                                                <strong>After creation</strong>, use the returned <strong>User ID</strong> when
+                                                creating the Student record at <em>Students → New Student</em>.
+                                            </div>
+
+                                            <div className="row g-3">
+                                                <div className="col-md-6">
+                                                    <label className="form-label fw-bold">
+                                                        Username <span className="text-danger">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        value={userForm.username}
+                                                        onChange={e => setUserForm({ ...userForm, username: e.target.value })}
+                                                        placeholder="e.g. vikash.kumar"
+                                                        maxLength={100}
+                                                        required
+                                                        autoComplete="off"
+                                                    />
+                                                </div>
+
+                                                <div className="col-md-6">
+                                                    <label className="form-label fw-bold">
+                                                        Full Name <span className="text-danger">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        value={userForm.fullName}
+                                                        onChange={e => setUserForm({ ...userForm, fullName: e.target.value })}
+                                                        placeholder="e.g. Vikash Kumar"
+                                                        maxLength={200}
+                                                        required
+                                                        autoComplete="off"
+                                                    />
+                                                </div>
+
+                                                <div className="col-md-6">
+                                                    <label className="form-label fw-bold">
+                                                        Email <span className="text-danger">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="email"
+                                                        className="form-control"
+                                                        value={userForm.email}
+                                                        onChange={e => setUserForm({ ...userForm, email: e.target.value })}
+                                                        placeholder="e.g. vikash@example.com"
+                                                        maxLength={255}
+                                                        required
+                                                        autoComplete="off"
+                                                    />
+                                                </div>
+
+                                                <div className="col-md-6">
+                                                    <label className="form-label fw-bold">Phone</label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        value={userForm.phone}
+                                                        onChange={e => setUserForm({ ...userForm, phone: e.target.value })}
+                                                        placeholder="e.g. +91-9876543210"
+                                                        maxLength={20}
+                                                        autoComplete="off"
+                                                    />
+                                                </div>
+
+                                                <div className="col-md-6">
+                                                    <label className="form-label fw-bold">
+                                                        Password <span className="text-danger">*</span>
+                                                        <small className="text-muted fw-normal ms-2">(min 8 chars)</small>
+                                                    </label>
+                                                    <input
+                                                        type="password"
+                                                        className="form-control"
+                                                        value={userForm.password}
+                                                        onChange={e => setUserForm({ ...userForm, password: e.target.value })}
+                                                        placeholder="Min 8 characters"
+                                                        minLength={8}
+                                                        required
+                                                        autoComplete="new-password"
+                                                    />
+                                                </div>
+
+                                                <div className="col-md-6">
+                                                    <label className="form-label fw-bold">Role</label>
+                                                    <div className="form-control bg-light text-muted">
+                                                        Student (enforced by backend)
+                                                    </div>
+                                                    <small className="text-muted">
+                                                        <i className="bi bi-lock me-1"></i>
+                                                        Role is always Student via this endpoint.
+                                                    </small>
+                                                </div>
+
+                                                <div className="col-12">
+                                                    <div className="form-check">
+                                                        <input
+                                                            className="form-check-input"
+                                                            type="checkbox"
+                                                            id="sendInvite"
+                                                            checked={userForm.sendInvite}
+                                                            onChange={e => setUserForm({ ...userForm, sendInvite: e.target.checked })}
+                                                        />
+                                                        <label className="form-check-label fw-bold" htmlFor="sendInvite">
+                                                            <i className="bi bi-envelope me-2"></i>Send welcome email
+                                                        </label>
+                                                        <div className="text-muted small">
+                                                            Sends login details (username, login URL and temporary password) to the student's email.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <ErrorAlert error={createError} onDismiss={() => setCreateError(null)} />
+                                        </form>
+                                    )}
+                                </div>
+
+                                <div className="modal-footer">
+                                    {createSuccess ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-secondary"
+                                                onClick={() => { setShowUserModal(false); setCreateSuccess(null); }}
+                                            >
+                                                Close
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-primary-edulearn"
+                                                onClick={() => { setShowUserModal(false); handleGoToCreateRecord(); }}
+                                            >
+                                                <i className="bi bi-arrow-right me-2"></i>
+                                                Go to Create Student Record
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-secondary"
+                                                onClick={() => setShowUserModal(false)}
+                                                disabled={creating}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                form="createUserForm"
+                                                className="btn btn-primary-edulearn"
+                                                disabled={creating}
+                                            >
+                                                {creating ? (
+                                                    <>
+                                                        <span className="spinner-border spinner-border-sm me-2"></span>
+                                                        Creating...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <i className="bi bi-check-lg me-2"></i>
+                                                        Create Student User
+                                                    </>
+                                                )}
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </>
             )}
 
             <ConfirmDialog

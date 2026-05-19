@@ -15,10 +15,9 @@ export default function NewStudentPage() {
     const [programs, setPrograms] = useState([]);
     const [users, setUsers] = useState([]);
 
-    // Pre-fill from applicant redirect query params
     const fromApplicantName = searchParams.get('name') || '';
-    const fromApplicantDob = searchParams.get('dob') || '';
-    const fromApplicantID = searchParams.get('applicantID') || '';
+    const fromApplicantDob  = searchParams.get('dob')  || '';
+    const fromApplicantID   = searchParams.get('applicantID') || '';
 
     const [form, setForm] = useState({
         userID: '',
@@ -32,9 +31,7 @@ export default function NewStudentPage() {
         expectedGraduationTerm: '',
     });
 
-    useEffect(() => {
-        loadDropdowns();
-    }, []);
+    useEffect(() => { loadDropdowns(); }, []);
 
     const loadDropdowns = async () => {
         try {
@@ -44,12 +41,30 @@ export default function NewStudentPage() {
                 userService.getByRole('Student'),
             ]);
             if (programData.status === 'fulfilled') setPrograms(programData.value || []);
-            if (userData.status === 'fulfilled') setUsers(userData.value || []);
-        } catch {
-            // dropdowns failing should not block the form
-        } finally {
-            setPageLoading(false);
+            if (userData.status === 'fulfilled')   setUsers(userData.value || []);
+        } catch { }
+        finally { setPageLoading(false); }
+    };
+
+    // When a user is selected, silently auto-fill email, phone and name
+    const handleUserChange = (e) => {
+        const selectedId = e.target.value;
+        if (!selectedId) {
+            setForm(prev => ({ ...prev, userID: '' }));
+            return;
         }
+        const selectedUser = users.find(u => String(u.userID) === String(selectedId));
+        if (!selectedUser) {
+            setForm(prev => ({ ...prev, userID: selectedId }));
+            return;
+        }
+        setForm(prev => ({
+            ...prev,
+            userID: selectedId,
+            name:  prev.name  || selectedUser.fullName || '',
+            email: selectedUser.email || prev.email || '',
+            phone: selectedUser.phone || prev.phone || '',
+        }));
     };
 
     const handleChange = (field) => (e) => {
@@ -60,7 +75,6 @@ export default function NewStudentPage() {
         e.preventDefault();
         setError(null);
         setSaving(true);
-
         try {
             const contactInfo = {};
             if (form.email) contactInfo.email = form.email;
@@ -101,7 +115,6 @@ export default function NewStudentPage() {
             <div className="card shadow-sm">
                 <div className="card-body">
 
-                    {/* Show applicant link banner if coming from applicant accept flow */}
                     {fromApplicantID && (
                         <div className="alert alert-success mb-3">
                             <i className="bi bi-check-circle me-2"></i>
@@ -120,7 +133,6 @@ export default function NewStudentPage() {
                     <form onSubmit={handleSubmit}>
                         <div className="row g-3">
 
-                            {/* User Dropdown */}
                             <div className="col-md-6">
                                 <label className="form-label fw-bold">
                                     User Account <span className="text-danger">*</span>
@@ -128,10 +140,10 @@ export default function NewStudentPage() {
                                 <select
                                     className="form-select"
                                     value={form.userID}
-                                    onChange={handleChange('userID')}
+                                    onChange={handleUserChange}
                                     required
                                 >
-                                    <option value="">-- Select Student User --</option>
+                                    <option value="">— Select Student User —</option>
                                     {users.map(u => (
                                         <option key={u.userID} value={u.userID}>
                                             #{u.userID} — {u.fullName} ({u.username})
@@ -143,7 +155,6 @@ export default function NewStudentPage() {
                                 </div>
                             </div>
 
-                            {/* Program Dropdown */}
                             <div className="col-md-6">
                                 <label className="form-label fw-bold">
                                     Program <span className="text-danger">*</span>
@@ -154,7 +165,7 @@ export default function NewStudentPage() {
                                     onChange={handleChange('programID')}
                                     required
                                 >
-                                    <option value="">-- Select Program --</option>
+                                    <option value="">— Select Program —</option>
                                     {programs.map(p => (
                                         <option key={p.programID} value={p.programID}>
                                             {p.name} ({p.degreeType})
@@ -163,7 +174,6 @@ export default function NewStudentPage() {
                                 </select>
                             </div>
 
-                            {/* Entry Term */}
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">
                                     Entry Term <span className="text-danger">*</span>
@@ -178,7 +188,6 @@ export default function NewStudentPage() {
                                 />
                             </div>
 
-                            {/* Full Name */}
                             <div className="col-md-8">
                                 <label className="form-label fw-bold">
                                     Full Name <span className="text-danger">*</span>
@@ -193,7 +202,6 @@ export default function NewStudentPage() {
                                 />
                             </div>
 
-                            {/* Gender */}
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">Gender</label>
                                 <select
@@ -209,7 +217,6 @@ export default function NewStudentPage() {
                                 </select>
                             </div>
 
-                            {/* DOB */}
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">
                                     Date of Birth <span className="text-danger">*</span>
@@ -223,7 +230,6 @@ export default function NewStudentPage() {
                                 />
                             </div>
 
-                            {/* Email */}
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">Email</label>
                                 <input
@@ -235,7 +241,6 @@ export default function NewStudentPage() {
                                 />
                             </div>
 
-                            {/* Phone */}
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">Phone</label>
                                 <input
@@ -247,7 +252,6 @@ export default function NewStudentPage() {
                                 />
                             </div>
 
-                            {/* Expected Graduation */}
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">
                                     Expected Graduation Term
@@ -268,21 +272,11 @@ export default function NewStudentPage() {
                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
 
                         <div className="d-flex gap-2">
-                            <button
-                                type="submit"
-                                className="btn btn-primary-edulearn"
-                                disabled={saving}
-                            >
+                            <button type="submit" className="btn btn-primary-edulearn" disabled={saving}>
                                 {saving ? (
-                                    <>
-                                        <span className="spinner-border spinner-border-sm me-2"></span>
-                                        Creating...
-                                    </>
+                                    <><span className="spinner-border spinner-border-sm me-2"></span>Creating...</>
                                 ) : (
-                                    <>
-                                        <i className="bi bi-check-lg me-2"></i>
-                                        Create Student
-                                    </>
+                                    <><i className="bi bi-check-lg me-2"></i>Create Student</>
                                 )}
                             </button>
                             <button
