@@ -16,6 +16,29 @@
     box-sizing: border-box;
 }
 
+/* ── Hide sidebar scrollbar ── */
+aside::-webkit-scrollbar,
+aside *::-webkit-scrollbar {
+    display: none;
+}
+aside, aside * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+/* ── Hide main content scrollbar ── */
+main::-webkit-scrollbar {
+    width: 0;
+}
+main {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+html, body {
+    overscroll-behavior: none;
+}
+
 body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -50,4 +73,655 @@ a:hover {
 .btn-primary-edulearn:hover {
     background-color: #15315a;
     color: white;
+}
+
+/* ── Sidebar shine effect ── */
+.sidebar-nav-link {
+    position: relative;
+    overflow: hidden;
+    text-decoration: none !important;
+}
+
+.sidebar-nav-link::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        120deg,
+        transparent 0%,
+        transparent 30%,
+        rgba(255, 255, 255, 0.6) 48%,
+        rgba(255, 255, 255, 0.8) 50%,
+        rgba(255, 255, 255, 0.6) 52%,
+        transparent 70%,
+        transparent 100%
+    );
+    pointer-events: none;
+    transition: none;
+}
+
+.sidebar-nav-link:hover {
+    text-decoration: none !important;
+    background-color: var(--primary-light);
+    border-radius: 6px;
+}
+
+.sidebar-nav-link:hover::after {
+    animation: sidebar-shine 0.6s ease forwards;
+}
+
+@keyframes sidebar-shine {
+    0%   { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* ── Page transition ── */
+.page-transition {
+    animation: page-enter 0.35s ease both;
+}
+
+@keyframes page-enter {
+    0% {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ════════════════════════════════════════════════
+   GLOBAL REDESIGN — matches new dashboard style
+   ════════════════════════════════════════════════ */
+
+/* ── Page title headers (h2 at top of each page) ── */
+main h2:first-of-type {
+    font-size: 22px !important;
+    font-weight: 600 !important;
+    color: #1a3c6e !important;
+}
+
+/* ── Staggered entrance for page cards ── */
+main .card {
+    animation: cardEntrance 0.4s ease both;
+}
+main .card:nth-child(1) { animation-delay: 0s; }
+main .card:nth-child(2) { animation-delay: 0.06s; }
+main .card:nth-child(3) { animation-delay: 0.12s; }
+main .card:nth-child(4) { animation-delay: 0.18s; }
+main .card:nth-child(5) { animation-delay: 0.24s; }
+@keyframes cardEntrance {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Cards ── */
+.card {
+    border: 0.5px solid #e8e8e8 !important;
+    border-radius: 14px !important;
+    overflow: hidden;
+    box-shadow: none !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05) !important;
+}
+.card-header {
+    background: linear-gradient(135deg, #1a3c6e, #2a5a9e) !important;
+    color: white !important;
+    border-bottom: none !important;
+    padding: 14px 20px !important;
+    font-weight: 600;
+    font-size: 14px;
+}
+.card-header .btn-link,
+.card-header .btn-sm {
+    color: rgba(255,255,255,0.85) !important;
+}
+.card-header .btn-link:hover,
+.card-header .btn-sm:hover {
+    color: white !important;
+}
+.card-body {
+    padding: 20px !important;
+}
+.card-footer {
+    background: #f8f9fa !important;
+    border-top: 1px solid #f0f0f0 !important;
+    padding: 12px 20px !important;
+}
+
+/* ── Tables ── */
+.table {
+    margin-bottom: 0;
+    font-size: 13px;
+}
+.table thead tr {
+    background: linear-gradient(90deg, #1a3c6e, #2a5a9e) !important;
+}
+.table thead th {
+    color: white !important;
+    font-weight: 500 !important;
+    font-size: 12px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 12px 16px !important;
+    border: none !important;
+    white-space: nowrap;
+}
+.table-light {
+    --bs-table-bg: transparent !important;
+}
+.table tbody tr {
+    border-bottom: 1px solid #f0f0f0 !important;
+    transition: background 0.15s ease, transform 0.1s ease;
+    animation: rowSlideIn 0.3s ease both;
+}
+.table tbody tr:nth-child(1) { animation-delay: 0.02s; }
+.table tbody tr:nth-child(2) { animation-delay: 0.04s; }
+.table tbody tr:nth-child(3) { animation-delay: 0.06s; }
+.table tbody tr:nth-child(4) { animation-delay: 0.08s; }
+.table tbody tr:nth-child(5) { animation-delay: 0.10s; }
+.table tbody tr:nth-child(6) { animation-delay: 0.12s; }
+.table tbody tr:nth-child(7) { animation-delay: 0.14s; }
+.table tbody tr:nth-child(8) { animation-delay: 0.16s; }
+.table tbody tr:nth-child(9) { animation-delay: 0.18s; }
+.table tbody tr:nth-child(10) { animation-delay: 0.20s; }
+@keyframes rowSlideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+.table tbody tr:hover {
+    background: #f0f4fa !important;
+    transform: scale(1.002);
+}
+.table tbody td {
+    padding: 12px 16px !important;
+    border: none !important;
+    vertical-align: middle;
+}
+.table-responsive {
+    border-radius: 0 0 14px 14px;
+    overflow-x: auto !important;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
+
+/* Force tables to respect container width */
+main .table-responsive {
+    width: 100%;
+}
+main .card {
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Allow overflow on filter/search containers */
+main .card:has(.form-select),
+main .card:has(.form-control) {
+    overflow: visible;
+}
+
+/* ── Badges ── */
+.badge {
+    font-weight: 600 !important;
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+    border-radius: 8px !important;
+    letter-spacing: 0.2px;
+}
+.badge.bg-success { background: #E1F5EE !important; color: #085041 !important; }
+.badge.bg-danger { background: #FCEBEB !important; color: #791F1F !important; }
+.badge.bg-warning { background: #FAEEDA !important; color: #633806 !important; }
+.badge.bg-info { background: #E6F1FB !important; color: #0C447C !important; }
+.badge.bg-primary { background: #E6F1FB !important; color: #0C447C !important; }
+.badge.bg-secondary { background: #F1EFE8 !important; color: #444441 !important; }
+
+/* ── Buttons ── */
+.btn-primary-edulearn,
+.btn.bg-primary-edulearn {
+    background: linear-gradient(135deg, #1a3c6e, #2a5a9e) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: 500;
+    transition: opacity 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.btn-primary-edulearn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(26, 60, 110, 0.25) !important;
+    color: white !important;
+}
+.btn-primary-edulearn:active {
+    transform: translateY(0) scale(0.98);
+}
+.btn-outline-primary {
+    border-color: #1a3c6e !important;
+    color: #1a3c6e !important;
+    border-radius: 10px !important;
+    transition: all 0.2s ease;
+}
+.btn-outline-primary:hover {
+    background: #1a3c6e !important;
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(26, 60, 110, 0.2) !important;
+}
+.btn-outline-secondary {
+    border-radius: 10px !important;
+    transition: all 0.2s ease;
+}
+.btn-outline-secondary:hover {
+    transform: translateY(-1px);
+}
+.btn-outline-success,
+.btn-outline-warning,
+.btn-outline-danger {
+    border-radius: 10px !important;
+    transition: all 0.2s ease;
+}
+.btn-outline-success:hover,
+.btn-outline-warning:hover,
+.btn-outline-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+}
+.btn-sm {
+    border-radius: 8px !important;
+    transition: all 0.15s ease;
+}
+.btn-sm:hover {
+    transform: translateY(-1px);
+}
+
+/* ── Modals (Bootstrap) ── */
+.modal-content {
+    border: none !important;
+    border-radius: 16px !important;
+    overflow: hidden;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.15) !important;
+}
+.modal-header {
+    background: linear-gradient(135deg, #1a3c6e, #2a5a9e) !important;
+    color: white !important;
+    border-bottom: none !important;
+    padding: 16px 24px !important;
+}
+.modal-header .modal-title {
+    font-weight: 600 !important;
+    font-size: 16px;
+}
+.modal-header .btn-close {
+    filter: brightness(0) invert(1);
+}
+.modal-body {
+    padding: 24px !important;
+}
+.modal-footer {
+    background: #f8f9fa !important;
+    border-top: none !important;
+    padding: 12px 24px !important;
+    border-radius: 0 0 16px 16px;
+}
+.modal-backdrop.show {
+    opacity: 0.5 !important;
+    backdrop-filter: blur(2px);
+}
+
+/* ── Alerts ── */
+.alert {
+    border: none !important;
+    border-radius: 12px !important;
+    font-size: 13px;
+    padding: 12px 16px !important;
+}
+.alert-success {
+    background: #E1F5EE !important;
+    color: #085041 !important;
+}
+.alert-danger {
+    background: #FCEBEB !important;
+    color: #791F1F !important;
+}
+.alert-warning {
+    background: #FAEEDA !important;
+    color: #633806 !important;
+}
+.alert-info {
+    background: #E6F1FB !important;
+    color: #0C447C !important;
+}
+
+/* ── Form controls ── */
+.form-control,
+.form-select {
+    border-radius: 10px !important;
+    border: 1px solid #ddd !important;
+    font-size: 13px;
+    padding: 10px 14px !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.form-control:focus,
+.form-select:focus {
+    border-color: #2a5a9e !important;
+    box-shadow: 0 0 0 3px rgba(26, 60, 110, 0.1) !important;
+}
+.form-label {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 4px !important;
+}
+
+/* ── Card header bg-light variant (search/filter cards) ── */
+.card-header.bg-light {
+    background: linear-gradient(135deg, #f8f9fa, #f0f4fa) !important;
+    color: #1a3c6e !important;
+    border-bottom: 1px solid #e8e8e8 !important;
+    font-weight: 600;
+}
+
+/* ── Input groups ── */
+.input-group-text {
+    border-radius: 10px 0 0 10px !important;
+    border: 1px solid #ddd !important;
+    background: #f8f9fa !important;
+    color: #1a3c6e !important;
+}
+.input-group .form-control {
+    border-radius: 0 10px 10px 0 !important;
+}
+
+/* ── Empty state icons ── */
+.text-center.py-5.text-muted i.display-4,
+.text-center.py-5.text-muted i[style*="font-size: 3rem"],
+.text-center.py-5.text-muted i[style*="3rem"] {
+    color: #c0cee0 !important;
+    margin-bottom: 12px;
+}
+
+/* ── Form switches (toggles) ── */
+.form-check-input:checked {
+    background-color: #1a3c6e !important;
+    border-color: #1a3c6e !important;
+}
+.form-check-input:focus {
+    box-shadow: 0 0 0 3px rgba(26, 60, 110, 0.15) !important;
+}
+
+/* ── Horizontal rules ── */
+hr {
+    border-color: #f0f0f0 !important;
+    opacity: 1 !important;
+}
+
+/* ── Status badge extra colors ── */
+.badge.bg-light.text-dark {
+    background: #f0f4fa !important;
+    color: #1a3c6e !important;
+    border: 0.5px solid #e0e8f0;
+}
+
+/* ── List group active state ── */
+.list-group-item.active {
+    background: linear-gradient(135deg, #1a3c6e, #2a5a9e) !important;
+    border-color: transparent !important;
+    color: white !important;
+}
+
+/* ── Smooth hover on all interactive cards ── */
+.card.shadow-sm {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card.shadow-sm:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
+}
+
+/* ── Text & link colors ── */
+.text-primary-edulearn {
+    color: #1a3c6e !important;
+}
+.list-group-item {
+    border: none !important;
+    border-bottom: 1px solid #f0f0f0 !important;
+    padding: 12px 16px !important;
+    transition: background 0.15s ease;
+}
+.list-group-item:last-child {
+    border-bottom: none !important;
+}
+.list-group-item-action:hover {
+    background: #f8fafd !important;
+}
+
+/* ── Page titles ── */
+h2.text-primary-edulearn,
+h2.mb-0.text-primary-edulearn {
+    font-size: 22px !important;
+    font-weight: 600 !important;
+    color: #1a3c6e !important;
+}
+
+/* ── Status badge colors (inline) ── */
+.bg-primary-edulearn.text-white {
+    background: linear-gradient(135deg, #1a3c6e, #2a5a9e) !important;
+}
+
+/* ── Offcanvas ── */
+.offcanvas {
+    border-radius: 16px 0 0 16px !important;
+    border: none !important;
+}
+.offcanvas-header {
+    background: linear-gradient(135deg, #1a3c6e, #2a5a9e) !important;
+    color: white !important;
+    padding: 16px 24px !important;
+}
+.offcanvas-header .btn-close {
+    filter: brightness(0) invert(1);
+}
+
+/* ── Dropdowns ── */
+.dropdown-menu {
+    border: 0.5px solid #e8e8e8 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important;
+    overflow: hidden;
+    padding: 4px !important;
+}
+.dropdown-item {
+    border-radius: 8px !important;
+    font-size: 13px;
+    padding: 8px 12px !important;
+    transition: background 0.15s ease;
+}
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background: #f0f4fa !important;
+    color: #1a3c6e !important;
+}
+.dropdown-item.active,
+.dropdown-item:active {
+    background: #1a3c6e !important;
+    color: white !important;
+}
+
+/* ── Pagination ── */
+.page-link {
+    border-radius: 8px !important;
+    margin: 0 2px;
+    border: none !important;
+    font-size: 13px;
+    color: #1a3c6e;
+}
+.page-link:hover {
+    background: #f0f4fa;
+}
+.page-item.active .page-link {
+    background: #1a3c6e !important;
+    color: white !important;
+}
+
+/* ── Nav tabs ── */
+.nav-tabs {
+    border-bottom: 2px solid #f0f0f0 !important;
+}
+.nav-tabs .nav-link {
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    color: #888;
+    font-weight: 500;
+    font-size: 13px;
+    padding: 10px 16px;
+    margin-bottom: -2px;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+.nav-tabs .nav-link:hover {
+    color: #1a3c6e;
+}
+.nav-tabs .nav-link.active {
+    color: #1a3c6e !important;
+    border-bottom-color: #1a3c6e !important;
+    background: none !important;
+}
+
+/* ── Smooth hover for all clickable rows ── */
+tr[style*="cursor: pointer"],
+tr[style*="cursor:pointer"],
+.list-group-item[style*="cursor"] {
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+/* ── Code tags ── */
+code {
+    background: #f0f4fa;
+    color: #1a3c6e;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* ── Tooltip style for sidebar ── */
+[title] {
+    position: relative;
+}
+
+/* ── Global portal modal animations ── */
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes modalSlideUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* ── Bootstrap modal open animations ── */
+.modal.show.d-block .modal-content {
+    animation: modalSlideUp 0.3s ease both;
+}
+.modal-backdrop.show {
+    animation: modalFadeIn 0.25s ease both;
+}
+.modal-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    background: rgba(0,0,0,0.5) !important;
+    backdrop-filter: blur(2px);
+    z-index: 1040 !important;
+    border-radius: 0 !important;
+}
+.modal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    z-index: 1050 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+}
+.modal.d-block {
+    display: flex !important;
+}
+.modal-dialog {
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 720px !important;
+    position: relative;
+    pointer-events: all;
+}
+.modal-dialog-centered {
+    align-items: center !important;
+}
+.modal-dialog-scrollable .modal-content {
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+}
+
+/* ── Back button — restyle btn-link used as back navigation ── */
+.btn.btn-link.p-0 {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px !important;
+    background: white !important;
+    border: 0.5px solid #e0e0e0 !important;
+    border-radius: 10px !important;
+    color: #1a3c6e !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+    cursor: pointer;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+}
+.btn.btn-link.p-0:hover {
+    background: #f0f4fa !important;
+    color: #1a3c6e !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+    transform: translateX(-2px);
+    text-decoration: none !important;
+}
+
+/* Also style btn-outline-secondary Back buttons */
+.btn.btn-outline-secondary[onClick*="navigate"],
+.btn.btn-outline-secondary[onClick*="Back"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ── Page header row (title + back button) ── */
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.page-header h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: #1a3c6e;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }

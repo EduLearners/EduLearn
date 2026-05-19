@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { invoiceService } from '../../services/invoiceService';
 import { paymentService } from '../../services/paymentService';
 import { authService } from '../../services/authService';
@@ -368,9 +369,7 @@ export default function InvoicesPage() {
                 </div>
             )}
 
-            {/* Generate Invoice Modal */}
-            {showGenerate && (
-                <>
+            {showGenerate && createPortal(<>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered">
@@ -460,12 +459,9 @@ export default function InvoicesPage() {
                             </div>
                         </div>
                     </div>
-                </>
-            )}
+            </>, document.body)}
 
-            {/* Record Payment Modal */}
-            {showPayment && (
-                <>
+            {showPayment && createPortal(<>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered">
@@ -564,8 +560,7 @@ export default function InvoicesPage() {
                             </div>
                         </div>
                     </div>
-                </>
-            )}
+            </>, document.body)}
         </div>
     );
 }

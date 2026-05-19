@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ticketService } from '../../services/ticketService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
@@ -289,9 +290,7 @@ export default function TicketsPage() {
                 </div>
             )}
 
-            {/* Create Ticket Modal */}
-            {showCreate && (
-                <>
+            {showCreate && createPortal(<>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -386,12 +385,9 @@ export default function TicketsPage() {
                             </div>
                         </div>
                     </div>
-                </>
-            )}
+            </>, document.body)}
 
-            {/* Assign Ticket Modal */}
-            {showAssign && (
-                <>
+            {showAssign && createPortal(<>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered">
@@ -461,12 +457,9 @@ export default function TicketsPage() {
                             </div>
                         </div>
                     </div>
-                </>
-            )}
+            </>, document.body)}
 
-            {/* Resolve Ticket Modal */}
-            {showResolve && (
-                <>
+            {showResolve && createPortal(<>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered">
@@ -551,8 +544,7 @@ export default function TicketsPage() {
                             </div>
                         </div>
                     </div>
-                </>
-            )}
+            </>, document.body)}
         </div>
     );
 }

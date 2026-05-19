@@ -160,7 +160,23 @@ export default function LandingPage() {
     const goToDashboard = () => navigate('/dashboard');
 
     return (
-        <div style={{ backgroundColor: C.cream, fontFamily: '-apple-system, "Segoe UI", Roboto, sans-serif' }}>
+        <div style={{ backgroundColor: C.cream, fontFamily: '-apple-system, "Segoe UI", Roboto, sans-serif', paddingTop: '64px' }}>
+            <style>{`
+                @keyframes lpFadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes lpSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes lpSlideRight { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+                @keyframes lpSlideLeft { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+                @keyframes lpScale { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+                .lp-fade { animation: lpFadeIn 0.6s ease both; }
+                .lp-hero-text { animation: lpSlideRight 0.7s ease 0.1s both; }
+                .lp-hero-card { animation: lpSlideLeft 0.7s ease 0.3s both; }
+                .lp-hero-badge { animation: lpSlideUp 0.5s ease 0.05s both; }
+                .lp-hero-title { animation: lpSlideUp 0.6s ease 0.15s both; }
+                .lp-hero-desc { animation: lpSlideUp 0.6s ease 0.25s both; }
+                .lp-hero-btns { animation: lpSlideUp 0.6s ease 0.35s both; }
+                .lp-section { animation: lpSlideUp 0.6s ease both; }
+                .lp-card-anim { animation: lpScale 0.5s ease both; }
+            `}</style>
             {/* Inject Playfair Display from Google Fonts for display headings */}
             <link
                 href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&display=swap"
@@ -169,7 +185,7 @@ export default function LandingPage() {
 
             {/* ── TOP NAVIGATION ─────────────────────────────────── */}
             <nav
-                className="navbar sticky-top"
+                className="navbar fixed-top"
                 style={{ backgroundColor: C.cream, borderBottom: `1px solid ${C.border}`, padding: '0.75rem 0' }}
             >
                 <div className="container d-flex align-items-center">
@@ -233,9 +249,9 @@ export default function LandingPage() {
             >
                 <div className="container">
                     <div className="row align-items-start g-5">
-                        <div className="col-lg-7">
+                        <div className="col-lg-7 lp-hero-text">
                             <div
-                                className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-3"
+                                className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-3 lp-hero-badge"
                                 style={{ backgroundColor: 'rgba(226, 169, 75, 0.18)', color: C.accent, fontSize: 13 }}
                             >
                                 <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: C.accent }}></span>
@@ -243,6 +259,7 @@ export default function LandingPage() {
                             </div>
 
                             <h1
+                                className="lp-hero-title"
                                 style={{
                                     fontFamily: serifFont,
                                     fontSize: 'clamp(2.5rem, 5vw, 4.5rem)',
@@ -257,13 +274,13 @@ export default function LandingPage() {
                                 Every journey.
                             </h1>
 
-                            <p className="mb-4" style={{ fontSize: 18, opacity: 0.85, maxWidth: 560 }}>
+                            <p className="mb-4 lp-hero-desc" style={{ fontSize: 18, opacity: 0.85, maxWidth: 560 }}>
                                 EduLearn brings your entire academic life into one calm, trusted space —
                                 from the day you apply to the day you graduate. Courses, grades, fees,
                                 transcripts, and support, all in one place.
                             </p>
 
-                            <div className="d-flex gap-3 flex-wrap">
+                            <div className="d-flex gap-3 flex-wrap lp-hero-btns">
                                 <button
                                     className="btn btn-lg fw-bold"
                                     style={{ backgroundColor: C.accent, color: C.primary, padding: '12px 32px' }}
@@ -284,7 +301,7 @@ export default function LandingPage() {
                         </div>
 
                         {/* Right-side info card */}
-                        <div className="col-lg-5">
+                        <div className="col-lg-5 lp-hero-card">
                             <div
                                 className="p-4 rounded-3 h-100 d-flex flex-column"
                                 style={{
@@ -343,7 +360,7 @@ export default function LandingPage() {
             </section>
 
             {/* ── 01 ABOUT ────────────────────────────────────────── */}
-            <section id="about" className="py-5" style={{ paddingTop: '80px !important', paddingBottom: '80px !important' }}>
+            <section id="about" className="py-5 lp-section" style={{ paddingTop: '80px !important', paddingBottom: '80px !important' }}>
                 <div className="container py-5">
                     <div className="row g-5">
                         <div className="col-lg-6">
@@ -414,7 +431,7 @@ export default function LandingPage() {
             </section>
 
             {/* ── 02 FEATURES ─────────────────────────────────────── */}
-            <section id="features" style={{ backgroundColor: C.sand, padding: '80px 0' }}>
+            <section id="features" className="lp-section" style={{ backgroundColor: C.sand, padding: '80px 0' }}>
                 <div className="container">
                     <div className="text-center mb-5">
                         <div className="text-uppercase small mb-2" style={{ color: C.textMuted, letterSpacing: '0.15em' }}>
@@ -458,7 +475,7 @@ export default function LandingPage() {
             </section>
 
             {/* ── 03 FOR YOUR ROLE ────────────────────────────────── */}
-            <section id="personas" style={{ padding: '80px 0' }}>
+            <section id="personas" className="lp-section" style={{ padding: '80px 0' }}>
                 <div className="container">
                     <div className="row mb-5">
                         <div className="col-lg-7">
@@ -507,7 +524,7 @@ export default function LandingPage() {
             </section>
 
             {/* ── 04 FOR STUDENTS ─────────────────────────────────── */}
-            <section id="students" style={{ backgroundColor: C.sand, padding: '80px 0' }}>
+            <section id="students" className="lp-section" style={{ backgroundColor: C.sand, padding: '80px 0' }}>
                 <div className="container">
                     <div className="text-center mb-5">
                         <div className="text-uppercase small mb-2" style={{ color: C.textMuted, letterSpacing: '0.15em' }}>
