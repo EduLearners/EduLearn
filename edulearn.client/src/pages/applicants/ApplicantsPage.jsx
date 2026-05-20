@@ -155,7 +155,7 @@ export default function ApplicantsPage() {
                                     <tbody>
                                         {filteredApplicants.map(a => (
                                             <tr key={a.applicantID}>
-                                                <td>#{a.applicantID}</td>
+                                                <td>{a.applicantID}</td>
                                                 <td className="fw-bold">{a.name}</td>
                                                 <td>
                                                     {a.dob ? new Date(a.dob).toLocaleDateString() : '—'}

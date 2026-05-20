@@ -64,7 +64,7 @@ export default function AuditorDashboard() {
 
             <div className="row g-3 mb-4">
                 <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/audit-log')}>
+                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/audit-log')}>
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Audit Logs</div>
                             <div className="display-5 fw-bold" style={{ color: '#0F6E56' }}>{stats.auditLogs ?? '—'}</div>
@@ -73,7 +73,7 @@ export default function AuditorDashboard() {
                     </div>
                 </div>
                 <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/reports')}>
+                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/reports')}>
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Reports</div>
                             <div className="display-5 fw-bold" style={{ color: '#185FA5' }}>{stats.reports ?? '—'}</div>
@@ -82,7 +82,7 @@ export default function AuditorDashboard() {
                     </div>
                 </div>
                 <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/kpis')}>
+                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/kpis')}>
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">KPIs Tracked</div>
                             <div className="display-5 fw-bold" style={{ color: '#534AB7' }}>{stats.kpis ?? '—'}</div>
@@ -114,9 +114,9 @@ export default function AuditorDashboard() {
                 <div className="card-header bg-light"><strong><i className="bi bi-lightning me-2"></i>Quick Actions</strong></div>
                 <div className="card-body">
                     <div className="d-flex flex-wrap gap-2">
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/audit-log')}><i className="bi bi-journal-text me-2"></i>Audit Log</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/kpis')}><i className="bi bi-bar-chart-line me-2"></i>KPIs</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/reports')}><i className="bi bi-file-earmark-bar-graph me-2"></i>Reports</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/admin/audit-log')}><i className="bi bi-journal-text me-2"></i>Audit Log</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/admin/kpis')}><i className="bi bi-bar-chart-line me-2"></i>KPIs</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/admin/reports')}><i className="bi bi-file-earmark-bar-graph me-2"></i>Reports</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/grade-changes')}><i className="bi bi-arrow-left-right me-2"></i>Grade Changes</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/notifications')}><i className="bi bi-bell me-2"></i>Notifications</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/tickets')}><i className="bi bi-headset me-2"></i>Support Ticket</button>

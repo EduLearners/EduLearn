@@ -183,17 +183,17 @@ export default function SubmissionsPage() {
                             <tbody>
                                 {filtered.map(sub => (
                                     <tr key={sub.submissionID}>
-                                        <td><code>#{sub.submissionID}</code></td>
+                                        <td><code>{sub.submissionID}</code></td>
                                         <td>
                                             <button
                                                 className="btn btn-link p-0 text-decoration-none"
                                                 onClick={() => navigate(`/assessments/${sub.assessmentID}`)}
                                             >
-                                                {sub.assessmentTitle || `#${sub.assessmentID}`}
+                                                {sub.assessmentTitle || sub.assessmentID}
                                             </button>
                                         </td>
                                         {!isStudent && (
-                                            <td>{sub.studentName || `#${sub.studentID}`}</td>
+                                            <td>{sub.studentName || sub.studentID}</td>
                                         )}
                                         <td>
                                             {sub.submittedAt

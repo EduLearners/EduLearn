@@ -122,12 +122,12 @@ export default function InstructorDashboard() {
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/courses/new')}><i className="bi bi-plus me-2"></i>New Course</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/assessments/new')}><i className="bi bi-file-plus me-2"></i>New Assessment</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/submissions')}><i className="bi bi-star me-2"></i>Grade Submissions</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/contents/new')}><i className="bi bi-upload me-2"></i>Upload Content</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/teaching/content')}><i className="bi bi-upload me-2"></i>Upload Content</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/syllabi')}><i className="bi bi-file-earmark-ruled me-2"></i>Syllabi</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/discussions')}><i className="bi bi-chat-square-text me-2"></i>Discussions</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/grade-changes')}><i className="bi bi-arrow-left-right me-2"></i>Grade Changes</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/plagiarism')}><i className="bi bi-shield-exclamation me-2"></i>Plagiarism</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/students')}><i className="bi bi-people me-2"></i>Students</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/admin/plagiarism/queue')}><i className="bi bi-shield-exclamation me-2"></i>Plagiarism</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/registrar/students')}><i className="bi bi-people me-2"></i>Students</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/notifications')}><i className="bi bi-bell me-2"></i>Notifications</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/tickets')}><i className="bi bi-headset me-2"></i>Support Ticket</button>
                     </div>

@@ -134,7 +134,7 @@ export default function ITAdminDashboard() {
             {/* Stat Cards — all clickable */}
             <div className="row g-3 mb-4">
                 <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/users')}>
+                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/users')}>
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Total Users</div>
                             <div className="display-5 fw-bold" style={{ color: '#185FA5' }}>{stats.users ?? '—'}</div>
@@ -198,10 +198,10 @@ export default function ITAdminDashboard() {
                             </div>
                             <div className="list-group list-group-flush">
                                 {openTickets.map(t => (
-                                    <div key={t.ticketID} className="list-group-item list-group-item-action" style={{ cursor: 'pointer' }} onClick={() => navigate('/tickets')}>
+                                    <div key={t.ticketID} className="list-group-item list-group-item-action" style={{ cursor: 'pointer' }} onClick={() => navigate(`/tickets/${t.ticketID}`)}>
                                         <div className="d-flex align-items-center justify-content-between">
                                             <div>
-                                                <div className="fw-bold">#{t.ticketID} {t.subject}</div>
+                                                <div className="fw-bold">{t.ticketID} {t.subject}</div>
                                                 <small className="text-muted">{t.createdByUsername} · {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—'}</small>
                                             </div>
                                             <StatusBadge status={t.priority} />
@@ -218,17 +218,17 @@ export default function ITAdminDashboard() {
                         <div className="card-body">
                             <div className="d-grid gap-2">
                                 <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/tickets')}><i className="bi bi-headset me-2"></i>Open Tickets</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/users')}><i className="bi bi-person-badge me-2"></i>Manage Users</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/students')}><i className="bi bi-people me-2"></i>Manage Students</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/applicants')}><i className="bi bi-person-plus me-2"></i>Applicants</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/admin/users')}><i className="bi bi-person-badge me-2"></i>Manage Users</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/registrar/students')}><i className="bi bi-people me-2"></i>Manage Students</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/registrar/applicants')}><i className="bi bi-person-plus me-2"></i>Applicants</button>
                                 <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/sections')}><i className="bi bi-collection me-2"></i>Sections</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/enrollment')}><i className="bi bi-card-checklist me-2"></i>Enrollment</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/registrar/enrollment')}><i className="bi bi-card-checklist me-2"></i>Enrollment</button>
                                 <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/assessments')}><i className="bi bi-file-earmark-check me-2"></i>Assessments</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/fees')}><i className="bi bi-cash-stack me-2"></i>Fees</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/invoices')}><i className="bi bi-receipt me-2"></i>Invoices</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/plagiarism')}><i className="bi bi-shield-exclamation me-2"></i>Plagiarism</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/kpis')}><i className="bi bi-bar-chart-line me-2"></i>KPIs</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/audit-log')}><i className="bi bi-journal-text me-2"></i>Audit Log</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/finance/fees')}><i className="bi bi-cash-stack me-2"></i>Fees</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/finance/invoices')}><i className="bi bi-receipt me-2"></i>Invoices</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/admin/plagiarism/queue')}><i className="bi bi-shield-exclamation me-2"></i>Plagiarism</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/admin/kpis')}><i className="bi bi-bar-chart-line me-2"></i>KPIs</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/admin/audit-log')}><i className="bi bi-journal-text me-2"></i>Audit Log</button>
                                 <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/notifications')}><i className="bi bi-bell me-2"></i>Send Notification</button>
                             </div>
                         </div>
@@ -263,8 +263,8 @@ export default function ITAdminDashboard() {
                             </thead>
                             <tbody>
                                 {recentUsers.map(u => (
-                                    <tr key={u.userID} style={{ cursor: 'pointer' }} onClick={() => navigate('/users')}>
-                                        <td><code>#{u.userID}</code></td>
+                                    <tr key={u.userID} style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/users/${u.userID}`)}>
+                                        <td><code>{u.userID}</code></td>
                                         <td className="fw-bold">{u.username}</td>
                                         <td>{u.fullName}</td>
                                         <td>{u.email}</td>

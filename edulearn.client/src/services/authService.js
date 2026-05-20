@@ -72,10 +72,11 @@ export const authService = {
     },
 
     // Local session helpers — also extracts userID + email from the JWT
+    // SPEC: sessionStorage for JWT (Iron Rule 2) — never localStorage
     saveSession: (token, role, username) => {
-        localStorage.setItem('jwt', token);
-        localStorage.setItem('role', role);
-        localStorage.setItem('username', username);
+        sessionStorage.setItem('jwt', token);
+        sessionStorage.setItem('role', role);
+        sessionStorage.setItem('username', username);
 
         // Pull additional claims from the JWT for the Profile page and dashboards.
         const payload = decodeJwtPayload(token);
@@ -89,23 +90,22 @@ export const authService = {
                 payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ||
                 payload['email'];
 
-            if (userId) localStorage.setItem('userId', String(userId));
-            if (email) localStorage.setItem('email', email);
+            if (userId) sessionStorage.setItem('userId', String(userId));
+            if (email) sessionStorage.setItem('email', email);
         }
     },
 
     logout: () => {
-        localStorage.clear();
         sessionStorage.clear();
     },
 
-    isAuthenticated: () => !!localStorage.getItem('jwt'),
+    isAuthenticated: () => !!sessionStorage.getItem('jwt'),
 
     getCurrentUser: () => ({
-        token: localStorage.getItem('jwt'),
-        role: localStorage.getItem('role'),
-        username: localStorage.getItem('username'),
-        userId: localStorage.getItem('userId'),
-        email: localStorage.getItem('email'),
+        token: sessionStorage.getItem('jwt'),
+        role: sessionStorage.getItem('role'),
+        username: sessionStorage.getItem('username'),
+        userId: sessionStorage.getItem('userId'),
+        email: sessionStorage.getItem('email'),
     }),
 };

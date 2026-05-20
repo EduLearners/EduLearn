@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { userService } from '../../services/userService';
-import Loading from '../../components/Loading';
-import ErrorAlert from '../../components/ErrorAlert';
-import StatusBadge from '../../components/StatusBadge';
-import ConfirmDialog from '../../components/ConfirmDialog';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate }  from 'react-router-dom';
+import { userService }  from '../../services/userService';
+import Loading          from '../../components/Loading';
+import ErrorAlert       from '../../components/ErrorAlert';
+import StatusBadge      from '../../components/StatusBadge';
+import ConfirmDialog    from '../../components/ConfirmDialog';
 
-const ALL_ROLES = ['Student', 'Instructor', 'Registrar', 'DeptAdmin', 'Finance', 'ITAdmin', 'Auditor'];
+const ALL_ROLES    = ['Student', 'Instructor', 'Registrar', 'DeptAdmin', 'Finance', 'ITAdmin', 'Auditor'];
 const ALL_STATUSES = ['Active', 'Inactive', 'Suspended', 'Locked', 'Withdrawn'];
 
-const ROLE_BADGE_STYLE = {
+const ROLE_COLORS = {
     Student:    { bg: '#E6F1FB', color: '#0C447C' },
     Instructor: { bg: '#EAF3DE', color: '#27500A' },
     Registrar:  { bg: '#EEEDFE', color: '#3C3489' },
@@ -20,46 +20,38 @@ const ROLE_BADGE_STYLE = {
 };
 
 const EMPTY_FORM = {
-    username: '',
-    fullName: '',
-    email: '',
-    phone: '',
-    role: 'Student',
-    password: '',
-    sendInvite: true,
+    username: '', fullName: '', email: '',
+    phone: '', role: 'Student', password: '', sendInvite: true,
 };
 
 export default function UsersPage() {
-
-    const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [success, setSuccess] = useState('');
-
-    const [search, setSearch] = useState('');
-    const [filterRole, setFilterRole] = useState('');
-    const [filterStatus, setFilterStatus] = useState('');
-
-    const [showCreate, setShowCreate] = useState(false);
-    const [createForm, setCreateForm] = useState(EMPTY_FORM);
-    const [creating, setCreating] = useState(false);
-    const [createError, setCreateError] = useState(null);
-
-    const [showEdit, setShowEdit] = useState(false);
-    const [editTarget, setEditTarget] = useState(null);
-    const [editForm, setEditForm] = useState({ fullName: '', email: '', phone: '' });
-    const [editing, setEditing] = useState(false);
-    const [editError, setEditError] = useState(null);
-
-    const [showStatus, setShowStatus] = useState(false);
-    const [statusTarget, setStatusTarget] = useState(null);
-    const [newStatus, setNewStatus] = useState('');
-    const [statusSaving, setStatusSaving] = useState(false);
-
-    const [mfaResetTarget, setMfaResetTarget] = useState(null);
-    const [mfaResetting, setMfaResetting] = useState(false);
-
     const navigate = useNavigate();
+
+    const [users,        setUsers]        = useState([]);
+    const [loading,      setLoading]      = useState(true);
+    const [error,        setError]        = useState(null);
+    const [success,      setSuccess]      = useState('');
+
+    const [search,       setSearch]       = useState('');
+    const [filterRole,   setFilterRole]   = useState('All');
+    const [filterStatus, setFilterStatus] = useState('All');
+
+    // Create modal
+    const [showCreate,   setShowCreate]   = useState(false);
+    const [createForm,   setCreateForm]   = useState(EMPTY_FORM);
+    const [creating,     setCreating]     = useState(false);
+    const [createError,  setCreateError]  = useState(null);
+
+    // Manage panel
+    const [manageTarget, setManageTarget] = useState(null);
+    const [editForm,     setEditForm]     = useState({ fullName: '', email: '', phone: '' });
+    const [editing,      setEditing]      = useState(false);
+    const [editError,    setEditError]    = useState(null);
+    const [editSuccess,  setEditSuccess]  = useState('');
+    const [newStatus,    setNewStatus]    = useState('');
+    const [statusSaving, setStatusSaving] = useState(false);
+    const [mfaConfirm,   setMfaConfirm]  = useState(false);
+    const [mfaResetting, setMfaResetting] = useState(false);
 
     useEffect(() => { loadUsers(); }, []);
 
@@ -76,18 +68,58 @@ export default function UsersPage() {
         }
     };
 
-   const handleCreate = async (e) => {
+    // ── Counts for dropdowns (mirrors Applicants pattern) ─────────────────
+    const roleCounts = useMemo(() => {
+        const c = { All: users.length };
+        ALL_ROLES.forEach(r => { c[r] = users.filter(u => u.role === r).length; });
+        return c;
+    }, [users]);
+
+    const statusCounts = useMemo(() => {
+        const c = { All: users.length };
+        ALL_STATUSES.forEach(s => { c[s] = users.filter(u => u.status === s).length; });
+        return c;
+    }, [users]);
+
+    // ── Filtered list ─────────────────────────────────────────────────────
+    const filtered = useMemo(() => users.filter(u => {
+        if (filterRole   !== 'All' && u.role   !== filterRole)   return false;
+        if (filterStatus !== 'All' && u.status !== filterStatus) return false;
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            return (
+                u.username?.toLowerCase().includes(q) ||
+                u.fullName?.toLowerCase().includes(q) ||
+                u.email?.toLowerCase().includes(q)
+            );
+        }
+        return true;
+    }), [users, search, filterRole, filterStatus]);
+
+    // ── Manage panel helpers ───────────────────────────────────────────────
+    const openManage = (u, e) => {
+        e.stopPropagation();
+        setManageTarget(u);
+        setEditForm({ fullName: u.fullName, email: u.email, phone: u.phone || '' });
+        setNewStatus(u.status);
+        setEditError(null);
+        setEditSuccess('');
+    };
+    const closeManage = () => { setManageTarget(null); };
+
+    // ── Create ────────────────────────────────────────────────────────────
+    const handleCreate = async (e) => {
         e.preventDefault();
         setCreateError(null);
         setCreating(true);
         try {
             await userService.create({
-                username: createForm.username,
-                fullName: createForm.fullName,
-                email: createForm.email,
-                phone: createForm.phone || null,
-                role: createForm.role,
-                password: createForm.password,
+                username:   createForm.username,
+                fullName:   createForm.fullName,
+                email:      createForm.email,
+                phone:      createForm.phone || null,
+                role:       createForm.role,
+                password:   createForm.password,
                 sendInvite: createForm.sendInvite,
             });
             setSuccess(
@@ -98,158 +130,136 @@ export default function UsersPage() {
             setCreateForm(EMPTY_FORM);
             setShowCreate(false);
             loadUsers();
-        } catch (err) {
-            setCreateError(err);
-        } finally {
-            setCreating(false);
-        }
-    };
-    const openEdit = (user) => {
-        setEditTarget(user);
-        setEditForm({ fullName: user.fullName, email: user.email, phone: user.phone || '' });
-        setEditError(null);
-        setShowEdit(true);
+        } catch (err) { setCreateError(err); }
+        finally { setCreating(false); }
     };
 
+    // ── Edit ──────────────────────────────────────────────────────────────
     const handleEdit = async (e) => {
         e.preventDefault();
         setEditError(null);
         setEditing(true);
         try {
-            await userService.update(editTarget.userID, editForm);
-            setSuccess(`User "${editTarget.username}" updated.`);
-            setShowEdit(false);
-            loadUsers();
-        } catch (err) {
-            setEditError(err);
-        } finally {
-            setEditing(false);
-        }
+            await userService.update(manageTarget.userID, editForm);
+            setEditSuccess('Profile updated.');
+            setUsers(prev => prev.map(u => u.userID === manageTarget.userID ? { ...u, ...editForm } : u));
+            setManageTarget(prev => ({ ...prev, ...editForm }));
+        } catch (err) { setEditError(err); }
+        finally { setEditing(false); }
     };
 
-    const openStatus = (user) => {
-        setStatusTarget(user);
-        setNewStatus(user.status);
-        setShowStatus(true);
-    };
-
+    // ── Status ────────────────────────────────────────────────────────────
     const handleStatusUpdate = async () => {
         setStatusSaving(true);
         try {
-            await userService.updateStatus(statusTarget.userID, newStatus);
-            setSuccess(`${statusTarget.username} status set to ${newStatus}.`);
-            setShowStatus(false);
-            loadUsers();
-        } catch (err) {
-            setError(err);
-            setShowStatus(false);
-        } finally {
-            setStatusSaving(false);
-        }
+            await userService.updateStatus(manageTarget.userID, newStatus);
+            setEditSuccess(`Status updated to ${newStatus}.`);
+            setUsers(prev => prev.map(u => u.userID === manageTarget.userID ? { ...u, status: newStatus } : u));
+            setManageTarget(prev => ({ ...prev, status: newStatus }));
+        } catch (err) { setEditError(err); }
+        finally { setStatusSaving(false); }
     };
 
+    // ── MFA Reset ─────────────────────────────────────────────────────────
     const handleMfaReset = async () => {
         setMfaResetting(true);
         try {
-            await userService.resetMfa(mfaResetTarget.userID);
-            setSuccess(`MFA reset for "${mfaResetTarget.username}". They will re-enroll on next login.`);
-            setMfaResetTarget(null);
-            loadUsers();
-        } catch (err) {
-            setError(err);
-            setMfaResetTarget(null);
-        } finally {
-            setMfaResetting(false);
-        }
+            await userService.resetMfa(manageTarget.userID);
+            setEditSuccess('MFA reset. User will re-enroll on next login.');
+            setUsers(prev => prev.map(u => u.userID === manageTarget.userID ? { ...u, mfaEnabled: false } : u));
+            setManageTarget(prev => ({ ...prev, mfaEnabled: false }));
+            setMfaConfirm(false);
+        } catch (err) { setEditError(err); }
+        finally { setMfaResetting(false); }
     };
 
-    const handleInvite = async (user) => {
+    // ── Invite ────────────────────────────────────────────────────────────
+    const handleInvite = async () => {
         try {
-            await userService.inviteUser(user.userID);
-            setSuccess(`Invite email sent to ${user.email}.`);
-        } catch (err) {
-            setError(err);
-        }
+            await userService.inviteUser(manageTarget.userID);
+            setEditSuccess(`Invite sent to ${manageTarget.email}.`);
+        } catch (err) { setEditError(err); }
     };
-
-    const filtered = users.filter(u => {
-        const matchSearch =
-            u.username?.toLowerCase().includes(search.toLowerCase()) ||
-            u.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-            u.email?.toLowerCase().includes(search.toLowerCase());
-        const matchRole = filterRole ? String(u.role) === filterRole : true;
-        const matchStatus = filterStatus ? String(u.status) === filterStatus : true;
-        return matchSearch && matchRole && matchStatus;
-    });
 
     return (
         <div>
+
+            {/* ── Header — identical pattern to Applicants ──────── */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
-                    <i className="bi bi-people me-2"></i>User Management
+                    <i className="bi bi-people me-2"></i>Users
                 </h2>
                 <button
                     className="btn btn-primary-edulearn"
                     onClick={() => { setShowCreate(true); setCreateError(null); }}
                 >
-                    <i className="bi bi-person-plus me-2"></i>Create User
+                    <i className="bi bi-person-plus me-2"></i>New User
                 </button>
             </div>
 
             {success && (
-                <div className="alert alert-success d-flex align-items-center justify-content-between mb-4">
+                <div className="alert alert-success d-flex align-items-center justify-content-between mb-3">
                     <span><i className="bi bi-check-circle me-2"></i>{success}</span>
                     <button className="btn-close" onClick={() => setSuccess('')}></button>
                 </div>
             )}
 
-            <div className="card shadow-sm mb-4">
+            {/* ── Filter card — exact same structure as Applicants ── */}
+            <div className="card shadow-sm mb-3">
                 <div className="card-body">
-                    <div className="row g-3">
+                    <div className="row g-3 align-items-end">
                         <div className="col-md-5">
-                            <div className="input-group">
-                                <span className="input-group-text">
-                                    <i className="bi bi-search"></i>
-                                </span>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="Search by username, name or email..."
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
-                                />
-                            </div>
+                            <label className="form-label fw-bold">
+                                <i className="bi bi-search me-1"></i>Search
+                            </label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                placeholder="Search by username, name or email..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                            />
                         </div>
+
                         <div className="col-md-3">
+                            <label className="form-label fw-bold">
+                                <i className="bi bi-person-badge me-1"></i>Role
+                            </label>
                             <select
                                 className="form-select"
                                 value={filterRole}
                                 onChange={e => setFilterRole(e.target.value)}
                             >
-                                <option value="">All Roles</option>
+                                <option value="All">All ({roleCounts.All})</option>
                                 {ALL_ROLES.map(r => (
-                                    <option key={r} value={r}>{r}</option>
+                                    <option key={r} value={r}>{r} ({roleCounts[r] ?? 0})</option>
                                 ))}
                             </select>
                         </div>
+
                         <div className="col-md-2">
+                            <label className="form-label fw-bold">
+                                <i className="bi bi-funnel me-1"></i>Status
+                            </label>
                             <select
                                 className="form-select"
                                 value={filterStatus}
                                 onChange={e => setFilterStatus(e.target.value)}
                             >
-                                <option value="">All Statuses</option>
+                                <option value="All">All Statuses</option>
                                 {ALL_STATUSES.map(s => (
-                                    <option key={s} value={s}>{s}</option>
+                                    <option key={s} value={s}>{s} ({statusCounts[s] ?? 0})</option>
                                 ))}
                             </select>
                         </div>
+
                         <div className="col-md-2">
                             <button
                                 className="btn btn-outline-secondary w-100"
-                                onClick={() => { setSearch(''); setFilterRole(''); setFilterStatus(''); }}
+                                onClick={loadUsers}
+                                disabled={loading}
                             >
-                                <i className="bi bi-x-lg me-1"></i>Clear
+                                <i className="bi bi-arrow-clockwise me-1"></i>Refresh
                             </button>
                         </div>
                     </div>
@@ -259,123 +269,220 @@ export default function UsersPage() {
             <ErrorAlert error={error} onDismiss={() => setError(null)} />
             {loading && <Loading message="Loading users..." />}
 
-            {!loading && !error && filtered.length === 0 && (
-                <div className="text-center py-5 text-muted">
-                    <i className="bi bi-people display-4 d-block mb-3"></i>
-                    <p className="mb-0">No users found.</p>
-                </div>
-            )}
-
-            {!loading && filtered.length > 0 && (
+            {/* ── Table card — exact same structure as Applicants ─── */}
+            {!loading && (
                 <div className="card shadow-sm">
-                    <div className="card-header bg-light d-flex align-items-center justify-content-between">
-                        <strong>
-                            <i className="bi bi-table me-2"></i>Users
-                        </strong>
-                        <small className="text-muted">
-                            {filtered.length} of {users.length} user(s)
-                        </small>
-                    </div>
-                    <div className="table-responsive">
-                        <table className="table table-hover align-middle mb-0">
-                            <thead className="table-light">
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Username</th>
-                                    <th>Full Name</th>
-                                    <th>Email</th>
-                                    <th>Phone</th>
-                                    <th>Role</th>
-                                    <th>MFA</th>
-                                    <th>Status</th>
-                                    <th>Created</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filtered.map(u => {
-                                    const roleStyle = ROLE_BADGE_STYLE[u.role] || { bg: '#F1EFE8', color: '#444441' };
-                                    return (
-                                        <tr
-                                            key={u.userID}
-                                            style={{ cursor: 'pointer' }}
-                                            onClick={() => navigate(`/users/${u.userID}`)}
-                                        >
-                                            <td><code>#{u.userID}</code></td>
-                                            <td className="fw-bold">{u.username}</td>
-                                            <td>{u.fullName}</td>
-                                            <td><small>{u.email}</small></td>
-                                            <td><small>{u.phone || '—'}</small></td>
-                                            <td>
-                                                <span
-                                                    className="badge"
-                                                    style={{ background: roleStyle.bg, color: roleStyle.color, fontSize: 11 }}
-                                                >
-                                                    {u.role}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                {u.mfaEnabled ? (
-                                                    <span className="badge bg-success">
-                                                        <i className="bi bi-shield-check me-1"></i>On
-                                                    </span>
-                                                ) : (
-                                                    <span className="badge bg-secondary">Off</span>
-                                                )}
-                                            </td>
-                                            <td><StatusBadge status={u.status} /></td>
-                                            <td>
-                                                <small className="text-muted">
-                                                    {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
-                                                </small>
-                                            </td>
-                                            <td>
-                                                <div className="d-flex gap-1">
-                                                    <button
-                                                        className="btn btn-sm btn-outline-secondary"
-                                                        onClick={(e) => { e.stopPropagation(); openEdit(u); }}
-                                                        title="Edit profile"
-                                                    >
-                                                        <i className="bi bi-pencil"></i>
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-sm btn-outline-primary"
-                                                        onClick={(e) => { e.stopPropagation(); openStatus(u); }}
-                                                        title="Change status"
-                                                    >
-                                                        <i className="bi bi-toggle-on"></i>
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-sm btn-outline-success"
-                                                        onClick={(e) => { e.stopPropagation(); handleInvite(u); }}
-                                                        title="Send invite email"
-                                                    >
-                                                        <i className="bi bi-envelope"></i>
-                                                    </button>
-                                                    {u.mfaEnabled && (
-                                                        <button
-                                                            className="btn btn-sm btn-outline-warning"
-                                                            onClick={(e) => { e.stopPropagation(); setMfaResetTarget(u); }}
-                                                            title="Reset MFA"
-                                                        >
-                                                            <i className="bi bi-shield-x"></i>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
+                    <div className="card-body p-0">
+                        {filtered.length === 0 ? (
+                            <div className="text-center py-5 text-muted">
+                                <i className="bi bi-people" style={{ fontSize: '3rem' }}></i>
+                                <p className="mt-3 mb-0">
+                                    {users.length === 0
+                                        ? 'No users in the system yet.'
+                                        : 'No users match your filters.'}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="table-responsive">
+                                <table className="table table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Username</th>
+                                            <th>Full Name</th>
+                                            <th>Email</th>
+                                            <th>Role</th>
+                                            <th>MFA</th>
+                                            <th>Status</th>
+                                            <th>Created</th>
+                                            <th className="text-end pe-3">Actions</th>
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                    </thead>
+                                    <tbody>
+                                        {filtered.map(u => {
+                                            const rc = ROLE_COLORS[u.role] || { bg: '#F1EFE8', color: '#444441' };
+                                            return (
+                                                <tr
+                                                    key={u.userID}
+                                                    style={{ cursor: 'pointer' }}
+                                                    onClick={() => navigate(`/admin/users/${u.userID}`)}
+                                                >
+                                                    <td>{u.userID}</td>
+                                                    <td className="fw-bold">{u.username}</td>
+                                                    <td>{u.fullName}</td>
+                                                    <td>
+                                                        <small className="text-muted">{u.email}</small>
+                                                    </td>
+                                                    <td>
+                                                        <span
+                                                            className="badge"
+                                                            style={{
+                                                                background: rc.bg,
+                                                                color: rc.color,
+                                                                fontSize: 11,
+                                                                fontWeight: 500,
+                                                            }}
+                                                        >
+                                                            {u.role}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        {u.mfaEnabled
+                                                            ? <span className="badge bg-success"><i className="bi bi-shield-check me-1"></i>On</span>
+                                                            : <span className="badge bg-secondary">Off</span>
+                                                        }
+                                                    </td>
+                                                    <td><StatusBadge status={u.status} /></td>
+                                                    <td>
+                                                        <small className="text-muted">
+                                                            {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
+                                                        </small>
+                                                    </td>
+                                                    <td className="text-end pe-3">
+                                                        <button
+                                                            className="btn btn-sm btn-outline-primary"
+                                                            onClick={e => openManage(u, e)}
+                                                        >
+                                                            <i className="bi bi-sliders me-1"></i>Manage
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
-                    <div className="card-footer text-muted small">
-                        Showing {filtered.length} of {users.length} users
-                    </div>
+                    {filtered.length > 0 && (
+                        <div className="card-footer text-muted small">
+                            Showing {filtered.length} of {users.length} users
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* ── Create User Modal ──────────────────────────────── */}
+            {/* ── Manage Slide Panel ──────────────────────────────── */}
+            {manageTarget && (
+                <>
+                    <div className="offcanvas-backdrop fade show" onClick={closeManage} style={{ zIndex: 1040 }}></div>
+                    <div className="offcanvas offcanvas-end show" style={{ width: 480, zIndex: 1045, visibility: 'visible' }} aria-modal="true" role="dialog">
+
+                        <div className="offcanvas-header text-white" style={{ background: 'var(--primary)' }}>
+                            <div>
+                                <h5 className="offcanvas-title mb-0">
+                                    <i className="bi bi-person-badge me-2"></i>{manageTarget.username}
+                                </h5>
+                                <small style={{ opacity: 0.85 }}>{manageTarget.email}</small>
+                            </div>
+                            <button type="button" className="btn-close btn-close-white" onClick={closeManage}></button>
+                        </div>
+
+                        <div className="offcanvas-body p-0">
+                            {editSuccess && (
+                                <div className="alert alert-success m-3 mb-0 py-2 small">
+                                    <i className="bi bi-check-circle me-2"></i>{editSuccess}
+                                </div>
+                            )}
+                            <ErrorAlert error={editError} onDismiss={() => setEditError(null)} />
+
+                            {/* Summary strip */}
+                            <div className="px-4 py-3 border-bottom bg-light d-flex flex-wrap gap-3">
+                                <div>
+                                    <div className="text-muted small">Role</div>
+                                    <span className="badge mt-1" style={{ background: ROLE_COLORS[manageTarget.role]?.bg || '#F1EFE8', color: ROLE_COLORS[manageTarget.role]?.color || '#444441' }}>
+                                        {manageTarget.role}
+                                    </span>
+                                </div>
+                                <div>
+                                    <div className="text-muted small">Status</div>
+                                    <div className="mt-1"><StatusBadge status={manageTarget.status} /></div>
+                                </div>
+                                <div>
+                                    <div className="text-muted small">MFA</div>
+                                    <div className="mt-1">
+                                        {manageTarget.mfaEnabled
+                                            ? <span className="badge bg-success"><i className="bi bi-shield-check me-1"></i>On</span>
+                                            : <span className="badge bg-secondary">Off</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-muted small">Created</div>
+                                    <div className="mt-1 small">{manageTarget.createdAt ? new Date(manageTarget.createdAt).toLocaleDateString() : '—'}</div>
+                                </div>
+                            </div>
+
+                            <div className="p-4">
+
+                                {/* Edit Profile */}
+                                <h6 className="text-muted text-uppercase small fw-bold mb-3">
+                                    <i className="bi bi-pencil me-2"></i>Edit Profile
+                                </h6>
+                                <form onSubmit={handleEdit}>
+                                    <div className="row g-3 mb-3">
+                                        <div className="col-12">
+                                            <label className="form-label fw-bold small">Full Name</label>
+                                            <input type="text" className="form-control form-control-sm" value={editForm.fullName} onChange={e => setEditForm({ ...editForm, fullName: e.target.value })} maxLength={200} required />
+                                        </div>
+                                        <div className="col-md-7">
+                                            <label className="form-label fw-bold small">Email</label>
+                                            <input type="email" className="form-control form-control-sm" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} maxLength={255} required />
+                                        </div>
+                                        <div className="col-md-5">
+                                            <label className="form-label fw-bold small">Phone</label>
+                                            <input type="text" className="form-control form-control-sm" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} maxLength={20} />
+                                        </div>
+                                    </div>
+                                    <button type="submit" className="btn btn-primary-edulearn btn-sm" disabled={editing}>
+                                        {editing ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : <><i className="bi bi-check-lg me-2"></i>Save Changes</>}
+                                    </button>
+                                </form>
+
+                                <hr className="my-4" />
+
+                                {/* Change Status */}
+                                <h6 className="text-muted text-uppercase small fw-bold mb-3">
+                                    <i className="bi bi-toggle-on me-2"></i>Account Status
+                                </h6>
+                                <div className="d-flex flex-wrap gap-2 mb-3">
+                                    {ALL_STATUSES.map(s => (
+                                        <button key={s} type="button"
+                                            className={`btn btn-sm ${newStatus === s ? 'btn-primary-edulearn' : 'btn-outline-secondary'}`}
+                                            onClick={() => setNewStatus(s)}
+                                        >{s}</button>
+                                    ))}
+                                </div>
+                                <button className="btn btn-outline-primary btn-sm" onClick={handleStatusUpdate} disabled={statusSaving || newStatus === manageTarget.status}>
+                                    {statusSaving ? <><span className="spinner-border spinner-border-sm me-2"></span>Updating...</> : <><i className="bi bi-check-lg me-2"></i>Update Status</>}
+                                </button>
+
+                                <hr className="my-4" />
+
+                                {/* Other Actions */}
+                                <h6 className="text-muted text-uppercase small fw-bold mb-3">
+                                    <i className="bi bi-three-dots me-2"></i>Other Actions
+                                </h6>
+                                <div className="d-flex flex-wrap gap-2">
+                                    <button className="btn btn-outline-secondary btn-sm" onClick={handleInvite}>
+                                        <i className="bi bi-envelope me-2"></i>Send Invite Email
+                                    </button>
+                                    {manageTarget.mfaEnabled && (
+                                        <button className="btn btn-outline-warning btn-sm" onClick={() => setMfaConfirm(true)}>
+                                            <i className="bi bi-shield-x me-2"></i>Reset MFA
+                                        </button>
+                                    )}
+                                    <button className="btn btn-outline-primary btn-sm" onClick={() => { closeManage(); navigate(`/admin/users/${manageTarget.userID}`); }}>
+                                        <i className="bi bi-eye me-2"></i>Full Profile
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* ── Create User Modal ────────────────────────────────── */}
             {showCreate && (
                 <>
                     <div className="modal-backdrop fade show"></div>
@@ -383,127 +490,48 @@ export default function UsersPage() {
                         <div className="modal-dialog modal-dialog-centered modal-lg">
                             <div className="modal-content">
                                 <div className="modal-header bg-primary-edulearn text-white">
-                                    <h5 className="modal-title">
-                                        <i className="bi bi-person-plus me-2"></i>Create New User
-                                    </h5>
-                                    <button
-                                        type="button"
-                                        className="btn-close btn-close-white"
-                                        onClick={() => setShowCreate(false)}
-                                        disabled={creating}
-                                    />
+                                    <h5 className="modal-title"><i className="bi bi-person-plus me-2"></i>New User</h5>
+                                    <button type="button" className="btn-close btn-close-white" onClick={() => setShowCreate(false)} disabled={creating} />
                                 </div>
                                 <form onSubmit={handleCreate}>
                                     <div className="modal-body">
                                         <div className="alert alert-info mb-3">
                                             <i className="bi bi-info-circle me-2"></i>
-                                            Privileged roles (Registrar, DeptAdmin, Finance, ITAdmin, Auditor)
-                                            are required to set up MFA on first login.
+                                            Privileged roles (Registrar, DeptAdmin, Finance, ITAdmin, Auditor) must set up MFA on first login.
                                         </div>
                                         <div className="row g-3">
                                             <div className="col-md-6">
-                                                <label className="form-label fw-bold">
-                                                    Username <span className="text-danger">*</span>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={createForm.username}
-                                                    onChange={e => setCreateForm({ ...createForm, username: e.target.value })}
-                                                    placeholder="e.g. john.doe"
-                                                    maxLength={100}
-                                                    required
-                                                />
+                                                <label className="form-label fw-bold">Username <span className="text-danger">*</span></label>
+                                                <input type="text" className="form-control" value={createForm.username} onChange={e => setCreateForm({ ...createForm, username: e.target.value })} placeholder="e.g. john.doe" maxLength={100} required />
                                             </div>
                                             <div className="col-md-6">
-                                                <label className="form-label fw-bold">
-                                                    Full Name <span className="text-danger">*</span>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={createForm.fullName}
-                                                    onChange={e => setCreateForm({ ...createForm, fullName: e.target.value })}
-                                                    placeholder="e.g. John Doe"
-                                                    maxLength={200}
-                                                    required
-                                                />
+                                                <label className="form-label fw-bold">Full Name <span className="text-danger">*</span></label>
+                                                <input type="text" className="form-control" value={createForm.fullName} onChange={e => setCreateForm({ ...createForm, fullName: e.target.value })} placeholder="e.g. John Doe" maxLength={200} required />
                                             </div>
                                             <div className="col-md-6">
-                                                <label className="form-label fw-bold">
-                                                    Email <span className="text-danger">*</span>
-                                                </label>
-                                                <input
-                                                    type="email"
-                                                    className="form-control"
-                                                    value={createForm.email}
-                                                    onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
-                                                    placeholder="e.g. john@example.com"
-                                                    maxLength={255}
-                                                    required
-                                                />
+                                                <label className="form-label fw-bold">Email <span className="text-danger">*</span></label>
+                                                <input type="email" className="form-control" value={createForm.email} onChange={e => setCreateForm({ ...createForm, email: e.target.value })} placeholder="e.g. john@example.com" maxLength={255} required />
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">Phone</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={createForm.phone}
-                                                    onChange={e => setCreateForm({ ...createForm, phone: e.target.value })}
-                                                    placeholder="e.g. +91-9876543210"
-                                                    maxLength={20}
-                                                />
+                                                <input type="text" className="form-control" value={createForm.phone} onChange={e => setCreateForm({ ...createForm, phone: e.target.value })} placeholder="e.g. +91-9876543210" maxLength={20} />
                                             </div>
                                             <div className="col-md-6">
-                                                <label className="form-label fw-bold">
-                                                    Role <span className="text-danger">*</span>
-                                                </label>
-                                                <select
-                                                    className="form-select"
-                                                    value={createForm.role}
-                                                    onChange={e => setCreateForm({ ...createForm, role: e.target.value })}
-                                                    required
-                                                >
-                                                    {ALL_ROLES.map(r => (
-                                                        <option key={r} value={r}>{r}</option>
-                                                    ))}
+                                                <label className="form-label fw-bold">Role <span className="text-danger">*</span></label>
+                                                <select className="form-select" value={createForm.role} onChange={e => setCreateForm({ ...createForm, role: e.target.value })} required>
+                                                    {ALL_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                                                 </select>
                                             </div>
                                             <div className="col-md-6">
-                                                <label className="form-label fw-bold">
-                                                    Password <span className="text-danger">*</span>
-                                                    <small className="text-muted fw-normal ms-2">(min 8 chars)</small>
-                                                </label>
-                                                <input
-                                                    type="password"
-                                                    className="form-control"
-                                                    value={createForm.password}
-                                                    onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
-                                                    placeholder="Min 8 characters"
-                                                    minLength={8}
-                                                    required
-                                                />
+                                                <label className="form-label fw-bold">Password <span className="text-danger">*</span> <small className="text-muted fw-normal">(min 8 chars)</small></label>
+                                                <input type="password" className="form-control" value={createForm.password} onChange={e => setCreateForm({ ...createForm, password: e.target.value })} placeholder="Min 8 characters" minLength={8} required />
                                             </div>
-
-                                            {/* Send Invite Checkbox */}
                                             <div className="col-12">
                                                 <div className="p-3 bg-light rounded d-flex align-items-start gap-3">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="form-check-input mt-1"
-                                                        id="sendInviteCheck"
-                                                        checked={createForm.sendInvite}
-                                                        onChange={e => setCreateForm({ ...createForm, sendInvite: e.target.checked })}
-                                                    />
+                                                    <input type="checkbox" className="form-check-input mt-1" id="sendInviteCheck" checked={createForm.sendInvite} onChange={e => setCreateForm({ ...createForm, sendInvite: e.target.checked })} />
                                                     <label htmlFor="sendInviteCheck" style={{ cursor: 'pointer' }}>
-                                                        <div className="fw-bold">
-                                                            <i className="bi bi-envelope me-2"></i>
-                                                            Send welcome email
-                                                        </div>
-                                                        <small className="text-muted">
-                                                            Sends login details (username, role, login URL
-                                                            and temporary password) to {createForm.email || 'the user\'s email'}.
-                                                        </small>
+                                                        <div className="fw-bold"><i className="bi bi-envelope me-2"></i>Send welcome email</div>
+                                                        <small className="text-muted">Sends login details to {createForm.email || "the user's email"}.</small>
                                                     </label>
                                                 </div>
                                             </div>
@@ -511,30 +539,9 @@ export default function UsersPage() {
                                         <ErrorAlert error={createError} onDismiss={() => setCreateError(null)} />
                                     </div>
                                     <div className="modal-footer">
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline-secondary"
-                                            onClick={() => setShowCreate(false)}
-                                            disabled={creating}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="btn btn-primary-edulearn"
-                                            disabled={creating}
-                                        >
-                                            {creating ? (
-                                                <>
-                                                    <span className="spinner-border spinner-border-sm me-2"></span>
-                                                    Creating...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <i className="bi bi-check-lg me-2"></i>
-                                                    Create User
-                                                </>
-                                            )}
+                                        <button type="button" className="btn btn-outline-secondary" onClick={() => setShowCreate(false)} disabled={creating}>Cancel</button>
+                                        <button type="submit" className="btn btn-primary-edulearn" disabled={creating}>
+                                            {creating ? <><span className="spinner-border spinner-border-sm me-2"></span>Creating...</> : <><i className="bi bi-check-lg me-2"></i>Create User</>}
                                         </button>
                                     </div>
                                 </form>
@@ -544,205 +551,15 @@ export default function UsersPage() {
                 </>
             )}
 
-            {/* ── Edit User Modal ───────────────────────────────── */}
-            {showEdit && editTarget && (
-                <>
-                    <div className="modal-backdrop fade show"></div>
-                    <div className="modal fade show d-block" tabIndex="-1">
-                        <div className="modal-dialog modal-dialog-centered">
-                            <div className="modal-content">
-                                <div className="modal-header bg-primary-edulearn text-white">
-                                    <h5 className="modal-title">
-                                        <i className="bi bi-pencil me-2"></i>
-                                        Edit User — {editTarget.username}
-                                    </h5>
-                                    <button
-                                        type="button"
-                                        className="btn-close btn-close-white"
-                                        onClick={() => setShowEdit(false)}
-                                        disabled={editing}
-                                    />
-                                </div>
-                                <form onSubmit={handleEdit}>
-                                    <div className="modal-body">
-                                        <div className="row g-3">
-                                            <div className="col-12">
-                                                <label className="form-label fw-bold">
-                                                    Full Name <span className="text-danger">*</span>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={editForm.fullName}
-                                                    onChange={e => setEditForm({ ...editForm, fullName: e.target.value })}
-                                                    maxLength={200}
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="col-12">
-                                                <label className="form-label fw-bold">
-                                                    Email <span className="text-danger">*</span>
-                                                </label>
-                                                <input
-                                                    type="email"
-                                                    className="form-control"
-                                                    value={editForm.email}
-                                                    onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                                                    maxLength={255}
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="col-12">
-                                                <label className="form-label fw-bold">Phone</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={editForm.phone}
-                                                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                                                    maxLength={20}
-                                                />
-                                            </div>
-                                        </div>
-                                        <ErrorAlert error={editError} onDismiss={() => setEditError(null)} />
-                                    </div>
-                                    <div className="modal-footer">
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline-secondary"
-                                            onClick={() => setShowEdit(false)}
-                                            disabled={editing}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="btn btn-primary-edulearn"
-                                            disabled={editing}
-                                        >
-                                            {editing ? (
-                                                <>
-                                                    <span className="spinner-border spinner-border-sm me-2"></span>
-                                                    Saving...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <i className="bi bi-check-lg me-2"></i>
-                                                    Save Changes
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {/* ── Change Status Modal ───────────────────────────── */}
-            {showStatus && statusTarget && (
-                <>
-                    <div className="modal-backdrop fade show"></div>
-                    <div className="modal fade show d-block" tabIndex="-1">
-                        <div className="modal-dialog modal-dialog-centered">
-                            <div className="modal-content">
-                                <div className="modal-header bg-primary-edulearn text-white">
-                                    <h5 className="modal-title">
-                                        <i className="bi bi-toggle-on me-2"></i>
-                                        Change Status — {statusTarget.username}
-                                    </h5>
-                                    <button
-                                        type="button"
-                                        className="btn-close btn-close-white"
-                                        onClick={() => setShowStatus(false)}
-                                        disabled={statusSaving}
-                                    />
-                                </div>
-                                <div className="modal-body">
-                                    <p className="mb-3 text-muted">
-                                        Current status: <StatusBadge status={statusTarget.status} />
-                                    </p>
-                                    <label className="form-label fw-bold">New Status</label>
-                                    <div className="d-flex flex-wrap gap-3">
-                                        {ALL_STATUSES.map(s => (
-                                            <div key={s} className="form-check">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="radio"
-                                                    name="status"
-                                                    id={`status-${s}`}
-                                                    value={s}
-                                                    checked={newStatus === s}
-                                                    onChange={() => setNewStatus(s)}
-                                                />
-                                                <label className="form-check-label" htmlFor={`status-${s}`}>
-                                                    {s}
-                                                </label>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {newStatus === 'Locked' && (
-                                        <div className="alert alert-warning mt-3 mb-0">
-                                            <i className="bi bi-exclamation-triangle me-2"></i>
-                                            Locked users cannot log in until status is changed back.
-                                        </div>
-                                    )}
-                                    {newStatus === 'Suspended' && (
-                                        <div className="alert alert-warning mt-3 mb-0">
-                                            <i className="bi bi-exclamation-triangle me-2"></i>
-                                            Suspended users cannot access the system.
-                                        </div>
-                                    )}
-                                    {newStatus === 'Withdrawn' && (
-                                        <div className="alert alert-secondary mt-3 mb-0">
-                                            <i className="bi bi-info-circle me-2"></i>
-                                            Withdrawn users have left the institution and cannot log in.
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="modal-footer">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-secondary"
-                                        onClick={() => setShowStatus(false)}
-                                        disabled={statusSaving}
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary-edulearn"
-                                        onClick={handleStatusUpdate}
-                                        disabled={statusSaving || newStatus === statusTarget.status}
-                                    >
-                                        {statusSaving ? (
-                                            <>
-                                                <span className="spinner-border spinner-border-sm me-2"></span>
-                                                Saving...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <i className="bi bi-check-lg me-2"></i>
-                                                Update Status
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {/* ── MFA Reset Confirm ──────────────────────────────── */}
+            {/* ── MFA Reset Confirm ───────────────────────────────── */}
             <ConfirmDialog
-                show={!!mfaResetTarget}
+                show={mfaConfirm}
                 title="Reset MFA"
-                message={`Are you sure you want to reset MFA for "${mfaResetTarget?.username}"? They will be required to set up MFA again on their next login.`}
+                message={`Reset MFA for "${manageTarget?.username}"? They will re-enroll on next login.`}
                 confirmText={mfaResetting ? 'Resetting...' : 'Reset MFA'}
                 confirmVariant="warning"
                 onConfirm={handleMfaReset}
-                onCancel={() => !mfaResetting && setMfaResetTarget(null)}
+                onCancel={() => !mfaResetting && setMfaConfirm(false)}
             />
         </div>
     );

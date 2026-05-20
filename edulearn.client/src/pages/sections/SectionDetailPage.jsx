@@ -201,14 +201,14 @@ export default function SectionDetailPage() {
                             <div className="d-flex gap-2 flex-wrap">
                                 <button
                                     className="btn btn-outline-primary"
-                                    onClick={() => navigate('/enrollment')}
+                                    onClick={() => navigate('/registrar/enrollment')}
                                 >
                                     <i className="bi bi-card-checklist me-2"></i>
                                     View Enrollment
                                 </button>
                                 <button
                                     className="btn btn-outline-primary"
-                                    onClick={() => navigate('/timetable')}
+                                    onClick={() => navigate('/student/timetable')}
                                 >
                                     <i className="bi bi-calendar3 me-2"></i>
                                     View Timetable

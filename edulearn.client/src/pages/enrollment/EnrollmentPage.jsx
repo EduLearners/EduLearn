@@ -17,7 +17,7 @@ export default function EnrollmentPage() {
     // Search filters
     const [courseId, setCourseId] = useState('');
     const [term, setTerm] = useState('2026-Spring');
-    const [studentId, setStudentId] = useState(() => localStorage.getItem('lastStudentId') || '');
+    const [studentId, setStudentId] = useState(() => sessionStorage.getItem('enrollment_lastStudentId') || '');
 
     // Sections list
     const [sections, setSections] = useState([]);
@@ -105,7 +105,7 @@ export default function EnrollmentPage() {
             const data = await enrollmentService.getByStudent(studentId);
             setEnrollments(data || []);
             // Remember the last student ID used (handy for Registrar workflows)
-            localStorage.setItem('lastStudentId', studentId);
+            sessionStorage.setItem('enrollment_lastStudentId', studentId);
         } catch (err) {
             setEnrollmentsError(err);
             setEnrollments([]);
@@ -148,7 +148,7 @@ export default function EnrollmentPage() {
             const result = await enrollmentService.enroll(parseInt(studentId, 10), section.sectionID);
 
             const msg = result.status === 'Waitlisted'
-                ? `Added to waitlist for ${result.courseName} (position #${result.waitlistPosition}).`
+                ? `Added to waitlist for ${result.courseName} (position ${result.waitlistPosition}).`
                 : `Successfully enrolled in ${result.courseName}.`;
 
             setActionMessage({ type: 'success', text: msg });
@@ -335,7 +335,7 @@ export default function EnrollmentPage() {
                                         <div className="col-md-7">
                                             <h6 className="mb-1">
                                                 <strong>{s.courseName}</strong>
-                                                <span className="text-muted ms-2 small">Section #{s.sectionID}</span>
+                                                <span className="text-muted ms-2 small">Section {s.sectionID}</span>
                                             </h6>
                                             <div className="small text-muted">
                                                 <i className="bi bi-person-badge me-1"></i>{s.instructorName || 'TBA'}
@@ -419,7 +419,7 @@ export default function EnrollmentPage() {
                     <span>
                         <i className="bi bi-bookmark-check me-2"></i>
                         Student Enrollments
-                        {studentId && <span className="ms-2 badge bg-light text-dark">Student #{studentId}</span>}
+                        {studentId && <span className="ms-2 badge bg-light text-dark">Student {studentId}</span>}
                     </span>
                     <button
                         className="btn btn-sm btn-outline-light"
@@ -465,13 +465,13 @@ export default function EnrollmentPage() {
                                 <tbody>
                                     {enrollments.map(e => (
                                         <tr key={e.enrollID}>
-                                            <td>#{e.enrollID}</td>
+                                            <td>{e.enrollID}</td>
                                             <td className="fw-bold">{e.courseName}</td>
                                             <td>{e.term}</td>
                                             <td>
                                                 <StatusBadge status={e.status} />
                                                 {e.status === 'Waitlisted' && e.waitlistPosition && (
-                                                    <span className="ms-2 badge bg-warning text-dark">#{e.waitlistPosition}</span>
+                                                    <span className="ms-2 badge bg-warning text-dark">{e.waitlistPosition}</span>
                                                 )}
                                             </td>
                                             <td>
@@ -532,7 +532,7 @@ export default function EnrollmentPage() {
                                 <div className="modal-header bg-primary-edulearn text-white">
                                     <h5 className="modal-title">
                                         <i className="bi bi-list-ul me-2"></i>
-                                        Section Roster: {rosterModal.courseName} (Section #{rosterModal.sectionID})
+                                        Section Roster: {rosterModal.courseName} (Section {rosterModal.sectionID})
                                     </h5>
                                     <button type="button" className="btn-close btn-close-white" onClick={() => setRosterModal(null)}></button>
                                 </div>
@@ -575,7 +575,7 @@ export default function EnrollmentPage() {
                                                         {rosterData.map((r, idx) => (
                                                             <tr key={r.enrollID}>
                                                                 <td>{idx + 1}</td>
-                                                                <td>{r.studentName} <span className="text-muted small">#{r.studentID}</span></td>
+                                                                <td>{r.studentName} <span className="text-muted small">{r.studentID}</span></td>
                                                                 <td><StatusBadge status={r.status} /></td>
                                                                 <td>{r.waitlistPosition || '—'}</td>
                                                                 <td className="small">

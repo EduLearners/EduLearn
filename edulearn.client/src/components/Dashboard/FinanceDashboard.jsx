@@ -53,7 +53,7 @@ export default function FinanceDashboard() {
 
             <div className="row g-3 mb-4">
                 <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/invoices')}>
+                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/finance/invoices')}>
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Total Invoices</div>
                             <div className="display-5 fw-bold" style={{ color: '#185FA5' }}>{stats.totalInvoices ?? '—'}</div>
@@ -62,7 +62,7 @@ export default function FinanceDashboard() {
                     </div>
                 </div>
                 <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/invoices')}>
+                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/finance/invoices')}>
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Pending Payment</div>
                             <div className="display-5 fw-bold" style={{ color: '#A32D2D' }}>{stats.pendingInvoices ?? '—'}</div>
@@ -71,7 +71,7 @@ export default function FinanceDashboard() {
                     </div>
                 </div>
                 <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/invoices')}>
+                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/finance/invoices')}>
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Paid</div>
                             <div className="display-5 fw-bold" style={{ color: '#3B6D11' }}>{stats.paidInvoices ?? '—'}</div>
@@ -80,7 +80,7 @@ export default function FinanceDashboard() {
                     </div>
                 </div>
                 <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/scholarships')}>
+                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/finance/scholarships')}>
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Scholarships</div>
                             <div className="display-5 fw-bold" style={{ color: '#534AB7' }}>—</div>
@@ -89,7 +89,7 @@ export default function FinanceDashboard() {
                     </div>
                 </div>
                 <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/fees')}>
+                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/finance/fees')}>
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Fee Schedules</div>
                             <div className="display-5 fw-bold" style={{ color: '#854F0B' }}>{stats.feeSchedules ?? '—'}</div>
@@ -103,10 +103,10 @@ export default function FinanceDashboard() {
                 <div className="card-header bg-light"><strong><i className="bi bi-lightning me-2"></i>Quick Actions</strong></div>
                 <div className="card-body">
                     <div className="d-flex flex-wrap gap-2">
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/fees')}><i className="bi bi-cash-stack me-2"></i>Fee Schedules</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/invoices')}><i className="bi bi-receipt me-2"></i>Generate Invoice</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/invoices')}><i className="bi bi-credit-card me-2"></i>Record Payment</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/scholarships')}><i className="bi bi-award me-2"></i>Scholarships</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/finance/fees')}><i className="bi bi-cash-stack me-2"></i>Fee Schedules</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/finance/invoices')}><i className="bi bi-receipt me-2"></i>Generate Invoice</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/finance/payments')}><i className="bi bi-credit-card me-2"></i>Record Payment</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/finance/scholarships')}><i className="bi bi-award me-2"></i>Scholarships</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/notifications')}><i className="bi bi-bell me-2"></i>Notifications</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/tickets')}><i className="bi bi-headset me-2"></i>Support Ticket</button>
                     </div>

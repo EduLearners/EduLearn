@@ -1,53 +1,86 @@
-:root {
-    --primary: #1a3c6e;       /* EduLearn navy (matches transcript PDF) */
-    --primary-light: #f0f4fa;
-    --accent: #e2a94b;        /* gold accent */
-    --success: #198754;
-    --warning: #ffc107;
-    --danger: #dc3545;
-    --text: #212529;
-    --text-muted: #6b7280;
-    --border: #d1d5db;
-    --bg: #ffffff;
-    --bg-light: #f8f9fa;
-}
+/* ──────────────────────────────────────────────────────
+   EduLearn Global Styles
+   Imports design tokens. All colour references below
+   use CSS custom properties defined in _tokens.scss.
+   NO hardcoded hex values are allowed in this file.
+   ────────────────────────────────────────────────────── */
+
+/* IBM Plex Sans — self-hosted via Google Fonts CDN fallback
+   (replace with /public/fonts/ self-hosted once OFL files
+   are added to the repo — see Phase 0 checklist)            */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: var(--bg-light);
-    color: var(--text);
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--bg-light);
+  color: var(--text);
 }
 
 a {
-    color: var(--primary);
-    text-decoration: none;
+  color: var(--primary);
+  text-decoration: none;
 }
 
 a:hover {
-    text-decoration: underline;
+  text-decoration: underline;
 }
 
+/* ── Numeric / code values — IBM Plex Mono ──────────── */
+code,
+.font-monospace,
+td.numeric,
+.tabular-nums {
+  font-family: var(--font-mono) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── EduLearn brand utilities ───────────────────────── */
 .text-primary-edulearn {
-    color: var(--primary) !important;
+  color: var(--primary) !important;
 }
 
 .bg-primary-edulearn {
-    background-color: var(--primary) !important;
-    color: white;
+  background-color: var(--primary) !important;
+  color: #ffffff;
 }
 
 .btn-primary-edulearn {
-    background-color: var(--primary);
-    color: white;
-    border: none;
+  background-color: var(--primary);
+  color: #ffffff;
+  border: none;
 }
 
-.btn-primary-edulearn:hover {
-    background-color: #15315a;
-    color: white;
+.btn-primary-edulearn:hover,
+.btn-primary-edulearn:focus {
+  background-color: var(--primary-hover);
+  color: #ffffff;
+}
+
+.btn-primary-edulearn:disabled {
+  background-color: var(--primary);
+  opacity: 0.65;
+  color: #ffffff;
+}
+
+/* ── Sidebar active state ───────────────────────────── */
+.nav-link.active-nav {
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  border-radius: var(--radius-md);
+}
+
+/* ── Card shadow consistency ────────────────────────── */
+.card.shadow-sm {
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* ── Focus ring ─────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }

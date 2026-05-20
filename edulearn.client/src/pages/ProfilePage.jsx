@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { authService } from '../services/authService';
-import { userService } from '../services/userService';
+import { useNavigate }    from 'react-router-dom';
+import { useSelector }    from 'react-redux';
+import { selectUsername, selectRole, selectUserId, selectEmail } from '../store/authSlice';
+import { authService }   from '../services/authService';
+import { userService }   from '../services/userService';
 import { studentService } from '../services/studentService';
-import Loading from '../components/Loading';
-import ErrorAlert from '../components/ErrorAlert';
-import StatusBadge from '../components/StatusBadge';
+import Loading      from '../components/Loading';
+import ErrorAlert   from '../components/ErrorAlert';
+import StatusBadge  from '../components/StatusBadge';
 import ChangePasswordForm from '../components/ChangePasswordForm';
 
 export default function ProfilePage() {
-    const navigate = useNavigate();
-    const { username, role, userId, email: cachedEmail } = authService.getCurrentUser();
+    const navigate    = useNavigate();
+    const username    = useSelector(selectUsername);
+    const role        = useSelector(selectRole);
+    const userId      = useSelector(selectUserId);
+    const cachedEmail = useSelector(selectEmail);
 
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);

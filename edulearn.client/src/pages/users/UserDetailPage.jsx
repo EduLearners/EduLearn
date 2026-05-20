@@ -139,7 +139,7 @@ export default function UserDetailPage() {
     if (error && !user) {
         return (
             <div>
-                <button className="btn btn-link mb-3 p-0" onClick={() => navigate('/users')}>
+                <button className="btn btn-link mb-3 p-0" onClick={() => navigate('/admin/users')}>
                     <i className="bi bi-arrow-left me-1"></i>Back to Users
                 </button>
                 <ErrorAlert error={error} />
@@ -153,7 +153,7 @@ export default function UserDetailPage() {
         <div>
             {/* Back */}
             <div className="d-flex align-items-center justify-content-between mb-4">
-                <button className="btn btn-link p-0" onClick={() => navigate('/users')}>
+                <button className="btn btn-link p-0" onClick={() => navigate('/admin/users')}>
                     <i className="bi bi-arrow-left me-1"></i>Back to Users
                 </button>
                 {isITAdmin && !editMode && (
@@ -275,7 +275,7 @@ export default function UserDetailPage() {
                             ) : (
                                 <dl className="row mb-0">
                                     <dt className="col-sm-4 text-muted">User ID</dt>
-                                    <dd className="col-sm-8"><code>#{user.userID}</code></dd>
+                                    <dd className="col-sm-8"><code>{user.userID}</code></dd>
 
                                     <dt className="col-sm-4 text-muted">Username</dt>
                                     <dd className="col-sm-8">{user.username}</dd>
@@ -370,7 +370,7 @@ export default function UserDetailPage() {
                         <div className="card-footer py-2">
                             <button
                                 className="btn btn-link btn-sm p-0 text-decoration-none"
-                                onClick={() => navigate(`/audit-log?userId=${id}`)}
+                                onClick={() => navigate(`/admin/audit-log?userId=${id}`)}
                             >
                                 <i className="bi bi-box-arrow-up-right me-1"></i>View full audit log
                             </button>
