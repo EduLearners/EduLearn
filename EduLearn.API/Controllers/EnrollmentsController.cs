@@ -22,19 +22,26 @@ public class EnrollmentsController : ControllerBase
     // AUDIT CHANGE (interim-polish): log enrollment state changes to the append-only audit trail
     // so the Auditor demo has meaningful IAM-04 content beyond auth events.
     private readonly AuditLogService _auditLogService;
+    // BUG-2 FIX: PRD §14.1 requires prereq + conflict detection embedded in enroll POST.
+    private readonly PrerequisiteEngine _prerequisiteEngine;
+    private readonly TimetableConflictService _conflictService;
 
     public EnrollmentsController(
         IEnrollmentRepository enrollRepo,
         IStudentRepository studentRepo,
         ISectionRepository sectionRepo,
         INotificationService notificationService,
-        AuditLogService auditLogService)
+        AuditLogService auditLogService,
+        PrerequisiteEngine prerequisiteEngine,
+        TimetableConflictService conflictService)
     {
         _enrollRepo = enrollRepo;
         _studentRepo = studentRepo;
         _sectionRepo = sectionRepo;
         _notificationService = notificationService;
         _auditLogService = auditLogService;
+        _prerequisiteEngine = prerequisiteEngine;
+        _conflictService = conflictService;
     }
 
     /// <summary>
@@ -56,6 +63,42 @@ public class EnrollmentsController : ControllerBase
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         if (callerRole == "Student" && student.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
             return StatusCode(403, new { error = "Students may only enroll themselves", code = "ENROLLMENT_FORBIDDEN" });
+
+        // BUG-2 FIX (PRD §14.1): Validate prerequisites BEFORE reserving a seat.
+        // We need the section first to know which course to check prerequisites against.
+        // These read-only checks run outside the transaction — they cannot affect DB state.
+        var sectionForChecks = await _sectionRepo.GetByIdWithCourseAsync(dto.SectionID);
+        if (sectionForChecks is null)
+            return BadRequest(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
+
+        var prereqResult = await _prerequisiteEngine.CheckAsync(sectionForChecks.CourseID, dto.StudentID);
+        if (!prereqResult.AllPrerequisitesMet)
+        {
+            var unmet = prereqResult.Prerequisites
+                .Where(p => !p.Met)
+                .Select(p => $"{p.CourseCode} - {p.CourseTitle}")
+                .ToList();
+            return UnprocessableEntity(new
+            {
+                error = $"Prerequisites not met: {string.Join(", ", unmet)}",
+                code = "PREREQUISITES_NOT_MET",
+                unmetPrerequisites = unmet
+            });
+        }
+
+        // BUG-2 FIX (PRD §14.1): Detect schedule conflicts against student's current enrollments.
+        var conflict = await _conflictService.CheckAsync(dto.StudentID, dto.SectionID, cancellationToken);
+        if (conflict is not null)
+        {
+            return UnprocessableEntity(new
+            {
+                error = $"Schedule conflict with {conflict.ConflictingCourseTitle} " +
+                        $"on {string.Join(", ", conflict.OverlapDays)} at {conflict.OverlapTime}",
+                code = "SCHEDULE_CONFLICT",
+                conflictingSectionId = conflict.ConflictingSectionId,
+                conflictingCourseCode = conflict.ConflictingCourseCode
+            });
+        }
 
         using var transaction = await _enrollRepo.BeginTransactionAsync();
         try

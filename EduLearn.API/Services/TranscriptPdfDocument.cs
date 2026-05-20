@@ -31,6 +31,13 @@ public class TranscriptEntryRow
     public int Credits { get; set; }
     public string Term { get; set; } = string.Empty;
     public bool GradePosted { get; set; }
+
+    // BUG-4 FIX: Preserve full enrollment data stored in EntriesJSON so it is not
+    // silently dropped during deserialization. Currently informational only; the PDF
+    // layout doesn't render these fields yet, but downstream consumers (audit, replay,
+    // future PDF revisions) now have access to them.
+    public string? Status { get; set; }
+    public DateTime? EnrolledAt { get; set; }
 }
 
 // ── QuestPDF document class ────────────────────────────────────
@@ -49,29 +56,14 @@ public class TranscriptPdfDocument : IDocument
 
     public DocumentSettings GetSettings() => DocumentSettings.Default;
 
-    // Called from TranscriptsController — generates PDF bytes in memory
-    // In QuestPDF 2026.x the extension method lives on IDocument via QuestPDF.Fluent
+    // BUG-5 FIX: Single source of truth for page layout. Previously this method had a
+    // duplicate copy of the same page setup that already lives in Compose(); editing one
+    // and forgetting the other was a real risk. Now ToPdfBytes() just delegates to
+    // Document.Create(Compose) which invokes IDocument.Compose on this instance.
     public byte[] ToPdfBytes()
     {
         using var stream = new System.IO.MemoryStream();
-        Document.Create(composer =>
-        {
-            composer.Page(page =>
-            {
-                page.Size(PageSizes.A4);
-                page.Margin(40);
-                page.DefaultTextStyle(t => t.FontSize(10).FontFamily(Fonts.Arial));
-                page.Header().Element(ComposeHeader);
-                page.Content().PaddingTop(16).Element(ComposeContent);
-                page.Footer().AlignCenter().Text(x =>
-                {
-                    x.Span("EduLearn University  |  Page ").FontSize(9).FontColor(MutedColor);
-                    x.CurrentPageNumber().FontSize(9).FontColor(MutedColor);
-                    x.Span(" of ").FontSize(9).FontColor(MutedColor);
-                    x.TotalPages().FontSize(9).FontColor(MutedColor);
-                });
-            });
-        }).GeneratePdf(stream);
+        Document.Create(Compose).GeneratePdf(stream);
         return stream.ToArray();
     }
 

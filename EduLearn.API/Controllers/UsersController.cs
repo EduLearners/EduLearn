@@ -6,6 +6,7 @@ using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.Extensions.Configuration;
 
 namespace EduLearn.API.Controllers;
 
@@ -16,17 +17,24 @@ public class UsersController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
     private readonly AuditLogService _auditLogService;
-    // MFA CHANGE (IAM-03): notify the target user when an admin resets their MFA
     private readonly INotificationService _notificationService;
-
+    private readonly EmailService _emailService;
+    private readonly IConfiguration _config;
+    private readonly ILogger<UsersController> _logger;
     public UsersController(
-        IUserRepository userRepository,
+         IUserRepository userRepository,
         AuditLogService auditLogService,
-        INotificationService notificationService)  // MFA CHANGE (IAM-03)
+        INotificationService notificationService,
+        EmailService emailService,
+        IConfiguration config,
+        ILogger<UsersController> logger)
     {
         _userRepository = userRepository;
         _auditLogService = auditLogService;
         _notificationService = notificationService;
+        _emailService = emailService;
+        _config = config;
+        _logger = logger;
     }
 
     // AUTH CHANGE: Only ITAdmin can create users directly (others use /api/auth/register)
@@ -61,6 +69,37 @@ public class UsersController : ControllerBase
         await _userRepository.CreateAsync(user);
         await _auditLogService.LogAsync(user.UserID, "UserCreatedByAdmin", "User", user.UserID,
             new { role = user.Role.ToString() });
+
+        // INVITE: Send welcome email in background — don't block user creation
+        if (dto.SendInvite)
+        {
+            var loginUrl = _config["Email:FrontendBaseUrl"] ?? "http://localhost:5173/login";
+            var emailService = _emailService;
+            var logger = _logger;
+            var email = user.Email;
+            var fullName = user.FullName;
+            var uname = user.Username;
+            var role = user.Role.ToString();
+            var pwd = dto.Password;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await emailService.SendWelcomeEmailAsync(
+                        toEmail: email,
+                        toName: fullName,
+                        username: uname,
+                        role: role,
+                        loginUrl: loginUrl,
+                        tempPassword: pwd
+                    );
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to send welcome email to {Email}", email);
+                }
+            });
+        }
 
         var response = MapToDto(user);
         return CreatedAtAction(nameof(GetUser), new { id = user.UserID }, response);
@@ -196,6 +235,112 @@ public class UsersController : ControllerBase
         );
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Change password for a logged-in user using their current password.
+    /// </summary>
+    [HttpPut("{id}/password")]
+    public async Task<IActionResult> ChangePassword(int id, ChangePasswordDto dto)
+    {
+        // Only the user themselves can change their own password
+        var callerId = int.Parse(
+            User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new InvalidOperationException("NameIdentifier claim missing"));
+
+        if (id != callerId)
+            return StatusCode(403, new
+            {
+                error = "You can only change your own password.",
+                code = "USER_FORBIDDEN"
+            });
+
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user is null)
+            return NotFound(new { error = "User not found.", code = "USER_NOT_FOUND" });
+
+        // Verify current password matches stored BCrypt hash
+        if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
+            return BadRequest(new
+            {
+                error = "Current password is incorrect.",
+                code = "WRONG_CURRENT_PASSWORD"
+            });
+
+        // Check new password and confirm match
+        if (dto.NewPassword != dto.ConfirmPassword)
+            return BadRequest(new
+            {
+                error = "New password and confirm password do not match.",
+                code = "PASSWORD_MISMATCH"
+            });
+
+        // Check new password is not same as current
+        if (BCrypt.Net.BCrypt.Verify(dto.NewPassword, user.PasswordHash))
+            return BadRequest(new
+            {
+                error = "New password must be different from current password.",
+                code = "SAME_PASSWORD"
+            });
+
+        // Hash and save the new password
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user);
+
+        // Audit log
+        await _auditLogService.LogAsync(
+            callerId,
+            "PasswordChanged",
+            "User",
+            user.UserID,
+            null);
+
+        return Ok(new { message = "Password changed successfully." });
+    }
+    /// <summary>
+    /// Send a welcome invite email to an existing user. ITAdmin only.
+    /// </summary>
+    [HttpPost("{id}/invite")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<IActionResult> InviteUser(int id)
+    {
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user is null)
+            return NotFound(new { error = "User not found", code = "USER_NOT_FOUND" });
+
+        var loginUrl = _config["Email:FrontendBaseUrl"] ?? "http://localhost:5173/login";
+        var emailService = _emailService;
+        var logger = _logger;
+        var email = user.Email;
+        var fullName = user.FullName;
+        var uname = user.Username;
+        var role = user.Role.ToString();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await emailService.SendWelcomeEmailAsync(
+                    toEmail: email,
+                    toName: fullName,
+                    username: uname,
+                    role: role,
+                    loginUrl: loginUrl,
+                    tempPassword: null
+                );
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to send invite email to {Email}", email);
+            }
+        });
+
+        await _auditLogService.LogAsync(
+            int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"),
+            "InviteEmailSent", "User", user.UserID, null);
+
+        return Ok(new { message = $"Invite email sent to {user.Email}" });
     }
 
     private static UserResponseDto MapToDto(User user) => new()

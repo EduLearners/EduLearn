@@ -28,14 +28,21 @@ public class RegisterDto
     public string FullName { get; set; } = string.Empty;
 
     public string? Phone { get; set; }
-
+    // INVITE: If true, backend sends a welcome email with login details
+    public bool SendInvite { get; set; } = false;
 }
 
 // AUTH CHANGE: What the user sends to POST /api/auth/login
 public class LoginDto
 {
+    //[Required]
+    //public string Username { get; set; } = string.Empty;
+
+    //// AUTH CHANGE: Plain text password — BCrypt.Verify compares with stored hash
+    //[Required]
+    //public string Password { get; set; } = string.Empty;
     [Required]
-    public string Username { get; set; } = string.Empty;
+    public string UsernameOrEmail { get; set; } = string.Empty;
 
     // AUTH CHANGE: Plain text password — BCrypt.Verify compares with stored hash
     [Required]
@@ -76,4 +83,21 @@ public class MfaVerifyDto
 {
     [Required]
     public string Code { get; set; } = string.Empty;
+}
+
+// CHANGE PASSWORD: What the user sends to PUT /api/users/{id}/password
+// Available to all authenticated roles — user can only change their own password.
+// CurrentPassword is verified against the stored BCrypt hash before updating.
+public class ChangePasswordDto
+{
+    [Required]
+    public string CurrentPassword { get; set; } = string.Empty;
+
+    [Required]
+    [MinLength(8, ErrorMessage = "New password must be at least 8 characters.")]
+    public string NewPassword { get; set; } = string.Empty;
+
+    [Required]
+    [MinLength(8)]
+    public string ConfirmPassword { get; set; } = string.Empty;
 }

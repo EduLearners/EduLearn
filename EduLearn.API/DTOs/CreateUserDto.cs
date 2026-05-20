@@ -25,6 +25,9 @@ public class CreateUserDto
     public UserRole Role { get; set; }
 
     [Required]
-    [MinLength(6)]
+    [MinLength(8)]
     public string Password { get; set; } = null!;
+
+    // INVITE: If true, backend sends a welcome email with login details
+     public bool SendInvite { get; set; } = true;
 }

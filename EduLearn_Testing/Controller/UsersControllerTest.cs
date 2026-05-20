@@ -7,6 +7,8 @@ using EduLearn.API.Repositories.Interfaces;
 using EduLearn.API.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace EduLearn_Testing.Controller;
@@ -18,9 +20,11 @@ public class UsersControllerTest
     private Mock<IUserRepository> _userRepoMock;
     private Mock<IAuditLogRepository> _auditLogRepoMock;
     private Mock<INotificationService> _notificationServiceMock;
+    private Mock<EmailService> _emailServiceMock;
+    private Mock<ILogger<UsersController>> _loggerMock;
 
-    // ── Real service with mocked inner dependency ──
     private AuditLogService _auditLogService;
+    private IConfiguration _config;
 
     // ── Controller under test ──
     private UsersController _controller;
@@ -34,13 +38,27 @@ public class UsersControllerTest
         _userRepoMock = new Mock<IUserRepository>();
         _auditLogRepoMock = new Mock<IAuditLogRepository>();
         _notificationServiceMock = new Mock<INotificationService>();
+        _loggerMock = new Mock<ILogger<UsersController>>();
 
         _auditLogService = new AuditLogService(_auditLogRepoMock.Object);
+
+        var configData = new Dictionary<string, string?>
+        {
+            { "Email:FrontendBaseUrl", "http://localhost:5173" }
+        };
+        _config = new ConfigurationBuilder()
+            .AddInMemoryCollection(configData)
+            .Build();
+
+        _emailServiceMock = new Mock<EmailService>(_config);
 
         _controller = new UsersController(
             _userRepoMock.Object,
             _auditLogService,
-            _notificationServiceMock.Object);
+            _notificationServiceMock.Object,
+            _emailServiceMock.Object,
+            _config,
+            _loggerMock.Object);
 
         _testUser = new User
         {

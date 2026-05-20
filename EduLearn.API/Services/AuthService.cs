@@ -19,6 +19,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using System.Security.Cryptography;
 
 namespace EduLearn.API.Services;
 
@@ -31,19 +32,23 @@ public class AuthService
     private readonly AuditLogService _auditLogService;
     // MFA CHANGE (IAM-03): TOTP secret + verify helper
     private readonly MfaService _mfaService;
+    // PASSWORD RESET: Email service for sending reset links
+    private readonly EmailService _emailService;
 
     public AuthService(
         IUserRepository userRepository,
         TokenService tokenService,
         IConfiguration config,
-        AuditLogService auditLogService,  // AUDIT CHANGE: added parameter
-        MfaService mfaService)             // MFA CHANGE (IAM-03): added parameter
+        AuditLogService auditLogService,
+        MfaService mfaService,
+        EmailService emailService)   // PASSWORD RESET: added parameter
     {
         _userRepository = userRepository;
         _tokenService = tokenService;
         _config = config;
-        _auditLogService = auditLogService;  // AUDIT CHANGE: stored
-        _mfaService = mfaService;             // MFA CHANGE (IAM-03): stored
+        _auditLogService = auditLogService;
+        _mfaService = mfaService;
+        _emailService = emailService;  // PASSWORD RESET: stored
     }
 
     // MFA CHANGE (IAM-03): Roles that MUST complete MFA before getting a full JWT.
@@ -71,7 +76,9 @@ public class AuthService
         Ok,
         UserNotFound,
         NotInitialized,
-        InvalidCode
+        InvalidCode,
+        NotEnrolled,        // /verify called but user has not completed enrollment yet
+        AlreadyEnrolled     // /confirm called but user is already enrolled
     }
 
     // ════════════════════════════════════════
@@ -146,8 +153,11 @@ public class AuthService
     public async Task<object?> LoginAsync(LoginDto dto)
     {
         // Find user by username
-        var user = await _userRepository.GetByUsernameAsync(dto.Username);
-
+        //var user = await _userRepository.GetByUsernameAsync(dto.Username);
+        var isEmail = dto.UsernameOrEmail.Contains('@');
+        var user = isEmail
+            ? await _userRepository.GetByEmailAsync(dto.UsernameOrEmail)
+            : await _userRepository.GetByUsernameAsync(dto.UsernameOrEmail);
         // HARDENING (C-24): Always run BCrypt.Verify — against a dummy hash when the user
         // does not exist — so response time for "user not found" matches "wrong password".
         // Without this, valid usernames respond ~300ms slower than invalid ones, leaking
@@ -246,16 +256,21 @@ public class AuthService
     }
 
     // ════════════════════════════════════════
-    // MFA VERIFY — POST /api/auth/mfa/verify  (MFA CHANGE IAM-03)
+    // MFA CONFIRM — POST /api/auth/mfa/confirm  (MFA CHANGE IAM-03)
     // ════════════════════════════════════════
     //
-    // - If MFASecret is null: return NotInitialized (caller forgot to call /setup).
-    // - If code is invalid:   audit MFAVerifyFailed, return InvalidCode.
-    // - If code is valid:
-    //     * On first verify (MFAEnabled=false): flip MFAEnabled=true, audit MFAEnrolled.
-    //     * On subsequent verify (MFAEnabled=true): audit MFAVerifySuccess.
-    //   Either way: return Ok with a fresh full-session AuthResponseDto.
-    public async Task<(MfaVerifyOutcome Outcome, AuthResponseDto? Response)> VerifyMfaAsync(int userId, string code)
+    // FIRST-TIME ENROLLMENT ONLY. User has called /setup and added the secret to their
+    // authenticator app. They submit the first 6-digit code to PROVE they configured
+    // the authenticator correctly. On success:
+    //   - MFAEnabled flips from false to true
+    //   - MFAEnrolled audit log entry written
+    //   - Full session JWT returned (so user doesn't have to login again right away)
+    //
+    // Errors:
+    //   - NotInitialized:   /setup was never called (no secret in DB)
+    //   - AlreadyEnrolled:  user is already enrolled; use /verify instead
+    //   - InvalidCode:      the code does not match
+    public async Task<(MfaVerifyOutcome Outcome, AuthResponseDto? Response)> ConfirmMfaAsync(int userId, string code)
     {
         var user = await _userRepository.GetByIdAsync(userId);
         if (user == null)
@@ -264,33 +279,24 @@ public class AuthService
         if (string.IsNullOrEmpty(user.MFASecret))
             return (MfaVerifyOutcome.NotInitialized, null);
 
+        if (user.MFAEnabled)
+            return (MfaVerifyOutcome.AlreadyEnrolled, null);
+
         if (!_mfaService.VerifyCode(user.MFASecret, code))
         {
             await _auditLogService.LogAsync(
-                user.UserID,
-                "MFAVerifyFailed",
-                "User",
-                user.UserID,
-                new { reason = "Invalid code" }
-            );
+                user.UserID, "MFAConfirmFailed", "User", user.UserID,
+                new { reason = "Invalid code during enrollment" });
             return (MfaVerifyOutcome.InvalidCode, null);
         }
 
-        // First-time enrollment finalizes here; subsequent verifies are the challenge path.
-        var wasEnrolling = !user.MFAEnabled;
-        if (wasEnrolling)
-        {
-            user.MFAEnabled = true;
-            await _userRepository.UpdateAsync(user);
-        }
+        // Flip the flag — enrollment is now complete.
+        user.MFAEnabled = true;
+        await _userRepository.UpdateAsync(user);
 
         await _auditLogService.LogAsync(
-            user.UserID,
-            wasEnrolling ? "MFAEnrolled" : "MFAVerifySuccess",
-            "User",
-            user.UserID,
-            new { role = user.Role.ToString() }
-        );
+            user.UserID, "MFAEnrolled", "User", user.UserID,
+            new { role = user.Role.ToString() });
 
         var token = _tokenService.GenerateToken(user);
         var expiryMinutes = int.Parse(_config["Jwt:AccessTokenExpiryMinutes"] ?? "60");
@@ -302,5 +308,139 @@ public class AuthService
             Role = user.Role.ToString(),
             Username = user.Username
         });
+    }
+
+    // ════════════════════════════════════════
+    // MFA VERIFY — POST /api/auth/mfa/verify  (MFA CHANGE IAM-03)
+    // ════════════════════════════════════════
+    //
+    // EVERY SUBSEQUENT LOGIN (user is already enrolled, MFAEnabled = true). User
+    // submits a fresh 6-digit code from their authenticator app and receives a full
+    // session JWT.
+    //
+    // Errors:
+    //   - NotInitialized:  user has no MFASecret (shouldn't happen if enrolled)
+    //   - NotEnrolled:     user hasn't completed enrollment; use /confirm instead
+    //   - InvalidCode:     the code does not match
+    public async Task<(MfaVerifyOutcome Outcome, AuthResponseDto? Response)> VerifyMfaAsync(int userId, string code)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+            return (MfaVerifyOutcome.UserNotFound, null);
+
+        if (string.IsNullOrEmpty(user.MFASecret))
+            return (MfaVerifyOutcome.NotInitialized, null);
+
+        if (!user.MFAEnabled)
+            return (MfaVerifyOutcome.NotEnrolled, null);
+
+        if (!_mfaService.VerifyCode(user.MFASecret, code))
+        {
+            await _auditLogService.LogAsync(
+                user.UserID, "MFAVerifyFailed", "User", user.UserID,
+                new { reason = "Invalid code" });
+            return (MfaVerifyOutcome.InvalidCode, null);
+        }
+
+        await _auditLogService.LogAsync(
+            user.UserID, "MFAVerifySuccess", "User", user.UserID,
+            new { role = user.Role.ToString() });
+
+        var token = _tokenService.GenerateToken(user);
+        var expiryMinutes = int.Parse(_config["Jwt:AccessTokenExpiryMinutes"] ?? "60");
+
+        return (MfaVerifyOutcome.Ok, new AuthResponseDto
+        {
+            Token = token,
+            Expiry = DateTime.UtcNow.AddMinutes(expiryMinutes),
+            Role = user.Role.ToString(),
+            Username = user.Username
+        });
+    }
+
+    // ════════════════════════════════════════
+    // FORGOT PASSWORD — POST /api/auth/forgot-password
+    // ════════════════════════════════════════
+    //
+    // Generates a secure random token, saves it to the user with a 15-minute
+    // expiry, and sends a reset link to the user's email via EmailService.
+    // Always returns Ok (even if email not found) to prevent email enumeration.
+    public enum ForgotPasswordOutcome { Ok }
+
+    public async Task<ForgotPasswordOutcome> ForgotPasswordAsync(ForgotPasswordDto dto)
+    {
+        var user = await _userRepository.GetByEmailAsync(dto.Email);
+
+        // Always return Ok — never reveal whether the email exists
+        if (user == null)
+            return ForgotPasswordOutcome.Ok;
+
+        // Generate a secure 64-char hex token
+        var tokenBytes = new byte[32];
+        using (var rng = RandomNumberGenerator.Create())
+            rng.GetBytes(tokenBytes);
+        var resetToken = Convert.ToHexString(tokenBytes).ToLower();
+
+        // Save token + 15-minute expiry
+        user.PasswordResetToken  = resetToken;
+        user.PasswordResetExpiry = DateTime.UtcNow.AddMinutes(15);
+        await _userRepository.UpdateAsync(user);
+
+        // Build the reset link pointing to the frontend
+        var frontendUrl = _config["Email:FrontendBaseUrl"] ?? "http://localhost:5173";
+        var resetLink = $"{frontendUrl}/reset-password?token={resetToken}";
+
+        // Send the email — fire and forget errors so the response stays fast
+        try
+        {
+            await _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetLink);
+        }
+        catch
+        {
+            // Log silently — do not expose SMTP errors to the caller
+        }
+
+        await _auditLogService.LogAsync(
+            user.UserID, "PasswordResetRequested", "User", user.UserID, null);
+
+        return ForgotPasswordOutcome.Ok;
+    }
+
+    // ════════════════════════════════════════
+    // RESET PASSWORD — POST /api/auth/reset-password
+    // ════════════════════════════════════════
+    //
+    // Validates the token and expiry, hashes the new password, saves it,
+    // and clears the reset token so it cannot be reused.
+    public enum ResetPasswordOutcome
+    {
+        Ok,
+        InvalidToken,     // token not found or already used
+        TokenExpired,     // token found but past 15-minute window
+        PasswordMismatch  // NewPassword != ConfirmPassword
+    }
+
+    public async Task<ResetPasswordOutcome> ResetPasswordAsync(ResetPasswordDto dto)
+    {
+        if (dto.NewPassword != dto.ConfirmPassword)
+            return ResetPasswordOutcome.PasswordMismatch;
+
+        var user = await _userRepository.GetByResetTokenAsync(dto.Token);
+        if (user == null)
+            return ResetPasswordOutcome.InvalidToken;
+
+        if (user.PasswordResetExpiry == null || user.PasswordResetExpiry < DateTime.UtcNow)
+            return ResetPasswordOutcome.TokenExpired;
+
+        // Hash and save the new password
+        user.PasswordHash        = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        user.PasswordResetToken  = null;  // invalidate token
+        user.PasswordResetExpiry = null;
+        await _userRepository.UpdateAsync(user);
+
+        await _auditLogService.LogAsync(
+            user.UserID, "PasswordResetCompleted", "User", user.UserID, null);
+
+        return ResetPasswordOutcome.Ok;
     }
 }

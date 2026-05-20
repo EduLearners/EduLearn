@@ -27,7 +27,7 @@ public class SyllabiController : ControllerBase
         _userRepository = userRepository;
     }
 
-    // ── POST /api/syllabi — Instructor creates a syllabus for a course ──
+    // ── POST /api/syllabus — Instructor creates a syllabus for a course ──
     /// <summary>
     /// Create a new syllabus version for a course. Instructor and ITAdmin only.
     /// Rejects duplicate version strings for the same course; creator is derived from the JWT.

@@ -23,8 +23,10 @@ public class EnrollmentsControllerTest
     private Mock<IAuditLogRepository> _auditLogRepoMock;
     private Mock<IDbContextTransaction> _transactionMock;
 
-    // ── Real service with mocked inner dependency ──
+    // ── Real services with mocked inner dependencies ──
     private AuditLogService _auditLogService;
+    private PrerequisiteEngine _prerequisiteEngine;
+    private TimetableConflictService _conflictService;
 
     // ── Controller under test ──
     private EnrollmentsController _controller;
@@ -46,12 +48,25 @@ public class EnrollmentsControllerTest
 
         _auditLogService = new AuditLogService(_auditLogRepoMock.Object);
 
+        // BUG-2 FIX: PrerequisiteEngine requires 4 dependencies, TimetableConflictService requires 2
+        var courseRepoMock = new Mock<ICourseRepository>();
+        var sectionRepoForEngine = _sectionRepoMock.Object;
+        var studentRepoForEngine = _studentRepoMock.Object;
+        _prerequisiteEngine = new PrerequisiteEngine(
+            courseRepoMock.Object,
+            sectionRepoForEngine,
+            _enrollRepoMock.Object,
+            studentRepoForEngine);
+        _conflictService = new TimetableConflictService(_enrollRepoMock.Object, _sectionRepoMock.Object);
+
         _controller = new EnrollmentsController(
             _enrollRepoMock.Object,
             _studentRepoMock.Object,
             _sectionRepoMock.Object,
             _notificationServiceMock.Object,
-            _auditLogService);
+            _auditLogService,
+            _prerequisiteEngine,
+            _conflictService);
 
         // Default: mock transaction for every test
         _enrollRepoMock.Setup(r => r.BeginTransactionAsync())

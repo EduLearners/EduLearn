@@ -94,6 +94,7 @@ builder.Services.AddScoped<IGradeChangeRepository, GradeChangeRepository>();
 builder.Services.AddScoped<ISyllabusRepository, SyllabusRepository>();
 builder.Services.AddScoped<IPlagiarismRepository, PlagiarismRepository>();  // AGI-04
 builder.Services.AddScoped<PrerequisiteEngine>();  // CCM-03: prerequisite check service
+builder.Services.AddScoped<TimetableConflictService>();  // BUG-3 FIX: shared schedule conflict detection (ETS-01 + ETS-03)
 
 
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
@@ -106,7 +107,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<PdfGeneratorService>();
 // MFA CHANGE (IAM-03): TOTP helper (RFC 6238) used by AuthService for setup/verify
 builder.Services.AddScoped<MfaService>();
-
+builder.Services.AddScoped<EmailService>();
 // JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
