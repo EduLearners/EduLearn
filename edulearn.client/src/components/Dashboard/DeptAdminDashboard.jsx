@@ -122,7 +122,7 @@ export default function DeptAdminDashboard() {
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/rooms')}><i className="bi bi-door-closed me-2"></i>Rooms</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/syllabi')}><i className="bi bi-file-earmark-ruled me-2"></i>Syllabi</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/discussions')}><i className="bi bi-chat-square-text me-2"></i>Discussions</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/timetable')}><i className="bi bi-calendar3 me-2"></i>Timetable</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/student/timetable')}><i className="bi bi-calendar3 me-2"></i>Timetable</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/notifications')}><i className="bi bi-bell me-2"></i>Notifications</button>
                         <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/tickets')}><i className="bi bi-headset me-2"></i>Support Ticket</button>
                     </div>

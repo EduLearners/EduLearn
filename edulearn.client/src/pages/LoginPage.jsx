@@ -1,43 +1,54 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { authService } from '../services/authService';
+import { setSession }  from '../store/authSlice';
+import { initPersona } from '../store/personaSlice';
 import ErrorAlert from '../components/ErrorAlert';
 
 export default function LoginPage() {
-    //const [username, setUsername] = useState('');
     const [usernameOrEmail, setUsernameOrEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const navigate = useNavigate();
+    const navigate  = useNavigate();
+    const dispatch  = useDispatch();
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        // Guard: prevent empty credential submission from browser autofill/remount
-      // if (!username.trim() || !password.trim()) return;
-      if (!usernameOrEmail.trim() || !password.trim()) return;
+        if (!usernameOrEmail.trim() || !password.trim()) return;
         setError('');
         setLoading(true);
 
         try {
             const data = await authService.login(usernameOrEmail, password);
 
-            // Privileged role -> MFA flow
+            // Privileged roles → MFA required first
             if (data.purpose === 'mfa_pending') {
-                sessionStorage.setItem('mfaToken', data.mfaToken);
+                sessionStorage.setItem('mfaToken',   data.mfaToken);
                 sessionStorage.setItem('mfaMessage', data.message);
-
-                // If message says "enrollment required", go to setup page
-                if (data.message?.toLowerCase().includes('enrollment')) {
-                    navigate('/mfa/setup');
-                } else {
-                    navigate('/mfa/verify');
-                }
+                navigate(
+                    data.message?.toLowerCase().includes('enrollment')
+                        ? '/mfa-setup'
+                        : '/mfa-verify'
+                );
                 return;
             }
 
-            // Student / Instructor -> direct JWT
+            // Direct JWT (Student, Instructor, etc.)
             authService.saveSession(data.token, data.role, data.username);
+
+            // Sync Redux store so every useSelector call sees the new session
+            const user = authService.getCurrentUser();
+            dispatch(setSession({
+                token:    data.token,
+                role:     data.role,
+                username: data.username,
+                userId:   user.userId,
+                email:    user.email,
+            }));
+            dispatch(initPersona(data.role));
+
             navigate('/dashboard');
 
         } catch (err) {
@@ -60,7 +71,7 @@ export default function LoginPage() {
                         <p className="text-muted mb-0">University Management System</p>
                     </div>
 
-                    <form onSubmit={handleLogin}>
+                    <form onSubmit={handleLogin} autoComplete="off">
                         <div className="mb-3">
                             <label className="form-label">Username or Email</label>
                             <div className="input-group">
@@ -71,9 +82,10 @@ export default function LoginPage() {
                                     className="form-control"
                                     value={usernameOrEmail}
                                     onChange={(e) => setUsernameOrEmail(e.target.value)}
-                                    placeholder="Enter Username or email"
+                                    placeholder="Enter username or email"
                                     required
                                     autoFocus
+                                    autoComplete="off"
                                 />
                             </div>
                         </div>
@@ -91,6 +103,7 @@ export default function LoginPage() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Enter password"
                                     required
+                                    autoComplete="new-password"
                                 />
                             </div>
                         </div>
@@ -103,21 +116,15 @@ export default function LoginPage() {
                             disabled={loading}
                         >
                             {loading ? (
-                                <>
-                                    <span className="spinner-border spinner-border-sm me-2"></span>
-                                    Signing in...
-                                </>
+                                <><span className="spinner-border spinner-border-sm me-2"></span>Signing in...</>
                             ) : (
-                                <>
-                                    <i className="bi bi-box-arrow-in-right me-2"></i>
-                                    Sign In
-                                </>
+                                <><i className="bi bi-box-arrow-in-right me-2"></i>Sign In</>
                             )}
                         </button>
                     </form>
 
                     <hr />
-                    
+
                     <div className="text-center mb-2">
                         <button
                             type="button"
@@ -128,9 +135,6 @@ export default function LoginPage() {
                             Forgot your password?
                         </button>
                     </div>
-                    <p className="text-center text-muted small mb-0">
-                        Don't have an account? <a href="/register">Register here</a>
-                    </p>
                 </div>
             </div>
         </div>

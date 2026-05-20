@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { authService } from '../services/authService';
+import { setSession }  from '../store/authSlice';
+import { initPersona } from '../store/personaSlice';
 import ErrorAlert from '../components/ErrorAlert';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -11,7 +14,8 @@ export default function MfaSetupPage() {
     const [step, setStep] = useState('setup'); // 'setup' | 'confirm'
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const navigate = useNavigate();
+    const navigate  = useNavigate();
+    const dispatch  = useDispatch();
 
     // Capture mfaToken on initial mount only (same fix as MfaVerifyPage).
     const [mfaToken] = useState(() => sessionStorage.getItem('mfaToken'));
@@ -35,7 +39,7 @@ export default function MfaSetupPage() {
             setStep('confirm');
         } catch (err) {
             if (err.response?.data?.code === 'MFA_ALREADY_ENROLLED') {
-                navigate('/mfa/verify');
+                navigate('/mfa-verify');
                 return;
             }
             setError(err);
@@ -59,6 +63,18 @@ export default function MfaSetupPage() {
             authService.saveSession(data.token, data.role, data.username);
             sessionStorage.removeItem('mfaToken');
             sessionStorage.removeItem('mfaMessage');
+
+            // Sync Redux store
+            const user = authService.getCurrentUser();
+            dispatch(setSession({
+                token:    data.token,
+                role:     data.role,
+                username: data.username,
+                userId:   user.userId,
+                email:    user.email,
+            }));
+            dispatch(initPersona(data.role));
+
             navigate('/dashboard', { replace: true });
         } catch (err) {
             setError(err);

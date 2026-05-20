@@ -1,4 +1,4 @@
-﻿using EduLearn.API.DTOs;
+using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
@@ -43,10 +43,8 @@ public class SubmissionsController : ControllerBase
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "Student")]
-
     public async Task<ActionResult<SubmissionResponseDto>> CreateSubmission(CreateSubmissionDto dto)
     {
-       
         var assessment = await _assessmentRepository.GetByIdAsync(dto.AssessmentID);
 
         if (assessment is null)
@@ -55,18 +53,16 @@ public class SubmissionsController : ControllerBase
         if (assessment.Status != AssessmentStatus.Published)
             return BadRequest(new { error = "Assessment is not open for submissions. Only Published assessments accept submissions", code = "ASSESSMENT_NOT_PUBLISHED" });
 
-    
         var student = await _studentRepository.GetByIdAsync(dto.StudentID);
 
         if (student is null)
             return BadRequest(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
-
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         if (callerRole == "Student" && student.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
             return StatusCode(403, new { error = "Students may only submit their own work", code = "SUBMISSION_FORBIDDEN" });
 
-        // Check for duplicate submission (same student  same assessment)
+        // Check for duplicate submission (same student + same assessment)
         var existingSubmission = await _submissionRepository.GetByStudentAndAssessmentAsync(dto.StudentID, dto.AssessmentID);
 
         if (existingSubmission is not null)
@@ -86,7 +82,6 @@ public class SubmissionsController : ControllerBase
             Status = status
         };
 
-        
         await _submissionRepository.CreateAsync(submission);
 
         var response = new SubmissionResponseDto
@@ -127,6 +122,23 @@ public class SubmissionsController : ControllerBase
 
         var response = submissions.Select(s => MapToDto(s)).ToList();
         return Ok(response);
+    }
+
+    /// <summary>
+    /// Get a single submission by ID. Instructor, ITAdmin and Registrar only.
+    /// Used by the GradePage to load submission details before grading.
+    /// Returns 404 if the submission does not exist.
+    /// </summary>
+    [HttpGet("{id}")]
+    [Authorize(Roles = "Instructor,ITAdmin,Registrar")]
+    public async Task<ActionResult<SubmissionResponseDto>> GetById(int id)
+    {
+        var submission = await _submissionRepository.GetByIdWithDetailsAsync(id);
+
+        if (submission is null)
+            return NotFound(new { error = "Submission not found", code = "SUBMISSION_NOT_FOUND" });
+
+        return Ok(MapToDto(submission));
     }
 
     /// <summary>
@@ -182,7 +194,6 @@ public class SubmissionsController : ControllerBase
         submission.GradedAt = DateTime.UtcNow;
         submission.Status = SubmissionStatus.Graded;
 
-        //saves the updated
         await _submissionRepository.UpdateAsync(submission);
 
         await _notificationService.NotifyAsync(
@@ -192,7 +203,6 @@ public class SubmissionsController : ControllerBase
             $"Grade posted for {submission.Assessment.Title}: {dto.Score}/{submission.Assessment.MaxScore}.",
             submission.SubmissionID);
 
-        // Regrades already create a GradeChange row above; this adds a service-level trail.
         await _auditLogService.LogAsync(
             callerId,
             "SubmissionGraded",
@@ -200,14 +210,12 @@ public class SubmissionsController : ControllerBase
             submission.SubmissionID,
             new { assessmentId = submission.AssessmentID, studentId = submission.StudentID, score = dto.Score, maxScore = submission.Assessment.MaxScore });
 
-        //response with grader name
         var response = MapToDto(submission);
         response.GraderName = grader.FullName;
 
         return Ok(response);
     }
 
-    //Student's submissions across all assessments
     /// <summary>
     /// List all submissions made by a given student across all assessments. Any authenticated user may call this endpoint.
     /// Students may only view their own submissions; privileged roles may view any student's submissions.

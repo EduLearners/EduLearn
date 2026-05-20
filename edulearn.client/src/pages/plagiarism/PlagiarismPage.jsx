@@ -13,7 +13,7 @@ const emptyFlagForm = {
 };
 
 export default function PlagiarismPage() {
-    const [studentId, setStudentId] = useState(() => localStorage.getItem('lastStudentId') || '');
+    const [studentId, setStudentId] = useState(() => sessionStorage.getItem('plagiarism_lastStudentId') || '');
     const [integrity, setIntegrity] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -50,7 +50,7 @@ export default function PlagiarismPage() {
             setError(null);
             const data = await plagiarismService.getStudentIntegrity(studentId);
             setIntegrity(data);
-            localStorage.setItem('lastStudentId', studentId);
+            sessionStorage.setItem('plagiarism_lastStudentId', studentId);
         } catch (err) {
             setError(err);
             setIntegrity(null);

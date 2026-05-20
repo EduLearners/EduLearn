@@ -185,7 +185,7 @@ export default function RoomsPage() {
                                             const res = parseResources(r.resourcesJSON);
                                             return (
                                                 <tr key={r.roomID}>
-                                                    <td>#{r.roomID}</td>
+                                                    <td>{r.roomID}</td>
                                                     <td className="fw-bold">{r.building}</td>
                                                     <td><code>{r.roomNumber}</code></td>
                                                     <td>

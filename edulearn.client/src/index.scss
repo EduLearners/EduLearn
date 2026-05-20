@@ -1,0 +1,118 @@
+// ──────────────────────────────────────────────────────────────
+// EduLearn Global Stylesheet — index.scss
+//
+// STEP 1: Import design tokens.
+//   _tokens.scss defines all Sass variables ($brand-600, etc.)
+//   AND emits them as CSS custom properties inside :root {}.
+//   Everything below this line can reference var(--primary) etc.
+//
+// STEP 2: Global resets and brand utilities follow.
+//   NO hardcoded hex values are allowed anywhere in this file.
+//   Use the CSS custom properties defined in _tokens.scss only.
+// ──────────────────────────────────────────────────────────────
+
+// Import the token partial — this emits the :root { } block
+// that makes every --variable available to all JSX pages.
+@import './styles/tokens';
+
+// ── IBM Plex fonts (spec-mandated — Iron Rule 2) ─────────────
+// Loaded from Google Fonts CDN. Replace with self-hosted OFL
+// files under public/fonts/ when they are added to the repo.
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+// ── Global reset ─────────────────────────────────────────────
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--bg-light);
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// ── Numeric / code values must use IBM Plex Mono ─────────────
+code,
+pre,
+.font-monospace,
+td.numeric,
+.tabular-nums {
+  font-family: var(--font-mono) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+// ── EduLearn brand utility classes ───────────────────────────
+// These are used across every page component via className.
+
+.text-primary-edulearn {
+  color: var(--primary) !important;
+}
+
+.bg-primary-edulearn {
+  background-color: var(--primary) !important;
+  color: $white;
+}
+
+// ── Custom button: primary-edulearn ──────────────────────────
+.btn-primary-edulearn {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: $white;
+
+  &:hover,
+  &:focus {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+    color: $white;
+  }
+
+  &:disabled,
+  &.disabled {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: $white;
+    opacity: 0.65;
+  }
+
+  // Bootstrap focus ring override
+  &:focus-visible {
+    box-shadow: 0 0 0 0.25rem rgba($brand-600, 0.35);
+  }
+}
+
+// ── Sidebar active nav link ───────────────────────────────────
+.nav-link.active-nav {
+  background-color: var(--primary) !important;
+  color: $white !important;
+  border-radius: var(--radius-md);
+}
+
+// ── Card shadow consistency ───────────────────────────────────
+.card.shadow-sm {
+  box-shadow: var(--shadow-sm) !important;
+}
+
+// ── Global focus ring (accessibility) ────────────────────────
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+// ── Accent badge / pill helper ────────────────────────────────
+.badge-accent {
+  background-color: var(--accent);
+  color: $brand-800;
+  font-weight: 600;
+}

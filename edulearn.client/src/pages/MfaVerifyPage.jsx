@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { authService } from '../services/authService';
+import { setSession }  from '../store/authSlice';
+import { initPersona } from '../store/personaSlice';
 import ErrorAlert from '../components/ErrorAlert';
 
 export default function MfaVerifyPage() {
     const [code, setCode] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const navigate = useNavigate();
+    const navigate  = useNavigate();
+    const dispatch  = useDispatch();
 
     // Capture mfaToken on initial mount only.
     // Reading sessionStorage on every render would fire AFTER successful verify
@@ -39,6 +43,17 @@ export default function MfaVerifyPage() {
             authService.saveSession(data.token, data.role, data.username);
             sessionStorage.removeItem('mfaToken');
             sessionStorage.removeItem('mfaMessage');
+
+            // Sync Redux store
+            const user = authService.getCurrentUser();
+            dispatch(setSession({
+                token:    data.token,
+                role:     data.role,
+                username: data.username,
+                userId:   user.userId,
+                email:    user.email,
+            }));
+            dispatch(initPersona(data.role));
 
             navigate('/dashboard', { replace: true });
         } catch (err) {

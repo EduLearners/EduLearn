@@ -192,6 +192,14 @@ export default function ITAdminDashboard() {
             {createSuccess && <div className="alert alert-success d-flex align-items-center justify-content-between mb-4" style={{ borderRadius: 12, border: 'none' }}><span><i className="bi bi-check-circle me-2"></i>{createSuccess}</span><button className="btn-close" onClick={() => setCreateSuccess('')}></button></div>}
 
             <div className="row g-3 mb-4">
+<<<<<<< HEAD
+                <div className="col-md-3 col-sm-6">
+                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/users')}>
+                        <div className="card-body">
+                            <div className="text-muted small text-uppercase mb-1">Total Users</div>
+                            <div className="display-5 fw-bold" style={{ color: '#185FA5' }}>{stats.users ?? '—'}</div>
+                            <small className="text-muted">all roles</small>
+=======
                 {STATS.map((s, i) => (
                     <div key={i} className="col-md-3 col-sm-6" style={{ animation: 'fsu 0.4s ease ' + (0.1 + i * 0.08) + 's both' }}>
                         <div style={{ ...S.card, background: s.bg, cursor: 'pointer', padding: '18px 20px' }} onClick={() => navigate(s.to)} onMouseEnter={e => Object.assign(e.currentTarget.style, S.cardHover)} onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}>
@@ -200,6 +208,7 @@ export default function ITAdminDashboard() {
                                 <div style={{ width: 36, height: 36, borderRadius: 10, background: s.color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className={'bi ' + s.icon} style={{ fontSize: 16, color: s.color }}></i></div>
                             </div>
                             <div style={{ fontSize: 30, fontWeight: 700, color: s.color, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{s.value != null ? s.value : '\u2014'}</div>
+>>>>>>> UI/ashish
                         </div>
                     </div>
                 ))}
@@ -222,6 +231,33 @@ export default function ITAdminDashboard() {
                 </div>
             </div>
 
+<<<<<<< HEAD
+            {/* Create User Success Alert */}
+            {createSuccess && (
+                <div className="alert alert-success d-flex align-items-center justify-content-between mb-4">
+                    <span><i className="bi bi-check-circle me-2"></i>{createSuccess}</span>
+                    <button className="btn-close" onClick={() => setCreateSuccess('')}></button>
+                </div>
+            )}
+
+            <div className="row g-3">
+                {openTickets.length > 0 && (
+                    <div className="col-lg-7">
+                        <div className="card shadow-sm h-100">
+                            <div className="card-header bg-light d-flex align-items-center justify-content-between">
+                                <strong><i className="bi bi-headset me-2"></i>Open Tickets</strong>
+                                <button className="btn btn-sm btn-link p-0" onClick={() => navigate('/tickets')}>View all <i className="bi bi-arrow-right"></i></button>
+                            </div>
+                            <div className="list-group list-group-flush">
+                                {openTickets.map(t => (
+                                    <div key={t.ticketID} className="list-group-item list-group-item-action" style={{ cursor: 'pointer' }} onClick={() => navigate(`/tickets/${t.ticketID}`)}>
+                                        <div className="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <div className="fw-bold">{t.ticketID} {t.subject}</div>
+                                                <small className="text-muted">{t.createdByUsername} · {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—'}</small>
+                                            </div>
+                                            <StatusBadge status={t.priority} />
+=======
             <div className="row g-3 mb-4">
                 <div className="col-lg-5" style={{ animation: 'fsu 0.5s ease 0.55s both' }}>
                     <div style={{ ...S.card, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -235,6 +271,7 @@ export default function ITAdminDashboard() {
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: 13, fontWeight: 500, color: '#222' }}>{log.action}</div>
                                             <div style={{ fontSize: 11, color: '#999' }}>User #{log.userID} &middot; {log.resourceType}{log.detailsJSON && (() => { try { const d = JSON.parse(log.detailsJSON); return d.role ? ' \u00b7 ' + d.role : ''; } catch { return ''; } })()}</div>
+>>>>>>> UI/ashish
                                         </div>
                                         <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>{timeAgo(log.timestamp)}</span>
                                     </div>
@@ -242,6 +279,28 @@ export default function ITAdminDashboard() {
                             })}
                         </div>
                     </div>
+<<<<<<< HEAD
+                )}
+                <div className={openTickets.length > 0 ? 'col-lg-5' : 'col-12'}>
+                    <div className="card shadow-sm h-100">
+                        <div className="card-header bg-light"><strong><i className="bi bi-lightning me-2"></i>Quick Actions</strong></div>
+                        <div className="card-body">
+                            <div className="d-grid gap-2">
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/tickets')}><i className="bi bi-headset me-2"></i>Open Tickets</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/admin/users')}><i className="bi bi-person-badge me-2"></i>Manage Users</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/registrar/students')}><i className="bi bi-people me-2"></i>Manage Students</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/registrar/applicants')}><i className="bi bi-person-plus me-2"></i>Applicants</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/sections')}><i className="bi bi-collection me-2"></i>Sections</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/registrar/enrollment')}><i className="bi bi-card-checklist me-2"></i>Enrollment</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/assessments')}><i className="bi bi-file-earmark-check me-2"></i>Assessments</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/finance/fees')}><i className="bi bi-cash-stack me-2"></i>Fees</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/finance/invoices')}><i className="bi bi-receipt me-2"></i>Invoices</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/admin/plagiarism/queue')}><i className="bi bi-shield-exclamation me-2"></i>Plagiarism</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/admin/kpis')}><i className="bi bi-bar-chart-line me-2"></i>KPIs</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/admin/audit-log')}><i className="bi bi-journal-text me-2"></i>Audit Log</button>
+                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/notifications')}><i className="bi bi-bell me-2"></i>Send Notification</button>
+                            </div>
+=======
                 </div>
                 <div className="col-lg-4" style={{ animation: 'fsu 0.5s ease 0.6s both' }}>
                     <div style={{ ...S.card, height: '100%' }}>
@@ -264,6 +323,7 @@ export default function ITAdminDashboard() {
                             <ProgressBar label="Tickets resolved" pct={tPct} color="#185FA5" />
                             <ProgressBar label="MFA adoption" pct={stats.users ? Math.round(((stats.users - 3) / stats.users) * 100) : 0} color="#3C3489" />
                             <ProgressBar label="System uptime" pct={99} color="#27500A" />
+>>>>>>> UI/ashish
                         </div>
                     </div>
                 </div>
@@ -275,6 +335,37 @@ export default function ITAdminDashboard() {
                         <span style={S.ht}><i className="bi bi-headset"></i>Open tickets <span style={{ fontSize: 11, background: '#FCEBEB', color: '#A32D2D', padding: '2px 10px', borderRadius: 8, fontWeight: 600, marginLeft: 4 }}>{openTickets.length}</span></span>
                         <span style={S.va} onClick={() => navigate('/tickets')}>View all <i className="bi bi-arrow-right"></i></span>
                     </div>
+<<<<<<< HEAD
+                    <div className="table-responsive">
+                        <table className="table table-hover align-middle mb-0">
+                            <thead className="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Full Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {recentUsers.map(u => (
+                                    <tr key={u.userID} style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/users/${u.userID}`)}>
+                                        <td><code>{u.userID}</code></td>
+                                        <td className="fw-bold">{u.username}</td>
+                                        <td>{u.fullName}</td>
+                                        <td>{u.email}</td>
+                                        <td>
+                                            <span className="badge bg-secondary">{u.role}</span>
+                                        </td>
+                                        <td><StatusBadge status={u.status} /></td>
+                                        <td>
+                                            <small className="text-muted">
+                                                {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
+                                            </small>
+                                        </td>
+=======
                     <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
                             <thead><tr style={{ background: 'linear-gradient(90deg, #1a3c6e, #2a5a9e)', color: 'white' }}>
@@ -294,6 +385,7 @@ export default function ITAdminDashboard() {
                                         <td style={{ padding: '10px 16px', color: '#888' }}>{t.createdByUsername || '\u2014'}</td>
                                         <td style={{ padding: '10px 16px' }}><span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 8, background: pB, color: pC }}>{t.priority}</span></td>
                                         <td style={{ padding: '10px 16px' }}><span style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: t.status === 'Open' ? '#EF9F27' : '#185FA5' }}></span>{t.status}</span></td>
+>>>>>>> UI/ashish
                                     </tr>
                                 );
                             })}</tbody>

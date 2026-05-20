@@ -7,7 +7,7 @@ import StatusBadge from '../../components/StatusBadge';
 import ConfirmDialog from '../../components/ConfirmDialog';
 
 export default function TranscriptsPage() {
-    const [studentId, setStudentId] = useState(() => localStorage.getItem('lastStudentId') || '');
+    const [studentId, setStudentId] = useState(() => sessionStorage.getItem('transcripts_lastStudentId') || '');
     const [transcripts, setTranscripts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -39,7 +39,7 @@ export default function TranscriptsPage() {
             setError(null);
             const data = await transcriptService.getByStudent(studentId);
             setTranscripts(data || []);
-            localStorage.setItem('lastStudentId', studentId);
+            sessionStorage.setItem('transcripts_lastStudentId', studentId);
         } catch (err) {
             setError(err);
             setTranscripts([]);

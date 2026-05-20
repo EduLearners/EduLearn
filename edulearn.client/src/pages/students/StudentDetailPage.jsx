@@ -289,19 +289,19 @@ export default function StudentDetailPage() {
                         <div className="d-flex gap-2 flex-wrap">
                             <button
                                 className="btn btn-outline-primary"
-                                onClick={() => navigate(`/transcripts?studentId=${student.studentID}`)}
+                                onClick={() => navigate(`/student/transcript?studentId=${student.studentID}`)}
                             >
                                 <i className="bi bi-file-earmark-text me-1"></i>View Transcripts
                             </button>
                             <button
                                 className="btn btn-outline-primary"
-                                onClick={() => navigate(`/enrollment?studentId=${student.studentID}`)}
+                                onClick={() => navigate(`/registrar/enrollment?studentId=${student.studentID}`)}
                             >
                                 <i className="bi bi-card-checklist me-1"></i>Enrollments
                             </button>
                             <button
                                 className="btn btn-outline-primary"
-                                onClick={() => navigate(`/timetable?studentId=${student.studentID}`)}
+                                onClick={() => navigate(`/student/timetable?studentId=${student.studentID}`)}
                             >
                                 <i className="bi bi-calendar3 me-1"></i>Timetable
                             </button>

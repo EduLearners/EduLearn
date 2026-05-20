@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { authService } from '../services/authService';
 
 // ── Brand tokens (refined navy + gold combination) ───────────────
 const C = {
@@ -141,7 +140,6 @@ const STUDENT_FEATURES = [
     },
 ];
 
-// Each bullet has its own contextual Bootstrap icon (matches what it describes)
 const HERO_BULLETS = [
     { icon: 'book', text: 'Browse & enroll in courses' },
     { icon: 'cloud-upload', text: 'Submit work and view grades' },
@@ -154,10 +152,11 @@ const HERO_BULLETS = [
 // ── Component ────────────────────────────────────────────────────
 export default function LandingPage() {
     const navigate = useNavigate();
-    const isAuth = authService.isAuthenticated();
 
+    // Always navigate to /login — never skip to dashboard from the landing page.
+    // Even if a JWT exists in localStorage, we force re-authentication so that
+    // credentials and MFA are always verified before accessing the system.
     const goToLogin = () => navigate('/login');
-    const goToDashboard = () => navigate('/dashboard');
 
     return (
         <div style={{ backgroundColor: C.cream, fontFamily: '-apple-system, "Segoe UI", Roboto, sans-serif', paddingTop: '64px' }}>
@@ -216,23 +215,13 @@ export default function LandingPage() {
                     </ul>
 
                     <div className="ms-auto d-flex gap-2">
-                        {isAuth ? (
-                            <button
-                                className="btn fw-bold px-4"
-                                style={{ backgroundColor: C.primary, color: 'white' }}
-                                onClick={goToDashboard}
-                            >
-                                Go to dashboard
-                            </button>
-                        ) : (
-                            <button
-                                className="btn fw-bold px-4"
-                                style={{ backgroundColor: C.primary, color: 'white' }}
-                                onClick={goToLogin}
-                            >
-                                <i className="bi bi-box-arrow-in-right me-2"></i>Sign in
-                            </button>
-                        )}
+                        <button
+                            className="btn fw-bold px-4"
+                            style={{ backgroundColor: C.primary, color: 'white' }}
+                            onClick={goToLogin}
+                        >
+                            <i className="bi bi-box-arrow-in-right me-2"></i>Sign in
+                        </button>
                     </div>
                 </div>
             </nav>
@@ -284,10 +273,10 @@ export default function LandingPage() {
                                 <button
                                     className="btn btn-lg fw-bold"
                                     style={{ backgroundColor: C.accent, color: C.primary, padding: '12px 32px' }}
-                                    onClick={isAuth ? goToDashboard : goToLogin}
+                                    onClick={goToLogin}
                                 >
                                     <i className="bi bi-box-arrow-in-right me-2"></i>
-                                    {isAuth ? 'Open dashboard' : 'Sign in'}
+                                    Sign in
                                     <i className="bi bi-arrow-right ms-2"></i>
                                 </button>
                                 <a
@@ -295,61 +284,39 @@ export default function LandingPage() {
                                     className="btn btn-lg"
                                     style={{ color: 'white', border: '1px solid rgba(255,255,255,0.35)', padding: '12px 28px' }}
                                 >
-                                    <i className="bi bi-arrow-down ms-1 me-2"></i>Explore platform
+                                    Explore features
                                 </a>
                             </div>
                         </div>
 
+<<<<<<< HEAD
+                        {/* Hero bullet list */}
+                        <div className="col-lg-5 d-none d-lg-block">
+=======
                         {/* Right-side info card */}
                         <div className="col-lg-5 lp-hero-card">
+>>>>>>> UI/ashish
                             <div
-                                className="p-4 rounded-3 h-100 d-flex flex-column"
-                                style={{
-                                    backgroundColor: 'rgba(255,255,255,0.06)',
-                                    border: '1px solid rgba(255,255,255,0.12)',
-                                    backdropFilter: 'blur(10px)',
-                                }}
+                                className="rounded-4 p-4"
+                                style={{ backgroundColor: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(6px)' }}
                             >
-                                <div
-                                    className="text-uppercase mb-4"
-                                    style={{
-                                        letterSpacing: '0.15em',
-                                        opacity: 0.85,
-                                        fontSize: 15,
-                                        fontWeight: 600,
-                                        color: C.accent,
-                                    }}
-                                >
-                                    Everything you need
+                                <div className="text-uppercase small mb-3" style={{ color: C.accent, letterSpacing: '0.15em' }}>
+                                    Everything in one place
                                 </div>
-                                <ul className="list-unstyled mb-0 flex-grow-1 d-flex flex-column justify-content-around">
-                                    {HERO_BULLETS.map((b, idx) => (
-                                        <li
-                                            key={b.text}
-                                            className="d-flex align-items-center gap-3 py-2"
-                                            style={{
-                                                fontSize: 18,
-                                                fontWeight: 400,
-                                                borderBottom: idx === HERO_BULLETS.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                                            }}
-                                        >
+                                <ul className="list-unstyled mb-0">
+                                    {HERO_BULLETS.map((b, i) => (
+                                        <li key={i} className="d-flex align-items-center gap-3 mb-3">
                                             <span
                                                 style={{
-                                                    width: 36,
-                                                    height: 36,
-                                                    borderRadius: 8,
-                                                    backgroundColor: 'rgba(226, 169, 75, 0.18)',
-                                                    color: C.accent,
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
+                                                    width: 36, height: 36, borderRadius: 8,
+                                                    backgroundColor: 'rgba(226,169,75,0.15)',
+                                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                                     flexShrink: 0,
-                                                    fontSize: 18,
                                                 }}
                                             >
-                                                <i className={`bi bi-${b.icon}`}></i>
+                                                <i className={`bi bi-${b.icon}`} style={{ color: C.accent }}></i>
                                             </span>
-                                            <span>{b.text}</span>
+                                            <span style={{ fontSize: 15, opacity: 0.9 }}>{b.text}</span>
                                         </li>
                                     ))}
                                 </ul>
@@ -359,68 +326,54 @@ export default function LandingPage() {
                 </div>
             </section>
 
+<<<<<<< HEAD
+            {/* ── ABOUT ──────────────────────────────────────────── */}
+            <section id="about" style={{ backgroundColor: C.sand, padding: '80px 0' }}>
+                <div className="container">
+                    <div className="row align-items-center g-5">
+=======
             {/* ── 01 ABOUT ────────────────────────────────────────── */}
             <section id="about" className="py-5 lp-section" style={{ paddingTop: '80px !important', paddingBottom: '80px !important' }}>
                 <div className="container py-5">
                     <div className="row g-5">
+>>>>>>> UI/ashish
                         <div className="col-lg-6">
-                            <div className="text-uppercase small mb-2" style={{ color: C.textMuted, letterSpacing: '0.15em' }}>
-                                01 — About EduLearn
+                            <div className="text-uppercase small mb-2" style={{ color: C.accent, letterSpacing: '0.15em' }}>
+                                About EduLearn
                             </div>
-                            <h2 style={{ fontFamily: serifFont, fontSize: '2.5rem', color: C.primary, fontWeight: 600, lineHeight: 1.15 }}>
-                                Your academic life,<br />all in one place.
+                            <h2
+                                style={{ fontFamily: serifFont, fontSize: 'clamp(2rem, 3.5vw, 3rem)', fontWeight: 600, color: C.primary, lineHeight: 1.2, marginBottom: 20 }}
+                            >
+                                Built for every corner of campus life.
                             </h2>
-                            <p className="mt-3" style={{ fontSize: 17, color: C.textMuted, lineHeight: 1.6 }}>
-                                EduLearn is a university management platform built for students,
-                                faculty, and staff. It replaces the fragmented portals and email
-                                chains that slow down every institution with a single, calm, trusted system.
+                            <p style={{ color: C.textMuted, fontSize: 16, lineHeight: 1.8, marginBottom: 16 }}>
+                                EduLearn is a university management system designed to eliminate the friction
+                                between students, faculty, and administration. No more scattered spreadsheets,
+                                lost emails, or manual processes.
                             </p>
-                            <p style={{ fontSize: 17, color: C.textMuted, lineHeight: 1.6 }}>
-                                Whether you're a student checking a deadline, an instructor posting
-                                grades, or a registrar issuing a transcript — everything happens here,
-                                securely, with a full record of every action.
+                            <p style={{ color: C.textMuted, fontSize: 16, lineHeight: 1.8 }}>
+                                From the moment a student applies, through graduation and beyond, every record,
+                                grade, payment, and document lives in one secure, auditable place.
                             </p>
-                            <div className="d-flex gap-2 mt-4">
-                                <button
-                                    className="btn fw-bold"
-                                    style={{ backgroundColor: C.primary, color: 'white', padding: '10px 24px' }}
-                                    onClick={isAuth ? goToDashboard : goToLogin}
-                                >
-                                    Get started
-                                </button>
-                                <a
-                                    href="#features"
-                                    className="btn"
-                                    style={{ color: C.primary, border: `1px solid ${C.border}`, padding: '10px 24px' }}
-                                >
-                                    See what's included
-                                </a>
-                            </div>
                         </div>
-
-                        {/* Four feature pills */}
                         <div className="col-lg-6">
                             <div className="row g-3">
                                 {[
-                                    { icon: 'shield-lock', title: 'Secure login', desc: 'Multi-factor authentication keeps student and staff accounts safe.' },
-                                    { icon: 'clipboard-check', title: 'Complete history', desc: 'Every grade, payment, and transcript action is permanently recorded.' },
-                                    { icon: 'file-earmark-pdf', title: 'Official documents', desc: 'Download verified PDF transcripts instantly, whenever you need them.' },
-                                    { icon: 'life-preserver', title: 'Always supported', desc: 'Raise a support ticket any time and track its progress to resolution.' },
-                                ].map(item => (
-                                    <div key={item.title} className="col-md-6">
-                                        <div className="p-3 rounded-3 h-100" style={{ backgroundColor: C.sand }}>
-                                            <div
-                                                style={{
-                                                    width: 36, height: 36, borderRadius: 8,
-                                                    backgroundColor: 'white',
-                                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                                    marginBottom: 10,
-                                                }}
-                                            >
-                                                <i className={`bi bi-${item.icon}`} style={{ color: C.accent }}></i>
+                                    { num: '7', label: 'User roles', sub: 'from student to auditor' },
+                                    { num: '29', label: 'API endpoints', sub: 'covering every workflow' },
+                                    { num: '100%', label: 'Audit-logged', sub: 'every action recorded' },
+                                    { num: 'MFA', label: 'Protected', sub: 'for all privileged roles' },
+                                ].map((s, i) => (
+                                    <div key={i} className="col-6">
+                                        <div
+                                            className="rounded-3 p-4 text-center"
+                                            style={{ backgroundColor: C.sandLight, border: `1px solid ${C.border}` }}
+                                        >
+                                            <div style={{ fontFamily: serifFont, fontSize: '2.2rem', fontWeight: 700, color: C.primary }}>
+                                                {s.num}
                                             </div>
-                                            <div className="fw-bold" style={{ color: C.primary }}>{item.title}</div>
-                                            <small style={{ color: C.textMuted }}>{item.desc}</small>
+                                            <div className="fw-bold" style={{ color: C.primary, fontSize: 14 }}>{s.label}</div>
+                                            <div style={{ color: C.textMuted, fontSize: 12 }}>{s.sub}</div>
                                         </div>
                                     </div>
                                 ))}
@@ -430,43 +383,46 @@ export default function LandingPage() {
                 </div>
             </section>
 
+<<<<<<< HEAD
+            {/* ── FEATURES ───────────────────────────────────────── */}
+            <section id="features" style={{ backgroundColor: C.cream, padding: '80px 0' }}>
+=======
             {/* ── 02 FEATURES ─────────────────────────────────────── */}
             <section id="features" className="lp-section" style={{ backgroundColor: C.sand, padding: '80px 0' }}>
+>>>>>>> UI/ashish
                 <div className="container">
                     <div className="text-center mb-5">
-                        <div className="text-uppercase small mb-2" style={{ color: C.textMuted, letterSpacing: '0.15em' }}>
-                            02 — What we offer
+                        <div className="text-uppercase small mb-2" style={{ color: C.accent, letterSpacing: '0.15em' }}>
+                            What we offer
                         </div>
-                        <h2 style={{ fontFamily: serifFont, fontSize: '2.5rem', color: C.primary, fontWeight: 600 }}>
-                            Everything your university needs
+                        <h2 style={{ fontFamily: serifFont, fontSize: 'clamp(2rem, 3.5vw, 3rem)', fontWeight: 600, color: C.primary, lineHeight: 1.2 }}>
+                            Everything your institution needs.
                         </h2>
-                        <p className="mt-2" style={{ color: C.textMuted, maxWidth: 600, margin: '0 auto', fontSize: 17 }}>
-                            Nine tightly integrated areas covering every aspect of university life —
-                            all connected, all consistent, all in one login.
+                        <p className="mt-3 mx-auto" style={{ maxWidth: 600, color: C.textMuted, fontSize: 16, lineHeight: 1.8 }}>
+                            Nine integrated modules, one coherent system. Built by people who understand
+                            how universities actually work.
                         </p>
                     </div>
 
                     <div className="row g-3">
-                        {FEATURES.map(f => (
-                            <div key={f.title} className="col-md-6 col-lg-4">
+                        {FEATURES.map((f, i) => (
+                            <div key={i} className="col-md-6 col-lg-4">
                                 <div
-                                    className="p-4 rounded-3 h-100"
-                                    style={{ backgroundColor: 'white', border: `1px solid ${C.border}` }}
+                                    className="rounded-3 p-4 h-100"
+                                    style={{ backgroundColor: f.tint, border: `1px solid ${C.border}` }}
                                 >
                                     <div
+                                        className="mb-3"
                                         style={{
                                             width: 44, height: 44, borderRadius: 10,
-                                            backgroundColor: f.tint,
+                                            backgroundColor: C.cream,
                                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                            marginBottom: 16,
                                         }}
                                     >
-                                        <i className={`bi bi-${f.icon}`} style={{ color: C.primary, fontSize: '1.25rem' }}></i>
+                                        <i className={`bi bi-${f.icon}`} style={{ fontSize: 20, color: C.primary }}></i>
                                     </div>
-                                    <h5 className="fw-bold" style={{ color: C.primary, fontSize: '1.05rem' }}>{f.title}</h5>
-                                    <p className="mb-0" style={{ color: C.textMuted, fontSize: 14, lineHeight: 1.6 }}>
-                                        {f.description}
-                                    </p>
+                                    <h5 className="fw-bold mb-2" style={{ color: C.primary }}>{f.title}</h5>
+                                    <p className="mb-0" style={{ color: C.textMuted, fontSize: 14, lineHeight: 1.7 }}>{f.description}</p>
                                 </div>
                             </div>
                         ))}
@@ -474,48 +430,54 @@ export default function LandingPage() {
                 </div>
             </section>
 
+<<<<<<< HEAD
+            {/* ── PERSONAS ───────────────────────────────────────── */}
+            <section id="personas" style={{ backgroundColor: C.sand, padding: '80px 0' }}>
+=======
             {/* ── 03 FOR YOUR ROLE ────────────────────────────────── */}
             <section id="personas" className="lp-section" style={{ padding: '80px 0' }}>
+>>>>>>> UI/ashish
                 <div className="container">
-                    <div className="row mb-5">
-                        <div className="col-lg-7">
-                            <div className="text-uppercase small mb-2" style={{ color: C.textMuted, letterSpacing: '0.15em' }}>
-                                03 — For your role
-                            </div>
-                            <h2 style={{ fontFamily: serifFont, fontSize: '2.5rem', color: C.primary, fontWeight: 600, lineHeight: 1.15 }}>
-                                Built for everyone<br />in your institution
-                            </h2>
+                    <div className="text-center mb-5">
+                        <div className="text-uppercase small mb-2" style={{ color: C.accent, letterSpacing: '0.15em' }}>
+                            For your role
                         </div>
-                        <div className="col-lg-5 d-flex align-items-end">
-                            <p style={{ color: C.textMuted, fontSize: 17, lineHeight: 1.6 }}>
-                                From students to senior administrators, every role gets a
-                                workspace designed around what they actually do each day.
-                            </p>
-                        </div>
+                        <h2 style={{ fontFamily: serifFont, fontSize: 'clamp(2rem, 3.5vw, 3rem)', fontWeight: 600, color: C.primary, lineHeight: 1.2 }}>
+                            Designed around how you work.
+                        </h2>
                     </div>
 
-                    <div className="row g-3">
-                        {PERSONAS.map(p => (
-                            <div key={p.title} className="col-md-6 col-lg-3">
+                    <div className="row g-4">
+                        {PERSONAS.map((p, i) => (
+                            <div key={i} className="col-md-6 col-lg-3">
                                 <div
-                                    className="p-4 rounded-3 h-100"
-                                    style={{ backgroundColor: 'white', border: `1px solid ${C.border}` }}
+                                    className="rounded-3 p-4 h-100 d-flex flex-column"
+                                    style={{ backgroundColor: p.tint, border: `1px solid ${C.border}` }}
                                 >
                                     <div
+                                        className="mb-3"
                                         style={{
-                                            width: 44, height: 44, borderRadius: 10,
-                                            backgroundColor: p.tint,
+                                            width: 52, height: 52, borderRadius: 12,
+                                            backgroundColor: C.cream,
                                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                            marginBottom: 16,
                                         }}
                                     >
-                                        <i className={`bi bi-${p.icon}`} style={{ color: C.primary, fontSize: '1.25rem' }}></i>
+                                        <i className={`bi bi-${p.icon}`} style={{ fontSize: 24, color: C.primary }}></i>
                                     </div>
-                                    <h5 className="fw-bold mb-1" style={{ color: C.primary, fontSize: '1.05rem' }}>{p.title}</h5>
-                                    <div className="small mb-3" style={{ color: C.accent, fontWeight: 600 }}>{p.subtitle}</div>
-                                    <p className="mb-0" style={{ color: C.textMuted, fontSize: 14, lineHeight: 1.6 }}>
+                                    <div className="mb-1">
+                                        <div className="fw-bold" style={{ color: C.primary, fontSize: 16 }}>{p.title}</div>
+                                        <div style={{ color: C.accent, fontSize: 12, fontWeight: 500 }}>{p.subtitle}</div>
+                                    </div>
+                                    <p className="mb-3 mt-2 flex-grow-1" style={{ color: C.textMuted, fontSize: 14, lineHeight: 1.7 }}>
                                         {p.description}
                                     </p>
+                                    <button
+                                        className="btn btn-sm fw-bold"
+                                        style={{ backgroundColor: C.primary, color: 'white' }}
+                                        onClick={goToLogin}
+                                    >
+                                        Sign in <i className="bi bi-arrow-right ms-1"></i>
+                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -523,46 +485,64 @@ export default function LandingPage() {
                 </div>
             </section>
 
+<<<<<<< HEAD
+            {/* ── STUDENT FEATURES ───────────────────────────────── */}
+            <section id="students" style={{ backgroundColor: C.cream, padding: '80px 0' }}>
+=======
             {/* ── 04 FOR STUDENTS ─────────────────────────────────── */}
             <section id="students" className="lp-section" style={{ backgroundColor: C.sand, padding: '80px 0' }}>
+>>>>>>> UI/ashish
                 <div className="container">
-                    <div className="text-center mb-5">
-                        <div className="text-uppercase small mb-2" style={{ color: C.textMuted, letterSpacing: '0.15em' }}>
-                            04 — For students
-                        </div>
-                        <h2 style={{ fontFamily: serifFont, fontSize: '2.5rem', color: C.primary, fontWeight: 600, lineHeight: 1.15 }}>
-                            Everything you need,<br />from day one
-                        </h2>
-                        <p className="mt-2" style={{ color: C.textMuted, maxWidth: 600, margin: '0 auto', fontSize: 17 }}>
-                            No more chasing emails or switching between five different portals.
-                            Your whole student life is here.
-                        </p>
-                    </div>
-
-                    <div className="row g-3">
-                        {STUDENT_FEATURES.map(f => (
-                            <div key={f.title} className="col-md-6 col-lg-4">
-                                <div
-                                    className="p-3 rounded-3 d-flex gap-3 align-items-start h-100"
-                                    style={{ backgroundColor: 'white' }}
-                                >
-                                    <div
-                                        style={{
-                                            width: 36, height: 36, borderRadius: 8,
-                                            backgroundColor: C.sand,
-                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                            flexShrink: 0,
-                                        }}
-                                    >
-                                        <i className={`bi bi-${f.icon}`} style={{ color: C.accent }}></i>
-                                    </div>
-                                    <div>
-                                        <div className="fw-bold" style={{ color: C.primary }}>{f.title}</div>
-                                        <small style={{ color: C.textMuted, lineHeight: 1.5 }}>{f.description}</small>
-                                    </div>
-                                </div>
+                    <div className="row align-items-start g-5">
+                        <div className="col-lg-5">
+                            <div className="text-uppercase small mb-2" style={{ color: C.accent, letterSpacing: '0.15em' }}>
+                                For students
                             </div>
-                        ))}
+                            <h2 style={{ fontFamily: serifFont, fontSize: 'clamp(2rem, 3.5vw, 3rem)', fontWeight: 600, color: C.primary, lineHeight: 1.2, marginBottom: 20 }}>
+                                Your academic life, all in one place.
+                            </h2>
+                            <p style={{ color: C.textMuted, fontSize: 16, lineHeight: 1.8, marginBottom: 32 }}>
+                                No app-switching, no chasing emails. Everything you need to stay
+                                on top of your studies, fees, and progress — right here.
+                            </p>
+                            <button
+                                className="btn btn-lg fw-bold"
+                                style={{ backgroundColor: C.accent, color: C.primary, padding: '12px 32px' }}
+                                onClick={goToLogin}
+                            >
+                                <i className="bi bi-box-arrow-in-right me-2"></i>Sign in
+                                <i className="bi bi-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                        <div className="col-lg-7">
+                            <div className="row g-3">
+                                {STUDENT_FEATURES.map((f, i) => (
+                                    <div key={i} className="col-md-6">
+                                        <div
+                                            className="d-flex align-items-start gap-3 rounded-3 p-3"
+                                            style={{
+                                                backgroundColor: C.sandLight,
+                                                border: `1px solid ${C.border}`,
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                                                    backgroundColor: C.sand,
+                                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                }}
+                                            >
+                                                <i className={`bi bi-${f.icon}`} style={{ color: C.accent }}></i>
+                                            </div>
+                                            <div>
+                                                <div className="fw-bold" style={{ color: C.primary }}>{f.title}</div>
+                                                <small style={{ color: C.textMuted, lineHeight: 1.5 }}>{f.description}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -616,10 +596,10 @@ export default function LandingPage() {
                                     <button
                                         className="btn btn-lg fw-bold"
                                         style={{ backgroundColor: C.accent, color: C.primary, padding: '12px 32px' }}
-                                        onClick={isAuth ? goToDashboard : goToLogin}
+                                        onClick={goToLogin}
                                     >
                                         <i className="bi bi-box-arrow-in-right me-2"></i>
-                                        {isAuth ? 'Open dashboard' : 'Sign in to continue'}
+                                        Sign in to continue
                                         <i className="bi bi-arrow-right ms-2"></i>
                                     </button>
                                 </div>

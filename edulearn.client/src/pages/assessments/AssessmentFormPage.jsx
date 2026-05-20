@@ -17,6 +17,7 @@ export default function AssessmentFormPage() {
         sectionID: null,
         title: '',
         type: AssessmentType.ASSIGNMENT,
+        status: 'Draft',
         dueAt: '',
         maxScore: 100,
         gradingRubricJSON: '',
@@ -42,6 +43,7 @@ export default function AssessmentFormPage() {
                 sectionID: data.sectionID || null,
                 title: data.title || '',
                 type: data.type || AssessmentType.ASSIGNMENT,
+                status: data.status || 'Draft',
                 dueAt: data.dueAt
                     ? new Date(data.dueAt).toISOString().slice(0, 16)
                     : '',
@@ -66,12 +68,12 @@ export default function AssessmentFormPage() {
         setSuccess('');
         setLoading(true);
 
-        // createdByFK intentionally omitted — backend reads it from JWT
         const payload = {
             courseID: Number(form.courseID),
             sectionID: form.sectionID ? Number(form.sectionID) : null,
             title: form.title,
             type: form.type,
+            status: form.status,
             dueAt: form.dueAt ? new Date(form.dueAt).toISOString() : null,
             maxScore: Number(form.maxScore),
             gradingRubricJSON: form.gradingRubricJSON || null,
@@ -144,7 +146,7 @@ export default function AssessmentFormPage() {
                         <div className="row g-3">
 
                             {/* Title */}
-                            <div className="col-md-8">
+                            <div className="col-md-6">
                                 <label className="form-label fw-bold">
                                     Title <span className="text-danger">*</span>
                                 </label>
@@ -161,7 +163,7 @@ export default function AssessmentFormPage() {
                             </div>
 
                             {/* Type */}
-                            <div className="col-md-4">
+                            <div className="col-md-3">
                                 <label className="form-label fw-bold">
                                     Type <span className="text-danger">*</span>
                                 </label>
@@ -176,6 +178,31 @@ export default function AssessmentFormPage() {
                                         <option key={t} value={t}>{t}</option>
                                     ))}
                                 </select>
+                            </div>
+
+                            {/* Status */}
+                            <div className="col-md-3">
+                                <label className="form-label fw-bold">
+                                    Status <span className="text-danger">*</span>
+                                </label>
+                                <select
+                                    className="form-select"
+                                    name="status"
+                                    value={form.status}
+                                    onChange={handleChange}
+                                    required
+                                >
+                                    <option value="Draft">Draft</option>
+                                    <option value="Published">Published</option>
+                                    <option value="Closed">Closed</option>
+                                    <option value="Archived">Archived</option>
+                                </select>
+                                <div className="form-text">
+                                    {form.status === 'Draft'     && 'Not visible to students yet.'}
+                                    {form.status === 'Published' && 'Students can view and submit.'}
+                                    {form.status === 'Closed'    && 'No new submissions accepted.'}
+                                    {form.status === 'Archived'  && 'Hidden from active views.'}
+                                </div>
                             </div>
 
                             {/* Course ID */}

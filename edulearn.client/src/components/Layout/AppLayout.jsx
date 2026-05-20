@@ -8,6 +8,14 @@ export default function AppLayout() {
     const location = useLocation();
 
     return (
+<<<<<<< HEAD
+        <div className="d-flex flex-column min-vh-100">
+            <Navbar />
+            <div className="d-flex flex-grow-1">
+                <Sidebar />
+                <main className="flex-grow-1 p-4" style={{ minWidth: 0, overflowX: 'auto' }}>
+                    <Outlet />
+=======
         <div>
             <Navbar sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
             <div className="d-flex" style={{ marginTop: '56px', height: 'calc(100vh - 56px)' }}>
@@ -16,6 +24,7 @@ export default function AppLayout() {
                     <div key={location.pathname} className="page-transition">
                         <Outlet />
                     </div>
+>>>>>>> UI/ashish
                 </main>
             </div>
         </div>

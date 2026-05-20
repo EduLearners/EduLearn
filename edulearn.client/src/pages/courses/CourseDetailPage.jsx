@@ -15,8 +15,8 @@ export default function CourseDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Backend CourseManagerPolicy: Instructor + ITAdmin only (no DeptAdmin)
-    const canManage = ['Instructor', 'ITAdmin'].includes(role);
+    // Backend CourseManagerPolicy: Instructor + DeptAdmin + ITAdmin
+    const canManage = ['Instructor', 'DeptAdmin', 'ITAdmin'].includes(role);
 
     useEffect(() => {
         loadCourse();
@@ -78,6 +78,8 @@ export default function CourseDetailPage() {
                             <div className="row g-4">
                                 <div className="col-md-6">
                                     <dl className="row mb-0">
+                                        <dt className="col-sm-5 text-muted">Course ID</dt>
+                                        <dd className="col-sm-7"><code>#{course.courseID}</code></dd>
                                         <dt className="col-sm-5 text-muted">Course Code</dt>
                                         <dd className="col-sm-7"><code>{course.code}</code></dd>
                                         <dt className="col-sm-5 text-muted">Title</dt>

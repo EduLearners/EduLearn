@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using EduLearn.API.Models.Enums;
 
 namespace EduLearn.API.DTOs
@@ -21,6 +21,10 @@ namespace EduLearn.API.DTOs
         [Required]
         public AssessmentType Type { get; set; }
 
+        // Initial status when creating — defaults to Draft if not supplied.
+        // Instructor can set Published directly to skip the separate Publish step.
+        public AssessmentStatus Status { get; set; } = AssessmentStatus.Draft;
+
         // Submission deadline (nullable — some assessments may not have a deadline)
         public DateTime? DueAt { get; set; }
 
@@ -33,7 +37,6 @@ namespace EduLearn.API.DTOs
         public string? GradingRubricJSON { get; set; }
 
         // The instructor's UserID who is creating this assessment
-        [Required]
         public int CreatedByFK { get; set; }
     }
 }

@@ -160,7 +160,7 @@ export default function RegistrarDashboard() {
                                     Student record at{' '}
                                     <button
                                         className="btn btn-link btn-sm p-0"
-                                        onClick={() => navigate('/students/new')}
+                                        onClick={() => navigate('/registrar/students/new')}
                                     >
                                         New Student →
                                     </button>
@@ -178,7 +178,7 @@ export default function RegistrarDashboard() {
                     <div
                         className="card shadow-sm h-100 border-0 bg-light"
                         style={{ cursor: 'pointer' }}
-                        onClick={() => navigate('/applicants')}
+                        onClick={() => navigate('/registrar/applicants')}
                     >
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Total Applicants</div>
@@ -193,7 +193,7 @@ export default function RegistrarDashboard() {
                     <div
                         className="card shadow-sm h-100 border-0 bg-light"
                         style={{ cursor: 'pointer' }}
-                        onClick={() => navigate('/students')}
+                        onClick={() => navigate('/registrar/students')}
                     >
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Total Students</div>
@@ -221,7 +221,7 @@ export default function RegistrarDashboard() {
                     <div
                         className="card shadow-sm h-100 border-0 bg-light"
                         style={{ cursor: 'pointer' }}
-                        onClick={() => navigate('/enrollment')}
+                        onClick={() => navigate('/registrar/enrollment')}
                     >
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Enrollments</div>
@@ -234,7 +234,7 @@ export default function RegistrarDashboard() {
                     <div
                         className="card shadow-sm h-100 border-0 bg-light"
                         style={{ cursor: 'pointer' }}
-                        onClick={() => navigate('/transcripts')}
+                        onClick={() => navigate('/registrar/transcripts/issue')}
                     >
                         <div className="card-body">
                             <div className="text-muted small text-uppercase mb-1">Transcripts</div>
@@ -267,7 +267,7 @@ export default function RegistrarDashboard() {
                                         key={a.applicantID}
                                         className="list-group-item list-group-item-action"
                                         style={{ cursor: 'pointer' }}
-                                        onClick={() => navigate(`/applicants/${a.applicantID}`)}
+                                        onClick={() => navigate(`/registrar/applicants/${a.applicantID}`)}
                                     >
                                         <div className="d-flex align-items-center justify-content-between">
                                             <div>
@@ -312,7 +312,7 @@ export default function RegistrarDashboard() {
                                 <hr className="my-1" />
                                 <button
                                     className="btn btn-outline-primary btn-sm text-start"
-                                    onClick={() => navigate('/applicants/new')}
+                                    onClick={() => navigate('/registrar/applicants/new')}
                                 >
                                     <i className="bi bi-person-plus me-2"></i>New Applicant
                                 </button>
@@ -342,7 +342,7 @@ export default function RegistrarDashboard() {
                                 </button>
                                 <button
                                     className="btn btn-outline-primary btn-sm text-start"
-                                    onClick={() => navigate('/plagiarism')}
+                                    onClick={() => navigate('/admin/plagiarism/queue')}
                                 >
                                     <i className="bi bi-shield-exclamation me-2"></i>Plagiarism
                                 </button>

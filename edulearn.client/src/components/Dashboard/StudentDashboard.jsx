@@ -280,6 +280,23 @@ export default function StudentDashboard() {
                 </div>
             </div>
 
+<<<<<<< HEAD
+            <div className="card shadow-sm">
+                <div className="card-header bg-light"><strong><i className="bi bi-lightning me-2"></i>Quick Actions</strong></div>
+                <div className="card-body">
+                    <div className="d-flex flex-wrap gap-2">
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/registrar/enrollment')}><i className="bi bi-card-checklist me-2"></i>Enroll in Section</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/student/timetable')}><i className="bi bi-calendar3 me-2"></i>My Timetable</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/assessments')}><i className="bi bi-file-check me-2"></i>My Assessments</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/submissions')}><i className="bi bi-cloud-upload me-2"></i>My Submissions</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/contents')}><i className="bi bi-collection-play me-2"></i>Course Contents</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/syllabi')}><i className="bi bi-file-earmark-ruled me-2"></i>Syllabi</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/discussions')}><i className="bi bi-chat-square-text me-2"></i>Discussions</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/student/transcript')}><i className="bi bi-file-earmark-text me-2"></i>My Transcripts</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/finance/invoices')}><i className="bi bi-receipt me-2"></i>My Invoices</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/notifications')}><i className="bi bi-bell me-2"></i>Notifications</button>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/tickets')}><i className="bi bi-headset me-2"></i>Support Ticket</button>
+=======
             {/* Row 3: Notifications + Academic Progress */}
             <div className="row g-3 mb-4">
                 {/* Notifications */}
@@ -364,6 +381,7 @@ export default function StudentDashboard() {
                                 ))}
                             </div>
                         </div>
+>>>>>>> UI/ashish
                     </div>
                 </div>
             </div>

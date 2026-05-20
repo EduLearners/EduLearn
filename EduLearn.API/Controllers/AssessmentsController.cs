@@ -17,7 +17,6 @@ public class AssessmentsController : ControllerBase
     private readonly ICourseRepository _courseRepository;
     private readonly IUserRepository _userRepository;
     private readonly ISectionRepository _sectionRepository;
-    
 
     public AssessmentsController(
         IAssessmentRepository assessmentRepository,
@@ -34,16 +33,12 @@ public class AssessmentsController : ControllerBase
     /// <summary>
     /// Create a new assessment for a course. Instructor and ITAdmin only.
     /// Validates that the target course and optional section exist before saving.
+    /// Status defaults to Draft if not supplied; instructor can pass Published to skip the separate Publish step.
     /// </summary>
-
-  
-
-
     [HttpPost]
     [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<AssessmentResponseDto>> CreateAssessment(CreateAssessmentDto dto)
     {
-       
         var course = await _courseRepository.GetByIdAsync(dto.CourseID);
 
         if (course is null)
@@ -57,7 +52,6 @@ public class AssessmentsController : ControllerBase
                 return BadRequest(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
         }
 
-        
         var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? throw new InvalidOperationException("NameIdentifier claim missing"));
         var creator = await _userRepository.GetByIdAsync(callerId);
@@ -65,23 +59,21 @@ public class AssessmentsController : ControllerBase
         if (creator is null)
             return BadRequest(new { error = "Creator user not found", code = "USER_NOT_FOUND" });
 
-       
         var assessment = new Assessment
         {
             CourseID = dto.CourseID,
             SectionID = dto.SectionID,
             Title = dto.Title,
             Type = dto.Type,
+            Status = dto.Status,   // honour the status chosen on the form (default: Draft)
             DueAt = dto.DueAt,
             MaxScore = dto.MaxScore,
             GradingRubricJSON = dto.GradingRubricJSON,
-            CreatedByFK = callerId   
+            CreatedByFK = callerId
         };
 
-        //SaveChange
         await _assessmentRepository.CreateAsync(assessment);
 
-       
         var response = new AssessmentResponseDto
         {
             AssessmentID = assessment.AssessmentID,
@@ -109,13 +101,11 @@ public class AssessmentsController : ControllerBase
     [HttpGet("course/{courseId}")]
     public async Task<ActionResult<List<AssessmentResponseDto>>> GetAssessmentsByCourse(int courseId)
     {
-        
         var courseExists = await _courseRepository.ExistsAsync(courseId);
 
         if (!courseExists)
             return NotFound(new { error = "Course not found", code = "COURSE_NOT_FOUND" });
 
-        
         var assessments = await _assessmentRepository.GetByCourseIdWithDetailsAsync(courseId);
 
         var response = assessments.Select(a => new AssessmentResponseDto
@@ -138,26 +128,23 @@ public class AssessmentsController : ControllerBase
         return Ok(response);
     }
 
-   
     /// <summary>
     /// Update an existing assessment. Instructor and ITAdmin only.
-    /// Only assessments in Draft status may be modified.
+    /// Draft and Published assessments may be modified. Closed/Archived are locked.
     /// </summary>
     [HttpPut("{id}")]
     [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<AssessmentResponseDto>> UpdateAssessment(int id, UpdateAssessmentDto dto)
     {
-        
         var assessment = await _assessmentRepository.GetByIdWithDetailsAsync(id);
 
         if (assessment is null)
             return NotFound(new { error = "Assessment not found", code = "ASSESSMENT_NOT_FOUND" });
 
-        
-        if (assessment.Status != AssessmentStatus.Draft)
-            return BadRequest(new { error = "Only Draft assessments can be updated", code = "ASSESSMENT_NOT_DRAFT" });
+        // Only block edits on Closed or Archived assessments
+        if (assessment.Status == AssessmentStatus.Closed || assessment.Status == AssessmentStatus.Archived)
+            return BadRequest(new { error = "Closed or Archived assessments cannot be updated", code = "ASSESSMENT_LOCKED" });
 
-        
         if (dto.SectionID.HasValue)
         {
             var sectionExists = await _sectionRepository.ExistsAsync(dto.SectionID.Value);
@@ -166,7 +153,6 @@ public class AssessmentsController : ControllerBase
                 return BadRequest(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
         }
 
-       
         assessment.SectionID = dto.SectionID;
         assessment.Title = dto.Title;
         assessment.Type = dto.Type;
@@ -174,7 +160,6 @@ public class AssessmentsController : ControllerBase
         assessment.MaxScore = dto.MaxScore;
         assessment.GradingRubricJSON = dto.GradingRubricJSON;
 
-        
         await _assessmentRepository.UpdateAsync(assessment);
 
         return Ok(new AssessmentResponseDto
@@ -195,7 +180,6 @@ public class AssessmentsController : ControllerBase
         });
     }
 
-    
     /// <summary>
     /// Transition an assessment through its status lifecycle. Instructor and ITAdmin only.
     /// Enforces valid transitions: Draft → Published → Closed → Archived.
@@ -204,13 +188,11 @@ public class AssessmentsController : ControllerBase
     [Authorize(Roles = "Instructor,ITAdmin")]
     public async Task<ActionResult<AssessmentResponseDto>> PublishAssessment(int id, UpdateAssessmentStatusDto dto)
     {
-        
         var assessment = await _assessmentRepository.GetByIdWithDetailsAsync(id);
 
         if (assessment is null)
             return NotFound(new { error = "Assessment not found", code = "ASSESSMENT_NOT_FOUND" });
 
-        
         var validTransition = (assessment.Status, dto.Status) switch
         {
             (AssessmentStatus.Draft, AssessmentStatus.Published) => true,
@@ -225,8 +207,8 @@ public class AssessmentsController : ControllerBase
                 error = $"Cannot transition from {assessment.Status} to {dto.Status}. Valid: Draft → Published → Closed → Archived",
                 code = "INVALID_STATUS_TRANSITION"
             });
-        assessment.Status = dto.Status;
 
+        assessment.Status = dto.Status;
         await _assessmentRepository.UpdateAsync(assessment);
 
         return Ok(new AssessmentResponseDto

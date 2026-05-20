@@ -1,4 +1,6 @@
-import { authService } from '../../services/authService';
+import { useSelector } from 'react-redux';
+import { selectRole }  from '../../store/authSlice';
+
 import StudentDashboard    from '../../components/Dashboard/StudentDashboard';
 import InstructorDashboard from '../../components/Dashboard/InstructorDashboard';
 import RegistrarDashboard  from '../../components/Dashboard/RegistrarDashboard';
@@ -8,7 +10,8 @@ import ITAdminDashboard    from '../../components/Dashboard/ITAdminDashboard';
 import AuditorDashboard    from '../../components/Dashboard/AuditorDashboard';
 
 export default function DashboardPage() {
-    const { role } = authService.getCurrentUser();
+    // Use Redux selector — reactive to login/logout, no stale reads
+    const role = useSelector(selectRole);
 
     const dashboards = {
         Student:    <StudentDashboard />,
