@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { roomService } from '../../services/roomService';
 import { authService } from '../../services/authService';
@@ -247,9 +248,7 @@ export default function RoomsPage() {
                 </div>
             )}
 
-            {/* Create Room Modal */}
-            {showModal && (
-                <>
+            {showModal && createPortal(<>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -388,8 +387,7 @@ export default function RoomsPage() {
                             </div>
                         </div>
                     </div>
-                </>
-            )}
+            </>, document.body)}
         </div>
     );
 }

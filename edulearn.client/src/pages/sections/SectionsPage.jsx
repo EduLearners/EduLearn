@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { sectionService } from '../../services/sectionService';
 import { courseService } from '../../services/courseService';
@@ -335,8 +336,7 @@ export default function SectionsPage() {
                 </div>
             )}
 
-            {showModal && (
-                <>
+            {showModal && createPortal(<>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -478,8 +478,7 @@ export default function SectionsPage() {
                             </div>
                         </div>
                     </div>
-                </>
-            )}
+            </>, document.body)}
         </div>
     );
 }
