@@ -9,6 +9,10 @@ export const sectionService = {
         const { data } = await axiosClient.get(`/sections/course/${courseId}/term/${term}`);
         return data;
     },
+    getByInstructor: async (instructorId) => {
+        const { data } = await axiosClient.get(`/sections/instructor/${instructorId}`);
+        return data;
+    },
     create: async (section) => {
         const { data } = await axiosClient.post('/sections', section);
         return data;

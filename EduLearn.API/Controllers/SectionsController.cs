@@ -207,6 +207,30 @@ public class SectionsController : ControllerBase
         return Ok(MapToDto(updated, course.Title, instructor.FullName));
     }
 
+    // GET /api/sections/instructor/{instructorId}
+    /// <summary>
+    /// Get all sections assigned to a specific instructor. All authenticated users.
+    /// </summary>
+    [HttpGet("instructor/{instructorId}")]
+    public async Task<ActionResult<IEnumerable<SectionResponseDto>>> GetByInstructor(
+        int instructorId, CancellationToken cancellationToken)
+    {
+        var instructor = await _userRepo.GetByIdAsync(instructorId);
+        if (instructor is null)
+            return NotFound(new { error = "Instructor not found", code = "INSTRUCTOR_NOT_FOUND" });
+
+        var sections = await _sectionRepo.GetByInstructorIdAsync(instructorId);
+
+        var result = new List<SectionResponseDto>();
+        foreach (var s in sections)
+        {
+            var course = await _courseRepo.GetByIdAsync(s.CourseID);
+            result.Add(MapToDto(s, course?.Title ?? string.Empty, instructor.FullName));
+        }
+
+        return Ok(result);
+    }
+
     private static SectionResponseDto MapToDto(
         Section s, string courseName, string instructorName) => new()
     {

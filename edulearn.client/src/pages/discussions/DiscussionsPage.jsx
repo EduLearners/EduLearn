@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { discussionService } from '../../services/discussionService';
 import { courseService } from '../../services/courseService';
+import { sectionService } from '../../services/sectionService';
+import { enrollmentService } from '../../services/enrollmentService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
+import axiosClient from '../../api/axiosClient';
 
 const DISCUSSION_STATUSES = ['Open', 'Closed', 'Pinned', 'Archived'];
 
 export default function DiscussionsPage() {
+    const [searchParams] = useSearchParams();
+    const presetCourseId = searchParams.get('courseId');
     const { role, userId } = authService.getCurrentUser();
 
     const [courses, setCourses] = useState([]);
@@ -25,15 +31,46 @@ export default function DiscussionsPage() {
     const [submitting, setSubmitting] = useState(false);
 
     const canModerate = ['Instructor', 'ITAdmin'].includes(role);
+    const isStudent = role === 'Student';
+    const isInstructor = role === 'Instructor';
 
+    useEffect(() => { loadCourses(); }, []);
+
+    // Auto-select course from URL param
     useEffect(() => {
-        loadCourses();
-    }, []);
+        if (presetCourseId && courses.length > 0) {
+            setSelectedCourse(presetCourseId);
+            loadDiscussions(presetCourseId);
+        }
+    }, [presetCourseId, courses]);;
 
     const loadCourses = async () => {
         try {
             setPageLoading(true);
-            const data = await courseService.getAll();
+            let data = [];
+
+            if (isInstructor && userId) {
+                // Instructor: only courses they teach
+                const mySections = await sectionService.getByInstructor(userId).catch(() => []);
+                const myCourseIds = [...new Set((mySections || []).map(s => s.courseID))];
+                const allCourses = await courseService.getAll().catch(() => []);
+                data = (allCourses || []).filter(c => myCourseIds.includes(c.courseID));
+            } else if (isStudent) {
+                // Student: only enrolled courses
+                const studentRecord = await axiosClient.get('/students/me').then(r => r.data).catch(() => null);
+                if (studentRecord?.studentID) {
+                    const enrollments = await enrollmentService.getByStudent(studentRecord.studentID).catch(() => []);
+                    const myCourseIds = [...new Set(
+                        (enrollments || []).filter(e => e.status === 'Enrolled').map(e => e.courseID).filter(Boolean)
+                    )];
+                    const allCourses = await courseService.getAll().catch(() => []);
+                    data = (allCourses || []).filter(c => myCourseIds.includes(c.courseID));
+                }
+            } else {
+                // Registrar / ITAdmin / DeptAdmin: all courses
+                data = await courseService.getAll().catch(() => []);
+            }
+
             setCourses(data || []);
         } catch (err) {
             setError(err);

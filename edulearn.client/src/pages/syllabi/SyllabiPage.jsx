@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
 import { syllabusService } from '../../services/syllabusService';
 import { courseService } from '../../services/courseService';
+import { sectionService } from '../../services/sectionService';
+import { enrollmentService } from '../../services/enrollmentService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
+import axiosClient from '../../api/axiosClient';
 
 export default function SyllabiPage() {
-    const { role } = authService.getCurrentUser();
+    const { role, userId } = authService.getCurrentUser();
+    const isInstructor = role === 'Instructor';
+    const isStudent = role === 'Student';
 
     const [courses, setCourses] = useState([]);
     const [selectedCourse, setSelectedCourse] = useState('');
@@ -38,8 +43,39 @@ export default function SyllabiPage() {
     const loadCourses = async () => {
         try {
             setPageLoading(true);
-            const data = await courseService.getAll();
-            setCourses(data || []);
+            if (isInstructor && userId) {
+                // Instructor: only their assigned courses
+                const sections = await sectionService.getByInstructor(userId).catch(() => []);
+                const seen = new Set();
+                const courses = [];
+                for (const s of (sections || [])) {
+                    if (!seen.has(s.courseID)) {
+                        seen.add(s.courseID);
+                        courses.push({ courseID: s.courseID, code: s.courseName?.split(' ')[0] || '', title: s.courseName || '' });
+                    }
+                }
+                setCourses(courses);
+            } else if (isStudent) {
+                // Student: only enrolled courses
+                const studentRecord = await axiosClient.get('/students/me').then(r => r.data).catch(() => null);
+                if (studentRecord?.studentID) {
+                    const enrollments = await enrollmentService.getByStudent(studentRecord.studentID).catch(() => []);
+                    const myCourseIds = new Set(
+                        (enrollments || [])
+                            .filter(e => e.status === 'Enrolled')
+                            .map(e => e.courseID)
+                            .filter(Boolean)
+                    );
+                    const allCourses = await courseService.getAll().catch(() => []);
+                    setCourses((allCourses || []).filter(c => myCourseIds.has(c.courseID)));
+                } else {
+                    setCourses([]);
+                }
+            } else {
+                // Registrar / ITAdmin / DeptAdmin: all courses
+                const data = await courseService.getAll();
+                setCourses(data || []);
+            }
         } catch (err) {
             setError(err);
         } finally {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { contentService } from '../../services/contentService';
+import { sectionService } from '../../services/sectionService';
 import { authService } from '../../services/authService';
 import { emptyContent, ContentType } from '../../models/Content';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -9,10 +10,13 @@ import Loading from '../../components/Loading';
 export default function ContentFormPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { role } = authService.getCurrentUser();
+    const { role, userId } = authService.getCurrentUser();
     const isEditMode = !!id;
+    const isInstructor = role === 'Instructor';
 
     const [form, setForm] = useState(emptyContent());
+    const [myCourses, setMyCourses] = useState([]);      // unique courses from instructor's sections
+    const [loadingCourses, setLoadingCourses] = useState(false);
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(isEditMode);
     const [error, setError] = useState(null);
@@ -20,9 +24,35 @@ export default function ContentFormPage() {
 
     const canManage = ['Instructor', 'ITAdmin'].includes(role);
 
+    // Load instructor's courses from their sections
+    useEffect(() => {
+        if (isInstructor && userId) loadMyCourses();
+    }, []);
+
     useEffect(() => {
         if (isEditMode) loadContent();
     }, [id]);
+
+    const loadMyCourses = async () => {
+        try {
+            setLoadingCourses(true);
+            const sections = await sectionService.getByInstructor(userId);
+            // Deduplicate by courseID
+            const seen = new Set();
+            const courses = [];
+            for (const s of (sections || [])) {
+                if (!seen.has(s.courseID)) {
+                    seen.add(s.courseID);
+                    courses.push({ courseID: s.courseID, courseName: s.courseName });
+                }
+            }
+            setMyCourses(courses);
+        } catch {
+            setMyCourses([]);
+        } finally {
+            setLoadingCourses(false);
+        }
+    };
 
     const loadContent = async () => {
         try {
@@ -30,7 +60,7 @@ export default function ContentFormPage() {
             setError(null);
             const data = await contentService.getById(id);
             setForm({
-                courseID: data.courseID || 0,
+                courseID: data.courseID || '',
                 title: data.title || '',
                 type: data.type || ContentType.DOCUMENT,
                 uri: data.uri || '',
@@ -53,12 +83,7 @@ export default function ContentFormPage() {
         setError(null);
         setSuccess('');
         setLoading(true);
-
-        const payload = {
-            ...form,
-            courseID: Number(form.courseID),
-        };
-
+        const payload = { ...form, courseID: Number(form.courseID) };
         try {
             if (isEditMode) {
                 await contentService.update(id, payload);
@@ -67,10 +92,7 @@ export default function ContentFormPage() {
             } else {
                 const created = await contentService.create(payload);
                 setSuccess('Content created successfully.');
-                setTimeout(
-                    () => navigate(`/contents/${created.contentID || ''}`),
-                    1200
-                );
+                setTimeout(() => navigate(`/contents/${created.contentID || ''}`), 1200);
             }
         } catch (err) {
             setError(err);
@@ -82,43 +104,27 @@ export default function ContentFormPage() {
     if (!canManage) {
         return (
             <div className="alert alert-danger">
-                <i className="bi bi-shield-x me-2"></i>
-                You do not have permission to access this page.
+                <i className="bi bi-shield-x me-2"></i>You do not have permission to access this page.
             </div>
         );
     }
-
     if (pageLoading) return <Loading message="Loading content..." />;
 
     return (
         <div>
-            {/* Page Header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
                     <i className="bi bi-collection-play me-2"></i>
                     {isEditMode ? 'Edit Content' : 'New Content'}
                 </h2>
-                <button
-                    className="btn btn-outline-secondary"
-                    onClick={() =>
-                        navigate(isEditMode ? `/contents/${id}` : '/contents')
-                    }
-                >
+                <button className="btn btn-outline-secondary" onClick={() => navigate(isEditMode ? `/contents/${id}` : '/contents')}>
                     <i className="bi bi-arrow-left me-1"></i>Back
                 </button>
             </div>
 
-            {/* Success Alert */}
-            {success && (
-                <div className="alert alert-success">
-                    <i className="bi bi-check-circle me-2"></i>{success}
-                </div>
-            )}
-
-            {/* Error Alert */}
+            {success && <div className="alert alert-success"><i className="bi bi-check-circle me-2"></i>{success}</div>}
             <ErrorAlert error={error} onDismiss={() => setError(null)} />
 
-            {/* Form Card */}
             <div className="card shadow-sm">
                 <div className="card-header bg-primary-edulearn text-white">
                     <strong>
@@ -129,12 +135,9 @@ export default function ContentFormPage() {
                 <div className="card-body">
                     <form onSubmit={handleSubmit}>
                         <div className="row g-3">
-
                             {/* Title */}
                             <div className="col-md-8">
-                                <label className="form-label fw-bold">
-                                    Title <span className="text-danger">*</span>
-                                </label>
+                                <label className="form-label fw-bold">Title <span className="text-danger">*</span></label>
                                 <input
                                     type="text"
                                     className="form-control"
@@ -149,50 +152,66 @@ export default function ContentFormPage() {
 
                             {/* Type */}
                             <div className="col-md-4">
-                                <label className="form-label fw-bold">
-                                    Type <span className="text-danger">*</span>
-                                </label>
-                                <select
-                                    className="form-select"
-                                    name="type"
-                                    value={form.type}
-                                    onChange={handleChange}
-                                    required
-                                >
-                                    {Object.values(ContentType).map(t => (
-                                        <option key={t} value={t}>{t}</option>
-                                    ))}
+                                <label className="form-label fw-bold">Type <span className="text-danger">*</span></label>
+                                <select className="form-select" name="type" value={form.type} onChange={handleChange} required>
+                                    {Object.values(ContentType).map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
                             </div>
 
-                            {/* Course ID */}
+                            {/* Course — dropdown for Instructor, number input for ITAdmin */}
                             <div className="col-md-4">
-                                <label className="form-label fw-bold">
-                                    Course ID <span className="text-danger">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    className="form-control"
-                                    name="courseID"
-                                    value={form.courseID}
-                                    onChange={handleChange}
-                                    min={1}
-                                    required
-                                />
-                                <div className="form-text">
-                                    Enter the ID of the course this content belongs to.
-                                </div>
+                                <label className="form-label fw-bold">Course <span className="text-danger">*</span></label>
+                                {isInstructor ? (
+                                    loadingCourses ? (
+                                        <div className="d-flex align-items-center gap-2 mt-1">
+                                            <span className="spinner-border spinner-border-sm"></span>
+                                            <small className="text-muted">Loading your courses...</small>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <select
+                                                className="form-select"
+                                                name="courseID"
+                                                value={form.courseID}
+                                                onChange={handleChange}
+                                                required
+                                            >
+                                                <option value="">— Select your course —</option>
+                                                {myCourses.map(c => (
+                                                    <option key={c.courseID} value={c.courseID}>
+                                                        {c.courseName}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {myCourses.length === 0 && (
+                                                <small className="text-warning mt-1 d-block">
+                                                    <i className="bi bi-exclamation-triangle me-1"></i>
+                                                    No sections assigned to you. Contact the Registrar.
+                                                </small>
+                                            )}
+                                        </>
+                                    )
+                                ) : (
+                                    <>
+                                        <input
+                                            type="number"
+                                            className="form-control"
+                                            name="courseID"
+                                            value={form.courseID}
+                                            onChange={handleChange}
+                                            min={1}
+                                            required
+                                        />
+                                        <div className="form-text">Enter the Course ID.</div>
+                                    </>
+                                )}
                             </div>
 
                             {/* URI */}
                             <div className="col-md-8">
-                                <label className="form-label fw-bold">
-                                    Content URI <span className="text-danger">*</span>
-                                </label>
+                                <label className="form-label fw-bold">Content URI <span className="text-danger">*</span></label>
                                 <div className="input-group">
-                                    <span className="input-group-text">
-                                        <i className="bi bi-link-45deg"></i>
-                                    </span>
+                                    <span className="input-group-text"><i className="bi bi-link-45deg"></i></span>
                                     <input
                                         type="text"
                                         className="form-control"
@@ -209,10 +228,7 @@ export default function ContentFormPage() {
                             {/* Metadata JSON */}
                             <div className="col-12">
                                 <label className="form-label fw-bold">
-                                    Metadata
-                                    <small className="text-muted fw-normal ms-2">
-                                        (optional JSON)
-                                    </small>
+                                    Metadata <small className="text-muted fw-normal ms-2">(optional JSON)</small>
                                 </label>
                                 <textarea
                                     className="form-control font-monospace"
@@ -223,36 +239,16 @@ export default function ContentFormPage() {
                                     placeholder='e.g. {"duration": "45 mins", "language": "English"}'
                                 />
                             </div>
-
                         </div>
 
-                        {/* Form Actions */}
                         <div className="d-flex gap-2 mt-4">
-                            <button
-                                type="submit"
-                                className="btn btn-primary-edulearn"
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <>
-                                        <span className="spinner-border spinner-border-sm me-2"></span>
-                                        {isEditMode ? 'Saving...' : 'Creating...'}
-                                    </>
-                                ) : (
-                                    <>
-                                        <i className="bi bi-check-lg me-2"></i>
-                                        {isEditMode ? 'Save Changes' : 'Create Content'}
-                                    </>
-                                )}
-                            </button>
-                            <button
-                                type="button"
-                                className="btn btn-outline-secondary"
-                                onClick={() =>
-                                    navigate(isEditMode ? `/contents/${id}` : '/contents')
+                            <button type="submit" className="btn btn-primary-edulearn" disabled={loading}>
+                                {loading
+                                    ? <><span className="spinner-border spinner-border-sm me-2"></span>{isEditMode ? 'Saving...' : 'Creating...'}</>
+                                    : <><i className="bi bi-check-lg me-2"></i>{isEditMode ? 'Save Changes' : 'Create Content'}</>
                                 }
-                                disabled={loading}
-                            >
+                            </button>
+                            <button type="button" className="btn btn-outline-secondary" onClick={() => navigate(isEditMode ? `/contents/${id}` : '/contents')} disabled={loading}>
                                 Cancel
                             </button>
                         </div>

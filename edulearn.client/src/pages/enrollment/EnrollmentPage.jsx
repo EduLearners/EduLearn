@@ -8,6 +8,7 @@ import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import axiosClient from '../../api/axiosClient';
 
 export default function EnrollmentPage() {
     // Lookup data
@@ -45,9 +46,10 @@ export default function EnrollmentPage() {
     const { role } = authService.getCurrentUser();
     const isStudent = role === 'Student';
 
-    // Load courses on mount
+    // Load courses on mount + auto-resolve Student ID for Student role
     useEffect(() => {
         loadCourses();
+        if (isStudent) autoResolveStudentId();
     }, []);
 
     // Auto-load enrollments when studentId changes
@@ -59,6 +61,20 @@ export default function EnrollmentPage() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [studentId]);
+
+    // Auto-detect the logged-in student's own StudentID
+    const autoResolveStudentId = async () => {
+        try {
+            const record = await axiosClient.get('/students/me').then(r => r.data);
+            if (record?.studentID) {
+                const sid = String(record.studentID);
+                setStudentId(sid);
+                localStorage.setItem('lastStudentId', sid);
+            }
+        } catch {
+            // Fallback: keep whatever is in localStorage
+        }
+    };
 
     const loadCourses = async () => {
         try {
@@ -277,19 +293,30 @@ export default function EnrollmentPage() {
                             />
                         </div>
 
-                        <div className="col-md-3">
-                            <label className="form-label fw-bold">
-                                <i className="bi bi-person me-1"></i>Student ID
-                            </label>
-                            <input
-                                type="number"
-                                className="form-control"
-                                value={studentId}
-                                onChange={(e) => setStudentId(e.target.value)}
-                                placeholder={isStudent ? 'Find on your profile page' : 'Who you are enrolling/viewing'}
-                                min="1"
-                            />
-                        </div>
+                        {/* Student ID — hidden for students (auto-filled), visible for staff */}
+                        {!isStudent && (
+                            <div className="col-md-3">
+                                <label className="form-label fw-bold">
+                                    <i className="bi bi-person me-1"></i>Student ID
+                                </label>
+                                <input
+                                    type="number"
+                                    className="form-control"
+                                    value={studentId}
+                                    onChange={(e) => setStudentId(e.target.value)}
+                                    placeholder="Who you are enrolling/viewing"
+                                    min="1"
+                                />
+                            </div>
+                        )}
+                        {isStudent && studentId && (
+                            <div className="col-md-3 d-flex align-items-end">
+                                <div className="alert alert-success mb-0 py-2 px-3 w-100 small">
+                                    <i className="bi bi-person-check-fill me-2"></i>
+                                    <strong>You</strong> · Student #{studentId}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="col-md-2">
                             <label className="form-label fw-bold">&nbsp;</label>
@@ -429,7 +456,11 @@ export default function EnrollmentPage() {
                     {!studentId && (
                         <div className="text-center py-4 text-muted">
                             <i className="bi bi-person-x" style={{ fontSize: '2rem' }}></i>
-                            <p className="mt-2 mb-0">Enter a Student ID above to view enrollments.</p>
+                            <p className="mt-2 mb-0">
+                                {isStudent
+                                    ? 'Resolving your student record...'
+                                    : 'Enter a Student ID above to view enrollments.'}
+                            </p>
                         </div>
                     )}
 

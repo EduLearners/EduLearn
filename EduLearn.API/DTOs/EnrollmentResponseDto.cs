@@ -8,6 +8,7 @@ public class EnrollmentResponseDto
     public int StudentID { get; set; }
     public string StudentName { get; set; } = null!;
     public int SectionID { get; set; }
+    public int CourseID { get; set; }      // ← added so frontend can filter by course
     public string CourseName { get; set; } = null!;
     public string Term { get; set; } = null!;
     public EnrollmentStatus Status { get; set; }
