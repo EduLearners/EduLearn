@@ -32,7 +32,7 @@ const STAT_CARDS = [
     { key: 'students',    label: 'Total Students',   sub: (s) => `${s.activeStudents ?? 0} active`,            icon: 'bi-people-fill',       accent: '#185FA5', iconBg: '#dbeafe', iconColor: '#185FA5', path: '/students'    },
     { key: 'sections',    label: 'Sections',         sub: () => `${TERM}`,                                     icon: 'bi-collection-fill',   accent: '#3B6D11', iconBg: '#dcfce7', iconColor: '#3B6D11', path: '/sections'    },
     { key: 'enrollments', label: 'Enrollments',      sub: () => 'active this term',                            icon: 'bi-card-checklist',    accent: '#0F6E56', iconBg: '#d1fae5', iconColor: '#0F6E56', path: '/enrollment'  },
-    { key: 'transcripts', label: 'Transcripts',      sub: (s) => `${s.publishedTranscripts ?? 0} published`,  icon: 'bi-file-earmark-text', accent: '#854F0B', iconBg: '#fef3c7', iconColor: '#854F0B', path: '/transcripts' },
+    { key: 'transcripts', label: 'Transcripts',      sub: (s) => `${s.publishedTranscripts ?? 0} issued`,     icon: 'bi-file-earmark-text', accent: '#854F0B', iconBg: '#fef3c7', iconColor: '#854F0B', path: '/transcripts' },
 ];
 
 const EMPTY_USER_FORM = { username: '', fullName: '', email: '', phone: '', password: '', sendInvite: true };
@@ -112,7 +112,7 @@ export default function RegistrarDashboard() {
                     .filter(r => r.status === 'fulfilled')
                     .flatMap(r => r.value || []);
                 s.transcripts = allTranscripts.length;
-                s.publishedTranscripts = allTranscripts.filter(t => t.status === 'Published').length;
+                s.publishedTranscripts = allTranscripts.filter(t => t.status === 'Issued').length;
             }
 
         } catch { }

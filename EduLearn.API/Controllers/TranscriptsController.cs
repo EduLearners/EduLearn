@@ -54,46 +54,90 @@ public class TranscriptsController : ControllerBase
         // Get all enrollments for this student (includes Section + Course via Include)
         var enrollments = await _enrollRepo.GetByStudentIdAsync(studentId);
 
-        // R-4: official transcripts must show only Enrolled entries —
-        // exclude Dropped and Waitlisted enrollments before serialising.
+        // Load all graded submissions for this student to look up grade per course
+        var submissions = await _submissionRepo.GetByStudentIdWithDetailsAsync(studentId);
+
+        // Helper: compute letter grade from percentage
+        static string ToLetterGrade(decimal pct) => pct switch
+        {
+            >= 90m => "A+",
+            >= 80m => "A",
+            >= 70m => "B+",
+            >= 60m => "B",
+            >= 50m => "C",
+            >= 45m => "D",
+            >= 40m => "E",
+            _      => "F"
+        };
+
+        // Helper: compute GPA points from percentage (10-point CGPA scale)
+        static decimal ToGpaPoints(decimal pct) => pct switch
+        {
+            >= 90m => 10m,
+            >= 80m => 9m,
+            >= 70m => 8m,
+            >= 60m => 7m,
+            >= 50m => 6m,
+            >= 45m => 5m,
+            >= 40m => 4m,
+            _      => 0m
+        };
+
+        // R-4: official transcripts must show only Enrolled entries
         var entries = enrollments
             .Where(e => e.Status == EnrollmentStatus.Enrolled)
-            .Select(e => new
+            .Select(e =>
             {
-                courseName = e.Section.Course.Title,
-                courseCode = e.Section.Course.Code,
-                credits = e.Section.Course.Credits,
-                term = e.Section.Term,
-                status = e.Status.ToString(),
-                gradePosted = e.GradePostedFlag,
-                enrolledAt = e.EnrolledAt
+                // Find the best graded submission for this course's section
+                var courseSubmissions = submissions
+                    .Where(s =>
+                        s.Assessment.SectionID == e.SectionID &&
+                        s.Score.HasValue &&
+                        s.Assessment.MaxScore > 0)
+                    .ToList();
+
+                decimal? percentage = null;
+                decimal? score = null;
+                decimal? maxScore = null;
+                string? letterGrade = null;
+                bool gradePosted = e.GradePostedFlag;
+
+                if (courseSubmissions.Any())
+                {
+                    // Use the best (highest) score among all graded submissions for this section
+                    var best = courseSubmissions.OrderByDescending(s => s.Score!.Value / s.Assessment.MaxScore).First();
+                    score = best.Score;
+                    maxScore = best.Assessment.MaxScore;
+                    percentage = Math.Round(best.Score!.Value / best.Assessment.MaxScore * 100m, 2);
+                    letterGrade = ToLetterGrade(percentage.Value);
+                    gradePosted = true;
+                }
+
+                return new
+                {
+                    courseName = e.Section.Course.Title,
+                    courseCode = e.Section.Course.Code,
+                    credits = e.Section.Course.Credits,
+                    term = e.Section.Term,
+                    status = e.Status.ToString(),
+                    gradePosted,
+                    enrolledAt = e.EnrolledAt,
+                    score,
+                    maxScore,
+                    percentage,
+                    letterGrade
+                };
             }).ToList();
 
         var totalCredits = entries.Sum(e => e.credits);
 
-        // R-5: simple GPA computation on the Indian 10-point CGPA scale.
-        // Average all of the student's graded submission percentages, then
-        // map the average to a CGPA bucket. No credit-weighting (kept
-        // intentionally simple — see audit R-5 / docs/AUDIT-REPORT-2026-05-04.md).
-        var submissions = await _submissionRepo.GetByStudentIdWithDetailsAsync(studentId);
-        var graded = submissions
-            .Where(s => s.Score.HasValue && s.Assessment.MaxScore > 0)
-            .ToList();
+        // R-5: CGPA from graded entries only
+        var gradedEntries = entries.Where(e => e.percentage.HasValue).ToList();
         decimal? gpa = null;
-        if (graded.Count > 0)
+        if (gradedEntries.Any())
         {
-            var avgPercent = graded.Average(s => s.Score!.Value / s.Assessment.MaxScore * 100m);
-            gpa = avgPercent switch
-            {
-                >= 90m => 10m,
-                >= 80m => 9m,
-                >= 70m => 8m,
-                >= 60m => 7m,
-                >= 50m => 6m,
-                >= 45m => 5m,
-                >= 40m => 4m,
-                _      => 0m
-            };
+            var avgPercent = gradedEntries.Average(e => e.percentage!.Value);
+            gpa = ToGpaPoints(avgPercent);
         }
 
         var transcript = new Transcript

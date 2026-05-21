@@ -80,7 +80,7 @@ export default function TranscriptsPage() {
             await transcriptService.publish(id);
             setActionMessage({
                 type: 'success',
-                text: `Transcript ${id} published. Student can now download the PDF.`,
+                text: `Transcript ${id} issued. Student can now download the PDF.`,
             });
             await loadTranscripts();
         } catch (err) {
@@ -281,7 +281,7 @@ export default function TranscriptsPage() {
                                                         {isBusy ? (
                                                             <><span className="spinner-border spinner-border-sm"></span></>
                                                         ) : (
-                                                            <><i className="bi bi-check2-circle me-1"></i>Publish</>
+                                                            <><i className="bi bi-check2-circle me-1"></i>Issue</>
                                                         )}
                                                     </button>
                                                 )}
@@ -316,7 +316,7 @@ export default function TranscriptsPage() {
                 message={
                     `Generate a fresh draft transcript for Student #${studentId}? ` +
                     'This will compute their GPA from all graded enrollments. ' +
-                    'The transcript starts in Draft status and must be published before it can be downloaded.'
+                    'The transcript starts in Draft status and must be issued before it can be downloaded.'
                 }
                 onConfirm={handleGenerate}
                 onCancel={() => setGenerateConfirm(false)}
@@ -324,19 +324,19 @@ export default function TranscriptsPage() {
                 confirmVariant="primary"
             />
 
-            {/* Publish confirmation */}
+            {/* Issue confirmation */}
             <ConfirmDialog
                 show={!!publishConfirm}
-                title="Publish Transcript"
+                title="Issue Transcript"
                 message={
                     publishConfirm
-                        ? `Publish Transcript ${publishConfirm.transcriptID} for ${publishConfirm.studentName}? ` +
-                          'Once published, the transcript becomes the official record and can be downloaded as a PDF.'
+                        ? `Issue Transcript ${publishConfirm.transcriptID} for ${publishConfirm.studentName}? ` +
+                          'Once issued, the transcript becomes the official record and can be downloaded as a PDF.'
                         : ''
                 }
                 onConfirm={handlePublish}
                 onCancel={() => setPublishConfirm(null)}
-                confirmText="Publish"
+                confirmText="Issue"
                 confirmVariant="success"
             />
 
@@ -426,7 +426,7 @@ export default function TranscriptsPage() {
                                         <small>
                                             This is a preview. {detailModal.status === 'Issued'
                                                 ? 'Click "PDF" to download the official document.'
-                                                : 'Publish this transcript to enable PDF download.'}
+                                                : 'Issue this transcript to enable PDF download.'}
                                         </small>
                                     </div>
                                 </div>

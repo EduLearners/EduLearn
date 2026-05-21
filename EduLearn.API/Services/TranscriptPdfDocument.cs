@@ -31,11 +31,10 @@ public class TranscriptEntryRow
     public int Credits { get; set; }
     public string Term { get; set; } = string.Empty;
     public bool GradePosted { get; set; }
-
-    // BUG-4 FIX: Preserve full enrollment data stored in EntriesJSON so it is not
-    // silently dropped during deserialization. Currently informational only; the PDF
-    // layout doesn't render these fields yet, but downstream consumers (audit, replay,
-    // future PDF revisions) now have access to them.
+    public decimal? Score { get; set; }          // actual score earned
+    public decimal? MaxScore { get; set; }       // max possible score
+    public decimal? Percentage { get; set; }     // score / maxScore * 100
+    public string? LetterGrade { get; set; }     // A+, A, B+, B, C, D, F
     public string? Status { get; set; }
     public DateTime? EnrolledAt { get; set; }
 }
@@ -218,7 +217,17 @@ public class TranscriptPdfDocument : IDocument
                     DataCell(entry.CourseName);
                     DataCell(entry.Credits.ToString(), centred: true);
                     DataCell(entry.Term, centred: true);
-                    DataCell(entry.GradePosted ? "Posted" : "Pending", centred: true);
+                    // Show letter grade if available, score% if only score exists, otherwise Pending
+                    string gradeDisplay;
+                    if (!string.IsNullOrWhiteSpace(entry.LetterGrade))
+                        gradeDisplay = entry.LetterGrade;
+                    else if (entry.Percentage.HasValue)
+                        gradeDisplay = $"{entry.Percentage:0.0}%";
+                    else if (entry.GradePosted)
+                        gradeDisplay = "Graded";
+                    else
+                        gradeDisplay = "Pending";
+                    DataCell(gradeDisplay, centred: true);
                 }
 
                 // Empty state
