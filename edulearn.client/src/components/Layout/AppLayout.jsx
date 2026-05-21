@@ -4,11 +4,13 @@ import Sidebar from './Sidebar';
 
 export default function AppLayout() {
     return (
-        <div className="d-flex flex-column min-vh-100">
+        <div className="d-flex flex-column" style={{ height: '100vh' }}>
             <Navbar />
-            <div className="d-flex flex-grow-1">
-                <Sidebar />
-                <main className="flex-grow-1 p-4">
+            <div className="d-flex flex-grow-1" style={{ overflow: 'hidden' }}>
+                <aside style={{ width: 240, flexShrink: 0, overflowY: 'auto', height: '100%', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    <Sidebar />
+                </aside>
+                <main className="flex-grow-1 p-4" style={{ overflowY: 'auto', height: '100%', isolation: 'auto' }}>
                     <Outlet />
                 </main>
             </div>

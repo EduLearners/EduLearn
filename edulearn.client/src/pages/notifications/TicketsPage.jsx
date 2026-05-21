@@ -3,6 +3,7 @@ import { ticketService } from '../../services/ticketService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
+import ModalPortal from '../../components/ModalPortal';
 import StatusBadge from '../../components/StatusBadge';
 
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
@@ -291,7 +292,7 @@ export default function TicketsPage() {
 
             {/* Create Ticket Modal */}
             {showCreate && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -386,12 +387,12 @@ export default function TicketsPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
 
             {/* Assign Ticket Modal */}
             {showAssign && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered">
@@ -461,12 +462,12 @@ export default function TicketsPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
 
             {/* Resolve Ticket Modal */}
             {showResolve && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered">
@@ -551,7 +552,7 @@ export default function TicketsPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
         </div>
     );

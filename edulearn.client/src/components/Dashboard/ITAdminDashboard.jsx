@@ -9,10 +9,34 @@ import Loading from '../Loading';
 import ErrorAlert from '../ErrorAlert';
 import StatusBadge from '../StatusBadge';
 import axiosClient from '../../api/axiosClient';
+import './ITAdminDashboard.css';
 
 const TERM = '2026-Spring';
 
 const ALL_ROLES = ['Student', 'Instructor', 'Registrar', 'DeptAdmin', 'Finance', 'ITAdmin', 'Auditor'];
+
+const QUICK_ACTIONS = [
+    { label: 'Open Tickets',    icon: 'bi-headset',              path: '/tickets'       },
+    { label: 'Manage Users',    icon: 'bi-person-badge',         path: '/users'         },
+    { label: 'Students',        icon: 'bi-people',               path: '/students'      },
+    { label: 'Applicants',      icon: 'bi-person-plus',          path: '/applicants'    },
+    { label: 'Sections',        icon: 'bi-collection',           path: '/sections'      },
+    { label: 'Enrollment',      icon: 'bi-card-checklist',       path: '/enrollment'    },
+    { label: 'Assessments',     icon: 'bi-file-earmark-check',   path: '/assessments'   },
+    { label: 'Fees',            icon: 'bi-cash-stack',           path: '/fees'          },
+    { label: 'Invoices',        icon: 'bi-receipt',              path: '/invoices'      },
+    { label: 'KPIs',            icon: 'bi-bar-chart-line',       path: '/kpis'          },
+    { label: 'Audit Log',       icon: 'bi-journal-text',         path: '/audit-log'     },
+    { label: 'Notifications',   icon: 'bi-bell',                 path: '/notifications' },
+];
+
+const STAT_CARDS = [
+    { key: 'users',         label: 'Total Users',   sub: () => 'all roles',                             icon: 'bi-people-fill',      accent: '#185FA5', iconBg: '#dbeafe', iconColor: '#185FA5', path: '/users'         },
+    { key: 'openTickets',   label: 'Open Tickets',  sub: (s) => `${s.highPriority ?? 0} high priority`, icon: 'bi-headset',          accent: '#A32D2D', iconBg: '#fee2e2', iconColor: '#A32D2D', path: '/tickets'       },
+    { key: 'students',      label: 'Students',      sub: (s) => `${s.activeStudents ?? 0} active`,      icon: 'bi-mortarboard-fill', accent: '#3B6D11', iconBg: '#dcfce7', iconColor: '#3B6D11', path: '/students'      },
+    { key: 'courses',       label: 'Courses',       sub: () => 'active',                                icon: 'bi-book-fill',        accent: '#534AB7', iconBg: '#ede9fe', iconColor: '#534AB7', path: '/courses'       },
+    { key: 'notifications', label: 'Notifications', sub: () => 'sent today',                            icon: 'bi-bell-fill',        accent: '#854F0B', iconBg: '#fef3c7', iconColor: '#854F0B', path: '/notifications' },
+];
 
 export default function ITAdminDashboard() {
     const navigate = useNavigate();
@@ -104,108 +128,90 @@ export default function ITAdminDashboard() {
     if (loading) return <Loading message="Loading your dashboard..." />;
 
     return (
-        <div>
-            <div className="d-flex align-items-center justify-content-between mb-4">
-                <div className="d-flex align-items-center gap-3">
-                    <span className="badge" style={{ background: '#FCEBEB', color: '#791F1F', fontSize: 13 }}>ITAdmin</span>
-                    <h2 className="mb-0 text-primary-edulearn">IT Admin Dashboard</h2>
+        <div className="itadmin-dashboard">
+
+            {/* Hero Banner */}
+            <div className="itadmin-hero">
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <span className="itadmin-hero-badge">ITAdmin · Full Access</span>
+                    <div className="itadmin-hero-title">Welcome back, {username}! 👋</div>
+                    <p className="itadmin-hero-sub">
+                        {today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        &nbsp;·&nbsp; Term: {TERM}
+                    </p>
                 </div>
-                <div className="d-flex align-items-center gap-3">
-                    <small className="text-muted">{today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</small>
-                    <button
-                        className="btn btn-primary-edulearn btn-sm"
-                        onClick={() => { setShowCreateUser(true); setCreateError(null); setCreateSuccess(''); }}
-                    >
-                        <i className="bi bi-person-plus me-2"></i>Create User
-                    </button>
+                <div className="d-flex flex-column align-items-end gap-2" style={{ position: 'relative', zIndex: 1 }}>
+                    <i className="bi bi-gear-fill itadmin-hero-icon"></i>
                 </div>
             </div>
 
-            <div className="card shadow-sm mb-4 border-0 bg-light">
-                <div className="card-body d-flex align-items-center justify-content-between">
-                    <div>
-                        <h4 className="mb-1">Welcome back, {username}! 👋</h4>
-                        <p className="mb-0 text-muted">Term: {TERM} &nbsp;·&nbsp; Role: ITAdmin &nbsp;·&nbsp; Full access</p>
-                    </div>
-                    <i className="bi bi-gear text-muted" style={{ fontSize: '2.5rem', opacity: 0.3 }}></i>
-                </div>
-            </div>
-
-            {/* Stat Cards — all clickable */}
-            <div className="row g-3 mb-4">
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/users')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Total Users</div>
-                            <div className="display-5 fw-bold" style={{ color: '#185FA5' }}>{stats.users ?? '—'}</div>
-                            <small className="text-muted">all roles</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/tickets')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Open Tickets</div>
-                            <div className="display-5 fw-bold" style={{ color: '#A32D2D' }}>{stats.openTickets ?? '—'}</div>
-                            <small className="text-muted">{stats.highPriority ?? 0} high priority</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/students')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Students</div>
-                            <div className="display-5 fw-bold" style={{ color: '#3B6D11' }}>{stats.students ?? '—'}</div>
-                            <small className="text-muted">{stats.activeStudents ?? 0} active</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/courses')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Courses</div>
-                            <div className="display-5 fw-bold" style={{ color: '#534AB7' }}>{stats.courses ?? '—'}</div>
-                            <small className="text-muted">active</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/notifications')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Notifications</div>
-                            <div className="display-5 fw-bold" style={{ color: '#854F0B' }}>—</div>
-                            <small className="text-muted">sent today</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Create User Success Alert */}
+            {/* Success Alert */}
             {createSuccess && (
-                <div className="alert alert-success d-flex align-items-center justify-content-between mb-4">
-                    <span><i className="bi bi-check-circle me-2"></i>{createSuccess}</span>
-                    <button className="btn-close" onClick={() => setCreateSuccess('')}></button>
+                <div className="itadmin-success-alert">
+                    <span><i className="bi bi-check-circle-fill me-2"></i>{createSuccess}</span>
+                    <button
+                        className="btn-close btn-close-sm"
+                        style={{ filter: 'invert(30%) sepia(1) saturate(3) hue-rotate(110deg)' }}
+                        onClick={() => setCreateSuccess('')}
+                    />
                 </div>
             )}
 
-            <div className="row g-3">
+            {/* Stat Cards */}
+            <div className="row g-3 mb-4">
+                {STAT_CARDS.map((card) => (
+                    <div key={card.key} className="col">
+                        <div
+                            className="itadmin-stat-card"
+                            style={{ '--iad-accent': card.accent }}
+                            onClick={() => navigate(card.path)}
+                        >
+                            <div>
+                                <div className="itadmin-stat-label">{card.label}</div>
+                                <div className="itadmin-stat-value" style={{ color: card.accent }}>
+                                    {card.key === 'notifications' ? '—' : (stats[card.key] ?? '—')}
+                                </div>
+                                <div className="itadmin-stat-sub">{card.sub(stats)}</div>
+                            </div>
+                            <div className="itadmin-stat-icon-wrap" style={{ background: card.iconBg, color: card.iconColor }}>
+                                <i className={`bi ${card.icon}`}></i>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Open Tickets + Quick Actions */}
+            <div className="row g-3 mb-0">
                 {openTickets.length > 0 && (
                     <div className="col-lg-7">
-                        <div className="card shadow-sm h-100">
-                            <div className="card-header bg-light d-flex align-items-center justify-content-between">
-                                <strong><i className="bi bi-headset me-2"></i>Open Tickets</strong>
-                                <button className="btn btn-sm btn-link p-0" onClick={() => navigate('/tickets')}>View all <i className="bi bi-arrow-right"></i></button>
+                        <div className="itadmin-card h-100">
+                            <div className="itadmin-card-header">
+                                <span className="itadmin-card-header-title">
+                                    <i className="bi bi-headset me-2"></i>Open Tickets
+                                </span>
+                                <button
+                                    className="btn btn-sm btn-link p-0 text-decoration-none"
+                                    style={{ color: '#185FA5', fontSize: '0.8rem' }}
+                                    onClick={() => navigate('/tickets')}
+                                >
+                                    View all <i className="bi bi-arrow-right ms-1"></i>
+                                </button>
                             </div>
-                            <div className="list-group list-group-flush">
+                            <div>
                                 {openTickets.map(t => (
-                                    <div key={t.ticketID} className="list-group-item list-group-item-action" style={{ cursor: 'pointer' }} onClick={() => navigate('/tickets')}>
-                                        <div className="d-flex align-items-center justify-content-between">
-                                            <div>
-                                                <div className="fw-bold">#{t.ticketID} {t.subject}</div>
-                                                <small className="text-muted">{t.createdByUsername} · {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—'}</small>
+                                    <div key={t.ticketID} className="itadmin-ticket-row" onClick={() => navigate('/tickets')}>
+                                        <div>
+                                            <div className="d-flex align-items-center mb-1">
+                                                <span className="itadmin-ticket-id">#{t.ticketID}</span>
+                                                <span className="itadmin-ticket-subject">{t.subject}</span>
                                             </div>
-                                            <StatusBadge status={t.priority} />
+                                            <div className="itadmin-ticket-meta">
+                                                {t.createdByUsername} &nbsp;·&nbsp;
+                                                {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—'}
+                                            </div>
                                         </div>
+                                        <StatusBadge status={t.priority} />
                                     </div>
                                 ))}
                             </div>
@@ -213,44 +219,39 @@ export default function ITAdminDashboard() {
                     </div>
                 )}
                 <div className={openTickets.length > 0 ? 'col-lg-5' : 'col-12'}>
-                    <div className="card shadow-sm h-100">
-                        <div className="card-header bg-light"><strong><i className="bi bi-lightning me-2"></i>Quick Actions</strong></div>
-                        <div className="card-body">
-                            <div className="d-grid gap-2">
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/tickets')}><i className="bi bi-headset me-2"></i>Open Tickets</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/users')}><i className="bi bi-person-badge me-2"></i>Manage Users</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/students')}><i className="bi bi-people me-2"></i>Manage Students</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/applicants')}><i className="bi bi-person-plus me-2"></i>Applicants</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/sections')}><i className="bi bi-collection me-2"></i>Sections</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/enrollment')}><i className="bi bi-card-checklist me-2"></i>Enrollment</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/assessments')}><i className="bi bi-file-earmark-check me-2"></i>Assessments</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/fees')}><i className="bi bi-cash-stack me-2"></i>Fees</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/invoices')}><i className="bi bi-receipt me-2"></i>Invoices</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/plagiarism')}><i className="bi bi-shield-exclamation me-2"></i>Plagiarism</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/kpis')}><i className="bi bi-bar-chart-line me-2"></i>KPIs</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/audit-log')}><i className="bi bi-journal-text me-2"></i>Audit Log</button>
-                                <button className="btn btn-outline-primary btn-sm text-start" onClick={() => navigate('/notifications')}><i className="bi bi-bell me-2"></i>Send Notification</button>
-                            </div>
+                    <div className="itadmin-card h-100">
+                        <div className="itadmin-card-header">
+                            <span className="itadmin-card-header-title">
+                                <i className="bi bi-lightning-fill me-2"></i>Quick Actions
+                            </span>
+                        </div>
+                        <div className="itadmin-qa-grid">
+                            {QUICK_ACTIONS.map((action) => (
+                                <button
+                                    key={action.path}
+                                    className="itadmin-qa-btn"
+                                    onClick={() => navigate(action.path)}
+                                >
+                                    <i className={`bi ${action.icon}`}></i>
+                                    {action.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Recent Users */}
+            {/* Recent Users Table */}
             {recentUsers.length > 0 && (
-                <div className="card shadow-sm mt-4">
-                    <div className="card-header bg-light d-flex align-items-center justify-content-between">
-                        <strong><i className="bi bi-people me-2"></i>Recent Users</strong>
-                        <button
-                            className="btn btn-sm btn-primary-edulearn"
-                            onClick={() => { setShowCreateUser(true); setCreateError(null); setCreateSuccess(''); }}
-                        >
-                            <i className="bi bi-person-plus me-2"></i>Create User
-                        </button>
+                <div className="itadmin-table-card">
+                    <div className="itadmin-card-header">
+                        <span className="itadmin-card-header-title">
+                            <i className="bi bi-people me-2"></i>Recent Users
+                        </span>
                     </div>
                     <div className="table-responsive">
                         <table className="table table-hover align-middle mb-0">
-                            <thead className="table-light">
+                            <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Username</th>
@@ -263,20 +264,14 @@ export default function ITAdminDashboard() {
                             </thead>
                             <tbody>
                                 {recentUsers.map(u => (
-                                    <tr key={u.userID} style={{ cursor: 'pointer' }} onClick={() => navigate('/users')}>
-                                        <td><code>#{u.userID}</code></td>
+                                    <tr key={u.userID} onClick={() => navigate('/users')}>
+                                        <td><code style={{ color: '#185FA5' }}>{u.userID}</code></td>
                                         <td className="fw-bold">{u.username}</td>
                                         <td>{u.fullName}</td>
-                                        <td>{u.email}</td>
-                                        <td>
-                                            <span className="badge bg-secondary">{u.role}</span>
-                                        </td>
+                                        <td style={{ color: '#6b7280' }}>{u.email}</td>
+                                        <td><span className="badge" style={{ background: '#e8f0fc', color: '#1a3c6e', fontWeight: 600 }}>{u.role}</span></td>
                                         <td><StatusBadge status={u.status} /></td>
-                                        <td>
-                                            <small className="text-muted">
-                                                {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
-                                            </small>
-                                        </td>
+                                        <td><small className="text-muted">{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</small></td>
                                     </tr>
                                 ))}
                             </tbody>

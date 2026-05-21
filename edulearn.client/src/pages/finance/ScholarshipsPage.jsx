@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { scholarshipService } from '../../services/scholarshipService';
 import { authService } from '../../services/authService';
 import ErrorAlert from '../../components/ErrorAlert';
+import ModalPortal from '../../components/ModalPortal';
 import StatusBadge from '../../components/StatusBadge';
 
 const SCHOLARSHIP_STATUSES = ['Active', 'Suspended', 'Revoked', 'Expired'];
@@ -227,7 +228,7 @@ export default function ScholarshipsPage() {
 
             {/* Award Scholarship Modal */}
             {showForm && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered">
@@ -346,7 +347,7 @@ export default function ScholarshipsPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
         </div>
     );

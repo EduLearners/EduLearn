@@ -37,7 +37,7 @@ export default function Navbar() {
             <span
                 className="navbar-brand text-white fw-bold"
                 style={{ cursor: 'pointer' }}
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/')}
             >
                 <i className="bi bi-mortarboard-fill me-2"></i>EduLearn
             </span>

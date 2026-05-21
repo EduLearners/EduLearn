@@ -5,6 +5,7 @@ import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import ModalPortal from '../../components/ModalPortal';
 
 export default function TranscriptsPage() {
     const [studentId, setStudentId] = useState(() => localStorage.getItem('lastStudentId') || '');
@@ -56,7 +57,7 @@ export default function TranscriptsPage() {
             const result = await transcriptService.generate(studentId);
             setActionMessage({
                 type: 'success',
-                text: `Draft transcript generated (ID #${result.transcriptID}). GPA: ${result.gpa?.toFixed(2) || 'Not yet computed'}.`,
+                text: `Draft transcript generated (ID ${result.transcriptID}). GPA: ${result.gpa?.toFixed(2) || 'Not yet computed'}.`,
             });
             await loadTranscripts();
         } catch (err) {
@@ -79,7 +80,7 @@ export default function TranscriptsPage() {
             await transcriptService.publish(id);
             setActionMessage({
                 type: 'success',
-                text: `Transcript #${id} published. Student can now download the PDF.`,
+                text: `Transcript ${id} published. Student can now download the PDF.`,
             });
             await loadTranscripts();
         } catch (err) {
@@ -149,17 +150,13 @@ export default function TranscriptsPage() {
                                 className="form-control"
                                 value={studentId}
                                 onChange={(e) => setStudentId(e.target.value)}
-                                placeholder="e.g. 1"
+                                placeholder={isStudent ? 'Find on your profile page' : 'Whose transcripts to view/manage'}
                                 min="1"
                             />
-                            <small className="text-muted">
-                                {isStudent
-                                    ? 'Find on your profile page'
-                                    : 'Whose transcripts to view/manage'}
-                            </small>
                         </div>
 
                         <div className="col-md-3">
+                            <label className="form-label fw-bold">&nbsp;</label>
                             <button
                                 className="btn btn-outline-secondary w-100"
                                 onClick={loadTranscripts}
@@ -170,6 +167,7 @@ export default function TranscriptsPage() {
                         </div>
 
                         <div className="col-md-3">
+                            <label className="form-label fw-bold">&nbsp;</label>
                             {canManage && (
                                 <button
                                     className="btn btn-primary-edulearn w-100"
@@ -238,7 +236,7 @@ export default function TranscriptsPage() {
                                         <div className="col-md-7">
                                             <div className="d-flex align-items-center gap-2 mb-1">
                                                 <h6 className="mb-0">
-                                                    Transcript #{t.transcriptID}
+                                                    Transcript {t.transcriptID}
                                                 </h6>
                                                 <StatusBadge status={t.status} />
                                             </div>
@@ -332,7 +330,7 @@ export default function TranscriptsPage() {
                 title="Publish Transcript"
                 message={
                     publishConfirm
-                        ? `Publish Transcript #${publishConfirm.transcriptID} for ${publishConfirm.studentName}? ` +
+                        ? `Publish Transcript ${publishConfirm.transcriptID} for ${publishConfirm.studentName}? ` +
                           'Once published, the transcript becomes the official record and can be downloaded as a PDF.'
                         : ''
                 }
@@ -344,7 +342,7 @@ export default function TranscriptsPage() {
 
             {/* Detail Modal */}
             {detailModal && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -352,7 +350,7 @@ export default function TranscriptsPage() {
                                 <div className="modal-header bg-primary-edulearn text-white">
                                     <h5 className="modal-title">
                                         <i className="bi bi-file-earmark-text me-2"></i>
-                                        Transcript #{detailModal.transcriptID} Preview
+                                        Transcript {detailModal.transcriptID} Preview
                                     </h5>
                                     <button type="button" className="btn-close btn-close-white" onClick={() => setDetailModal(null)}></button>
                                 </div>
@@ -452,7 +450,7 @@ export default function TranscriptsPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
         </div>
     );

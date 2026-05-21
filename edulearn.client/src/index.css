@@ -16,6 +16,17 @@
     box-sizing: border-box;
 }
 
+/* Shared page animations — used by index.css rules and pages.css */
+@keyframes page-fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes page-fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
 body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -32,8 +43,196 @@ a:hover {
     text-decoration: underline;
 }
 
+/* ============================================================
+   Global modal fix — centered, backdrop locks page scroll,
+   background dims. Applies to every modal in the app.
+   ============================================================ */
+
+/* Lock body scroll when any modal is open */
+body:has(.modal.show) {
+    overflow: hidden !important;
+}
+
+/* When modal is open, let main overflow so fixed positioning
+   is relative to viewport, not the scroll container */
+body:has(.modal.show) main {
+    overflow: visible !important;
+}
+
+/* Backdrop — covers full viewport above everything */
+.modal-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(15, 30, 60, 0.55) !important;
+    backdrop-filter: blur(3px) !important;
+    -webkit-backdrop-filter: blur(3px) !important;
+    z-index: 1040 !important;
+}
+
+/* Modal wrapper — full viewport, flex-centered */
+.modal {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 1050 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+}
+
+/* Dialog — no margin, fills available width up to max */
+.modal-dialog {
+    margin: auto !important;
+    width: 100% !important;
+    max-height: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+}
+
+/* Content scrolls internally if too tall */
+.modal-content {
+    max-height: calc(100vh - 48px) !important;
+    overflow-y: auto !important;
+    border: none !important;
+    border-radius: 14px !important;
+    box-shadow: 0 16px 48px rgba(15, 30, 60, 0.25) !important;
+    position: relative !important;
+    z-index: 1051 !important;
+}
+
+.modal-body {
+    overflow-y: auto;
+}
+
+/* Apply page entrance animation to all page root divs automatically */
+main > div {
+    animation: page-fadeUp 0.3s ease both;
+}
+
+/* Upgrade all card shadow-sm to match edulearn style */
+.card.shadow-sm {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(24, 60, 110, 0.08) !important;
+}
+
+/* Upgrade card headers */
+.card-header.bg-light {
+    background: #fff !important;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.9rem;
+    color: #1a3c6e;
+}
+
+/* Upgrade table headers */
+.table thead.table-light th {
+    background: #f0f4fa !important;
+    color: #1a3c6e !important;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #dee2e6;
+    padding: 10px 16px;
+    white-space: nowrap;
+}
+
+/* Upgrade blue card headers (bg-primary-edulearn on card-header) */
+.card-header.bg-primary-edulearn {
+    background: linear-gradient(135deg, #1a3c6e 0%, #185FA5 100%) !important;
+    border-bottom: none;
+    border-radius: 12px 12px 0 0;
+}
+
+/* Smooth table row hover */
+.table-hover tbody tr {
+    transition: background 0.15s ease;
+}
+
+/* Staggered row animation */
+.table tbody tr {
+    animation: page-fadeIn 0.2s ease both;
+}
+.table tbody tr:nth-child(1)  { animation-delay: 0.02s; }
+.table tbody tr:nth-child(2)  { animation-delay: 0.04s; }
+.table tbody tr:nth-child(3)  { animation-delay: 0.06s; }
+.table tbody tr:nth-child(4)  { animation-delay: 0.08s; }
+.table tbody tr:nth-child(5)  { animation-delay: 0.10s; }
+.table tbody tr:nth-child(6)  { animation-delay: 0.12s; }
+.table tbody tr:nth-child(7)  { animation-delay: 0.14s; }
+.table tbody tr:nth-child(8)  { animation-delay: 0.16s; }
+.table tbody tr:nth-child(9)  { animation-delay: 0.18s; }
+.table tbody tr:nth-child(10) { animation-delay: 0.20s; }
+
+/* Smooth modal entrance */
+.modal.show .modal-dialog {
+    animation: page-fadeUp 0.25s ease both;
+}
+
+.modal-content {
+    border: none;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(24, 60, 110, 0.18);
+}
+
+/* Action buttons in tables */
+.btn-sm {
+    border-radius: 7px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-sm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* Input focus glow */
+.form-control:focus,
+.form-select:focus {
+    border-color: #185FA5;
+    box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.12);
+}
+
+/* Page headers */
 .text-primary-edulearn {
     color: var(--primary) !important;
+}
+
+/* Card footer */
+.card-footer {
+    background: #fff;
+    border-top: 1px solid #f1f3f5;
+    font-size: 0.8rem;
+    color: #6b7280;
+    border-radius: 0 0 12px 12px;
+}
+
+/* KPI card hover */
+.card.shadow-sm.h-100 {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card.shadow-sm.h-100:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(24, 60, 110, 0.12) !important;
+}
+
+/* Remove # symbol from all code/id chips globally */
+code {
+    font-family: 'Courier New', monospace;
+    font-size: 0.82em;
+    color: #185FA5;
+    background: #e8f0fc;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+/* Override any place that manually renders #id */
+.id-chip::before {
+    content: none;
 }
 
 .bg-primary-edulearn {

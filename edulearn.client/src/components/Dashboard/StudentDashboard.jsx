@@ -7,8 +7,31 @@ import { notificationService } from '../../services/notificationService';
 import { transcriptService } from '../../services/transcriptService';
 import Loading from '../Loading';
 import axiosClient from '../../api/axiosClient';
+import './RoleDashboard.css';
 
 const TERM = '2026-Spring';
+
+const QUICK_ACTIONS = [
+    { label: 'Enrollment',      icon: 'bi-card-checklist',     path: '/enrollment'    },
+    { label: 'Timetable',       icon: 'bi-calendar3',          path: '/timetable'     },
+    { label: 'Assessments',     icon: 'bi-file-earmark-check', path: '/assessments'   },
+    { label: 'Submissions',     icon: 'bi-cloud-upload',       path: '/submissions'   },
+    { label: 'Course Contents', icon: 'bi-collection-play',    path: '/contents'      },
+    { label: 'Syllabus',        icon: 'bi-file-earmark-ruled', path: '/syllabi'       },
+    { label: 'Discussions',     icon: 'bi-chat-square-text',   path: '/discussions'   },
+    { label: 'Transcripts',     icon: 'bi-file-earmark-text',  path: '/transcripts'   },
+    { label: 'Invoices',        icon: 'bi-receipt',            path: '/invoices'      },
+    { label: 'Notifications',   icon: 'bi-bell',               path: '/notifications' },
+    { label: 'Support Ticket',  icon: 'bi-headset',            path: '/tickets'       },
+];
+
+const STAT_CARDS = [
+    { key: 'enrolled',           label: 'Enrolled Courses',    sub: (s) => `${s.waitlisted ?? 0} waitlisted`, icon: 'bi-mortarboard-fill', accent: '#185FA5', iconBg: '#dbeafe', iconColor: '#185FA5', path: '/enrollment'    },
+    { key: 'pendingSubmissions', label: 'Pending Submissions', sub: () => 'awaiting grade',                   icon: 'bi-cloud-upload',     accent: '#854F0B', iconBg: '#fef3c7', iconColor: '#854F0B', path: '/submissions'   },
+    { key: 'cgpa',               label: 'Latest CGPA',         sub: () => 'out of 10.00',                     icon: 'bi-award-fill',       accent: '#3B6D11', iconBg: '#dcfce7', iconColor: '#3B6D11', path: '/transcripts'   },
+    { key: 'unread',             label: 'Notifications',       sub: () => 'unread',                           icon: 'bi-bell-fill',        accent: '#534AB7', iconBg: '#ede9fe', iconColor: '#534AB7', path: '/notifications' },
+    { key: 'invoice',            label: 'Pending Invoice',     sub: () => 'check invoices',                   icon: 'bi-receipt',          accent: '#A32D2D', iconBg: '#fee2e2', iconColor: '#A32D2D', path: '/invoices'      },
+];
 
 export default function StudentDashboard() {
     const navigate = useNavigate();
@@ -43,7 +66,6 @@ export default function StudentDashboard() {
                 }
                 if (notifications.status === 'fulfilled') {
                     const d = notifications.value;
-                    // Backend returns PaginatedResponseDto: { items: [], totalCount, ... }
                     s.unread = d?.items?.length ?? (Array.isArray(d) ? d.length : 0);
                 }
                 if (submissions.status === 'fulfilled') {
@@ -56,94 +78,54 @@ export default function StudentDashboard() {
         setLoading(false);
     };
 
+    const getStatValue = (card) => {
+        if (card.key === 'cgpa') return stats.cgpa != null ? Number(stats.cgpa).toFixed(2) : '—';
+        if (card.key === 'invoice') return '—';
+        return stats[card.key] ?? '—';
+    };
+
     if (loading) return <Loading message="Loading your dashboard..." />;
 
     return (
-        <div>
-            <div className="d-flex align-items-center justify-content-between mb-4">
-                <div className="d-flex align-items-center gap-3">
-                    <span className="badge" style={{ background: '#E6F1FB', color: '#0C447C', fontSize: 13 }}>Student</span>
-                    <h2 className="mb-0 text-primary-edulearn">Student Dashboard</h2>
+        <div className="role-dashboard">
+            <div className="rd-hero">
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <span className="rd-hero-badge">Student · {TERM}</span>
+                    <div className="rd-hero-title">Welcome back, {username}! 👋</div>
+                    <p className="rd-hero-sub">
+                        {today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
                 </div>
-                <small className="text-muted">{today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</small>
-            </div>
-
-            <div className="card shadow-sm mb-4 border-0 bg-light">
-                <div className="card-body d-flex align-items-center justify-content-between">
-                    <div>
-                        <h4 className="mb-1">Welcome back, {username}! 👋</h4>
-                        <p className="mb-0 text-muted">Term: {TERM} &nbsp;·&nbsp; Role: Student</p>
-                    </div>
-                    <i className="bi bi-mortarboard text-muted" style={{ fontSize: '2.5rem', opacity: 0.3 }}></i>
-                </div>
+                <i className="bi bi-mortarboard-fill rd-hero-icon"></i>
             </div>
 
             <div className="row g-3 mb-4">
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/enrollment')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Enrolled Courses</div>
-                            <div className="display-5 fw-bold" style={{ color: '#185FA5' }}>{stats.enrolled ?? '—'}</div>
-                            <small className="text-muted">{stats.waitlisted ?? 0} waitlisted</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/submissions')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Pending Submissions</div>
-                            <div className="display-5 fw-bold" style={{ color: '#854F0B' }}>{stats.pendingSubmissions ?? '—'}</div>
-                            <small className="text-muted">due this week</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light">
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Latest CGPA</div>
-                            <div className="display-5 fw-bold" style={{ color: '#3B6D11' }}>
-                                {stats.cgpa != null ? Number(stats.cgpa).toFixed(2) : '—'}
+                {STAT_CARDS.map((card) => (
+                    <div key={card.key} className="col">
+                        <div className="rd-stat-card" style={{ '--rd-accent': card.accent }} onClick={() => navigate(card.path)}>
+                            <div>
+                                <div className="rd-stat-label">{card.label}</div>
+                                <div className="rd-stat-value" style={{ color: card.accent }}>{getStatValue(card)}</div>
+                                <div className="rd-stat-sub">{card.sub(stats)}</div>
                             </div>
-                            <small className="text-muted">out of 10.00</small>
+                            <div className="rd-stat-icon-wrap" style={{ background: card.iconBg, color: card.iconColor }}>
+                                <i className={`bi ${card.icon}`}></i>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/invoices')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Pending Invoice</div>
-                            <div className="display-5 fw-bold" style={{ color: '#A32D2D' }}>—</div>
-                            <small className="text-muted">check invoices</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/notifications')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Notifications</div>
-                            <div className="display-5 fw-bold" style={{ color: '#534AB7' }}>{stats.unread ?? '—'}</div>
-                            <small className="text-muted">unread</small>
-                        </div>
-                    </div>
-                </div>
+                ))}
             </div>
 
-            <div className="card shadow-sm">
-                <div className="card-header bg-light"><strong><i className="bi bi-lightning me-2"></i>Quick Actions</strong></div>
-                <div className="card-body">
-                    <div className="d-flex flex-wrap gap-2">
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/enrollment')}><i className="bi bi-card-checklist me-2"></i>Enroll in Section</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/timetable')}><i className="bi bi-calendar3 me-2"></i>My Timetable</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/assessments')}><i className="bi bi-file-check me-2"></i>My Assessments</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/submissions')}><i className="bi bi-cloud-upload me-2"></i>My Submissions</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/contents')}><i className="bi bi-collection-play me-2"></i>Course Contents</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/syllabi')}><i className="bi bi-file-earmark-ruled me-2"></i>Syllabi</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/discussions')}><i className="bi bi-chat-square-text me-2"></i>Discussions</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/transcripts')}><i className="bi bi-file-earmark-text me-2"></i>My Transcripts</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/invoices')}><i className="bi bi-receipt me-2"></i>My Invoices</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/notifications')}><i className="bi bi-bell me-2"></i>Notifications</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/tickets')}><i className="bi bi-headset me-2"></i>Support Ticket</button>
-                    </div>
+            <div className="rd-card">
+                <div className="rd-card-header">
+                    <span className="rd-card-header-title"><i className="bi bi-lightning-fill me-2"></i>Quick Actions</span>
+                </div>
+                <div className="rd-qa-grid">
+                    {QUICK_ACTIONS.map((a) => (
+                        <button key={a.path} className="rd-qa-btn" onClick={() => navigate(a.path)}>
+                            <i className={`bi ${a.icon}`}></i>{a.label}
+                        </button>
+                    ))}
                 </div>
             </div>
         </div>

@@ -1,7 +1,9 @@
+import ModalPortal from './ModalPortal';
+
 export default function ConfirmDialog({ show, title, message, onConfirm, onCancel, confirmText = 'Confirm', confirmVariant = 'primary' }) {
     if (!show) return null;
     return (
-        <>
+        <ModalPortal>
             <div className="modal-backdrop fade show"></div>
             <div className="modal fade show d-block" tabIndex="-1">
                 <div className="modal-dialog modal-dialog-centered">
@@ -24,6 +26,6 @@ export default function ConfirmDialog({ show, title, message, onConfirm, onCance
                     </div>
                 </div>
             </div>
-        </>
+        </ModalPortal>
     );
 }

@@ -14,7 +14,7 @@ const NAV_ITEMS = [
     { label: 'Assessments',   to: '/assessments',   icon: 'file-earmark-check',     roles: ['Student'] },
     { label: 'Submissions',   to: '/submissions',   icon: 'cloud-upload',           roles: ['Student'] },
     { label: 'Contents',      to: '/contents',      icon: 'collection-play',        roles: ['Student'] },
-    { label: 'Syllabi',       to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['Student'] },
+    { label: 'Syllabus',      to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['Student'] },
     { label: 'Discussions',   to: '/discussions',   icon: 'chat-square-text',       roles: ['Student'] },
     { label: 'Transcripts',   to: '/transcripts',   icon: 'file-earmark-text',      roles: ['Student'] },
     { label: 'Invoices',      to: '/invoices',      icon: 'receipt',                roles: ['Student'] },
@@ -30,9 +30,8 @@ const NAV_ITEMS = [
     { label: 'Submissions',   to: '/submissions',   icon: 'cloud-upload',           roles: ['Instructor'] },
     { label: 'Grade Changes', to: '/grade-changes', icon: 'arrow-left-right',       roles: ['Instructor'] },
     { label: 'Contents',      to: '/contents',      icon: 'collection-play',        roles: ['Instructor'] },
-    { label: 'Syllabi',       to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['Instructor'] },
+    { label: 'Syllabus',      to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['Instructor'] },
     { label: 'Discussions',   to: '/discussions',   icon: 'chat-square-text',       roles: ['Instructor'] },
-    { label: 'Plagiarism',    to: '/plagiarism',    icon: 'shield-exclamation',     roles: ['Instructor'] },
     { label: 'Students',      to: '/students',      icon: 'people',                 roles: ['Instructor'] },
     { label: 'Timetable',     to: '/timetable',     icon: 'calendar3',              roles: ['Instructor'] },
     { label: 'Notifications', to: '/notifications', icon: 'bell',                   roles: ['Instructor'] },
@@ -46,9 +45,8 @@ const NAV_ITEMS = [
     { label: 'Sections',      to: '/sections',      icon: 'collection',             roles: ['Registrar'] },
     { label: 'Enrollment',    to: '/enrollment',    icon: 'card-checklist',         roles: ['Registrar'] },
     { label: 'Transcripts',   to: '/transcripts',   icon: 'file-earmark-text',      roles: ['Registrar'] },
-    { label: 'Plagiarism',    to: '/plagiarism',    icon: 'shield-exclamation',     roles: ['Registrar'] },
     { label: 'Courses',       to: '/courses',       icon: 'book',                   roles: ['Registrar'] },
-    { label: 'Syllabi',       to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['Registrar'] },
+    { label: 'Syllabus',      to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['Registrar'] },
     { label: 'Discussions',   to: '/discussions',   icon: 'chat-square-text',       roles: ['Registrar'] },
     { label: 'Timetable',     to: '/timetable',     icon: 'calendar3',              roles: ['Registrar'] },
     { label: 'Programs',      to: '/programs',      icon: 'mortarboard',            roles: ['Registrar'] },
@@ -62,7 +60,7 @@ const NAV_ITEMS = [
     { label: 'Courses',       to: '/courses',       icon: 'book',                   roles: ['DeptAdmin'] },
     { label: 'Sections',      to: '/sections',      icon: 'collection',             roles: ['DeptAdmin'] },
     { label: 'Rooms',         to: '/rooms',         icon: 'door-closed',            roles: ['DeptAdmin'] },
-    { label: 'Syllabi',       to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['DeptAdmin'] },
+    { label: 'Syllabus',      to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['DeptAdmin'] },
     { label: 'Discussions',   to: '/discussions',   icon: 'chat-square-text',       roles: ['DeptAdmin'] },
     { label: 'Timetable',     to: '/timetable',     icon: 'calendar3',              roles: ['DeptAdmin'] },
     { label: 'Notifications', to: '/notifications', icon: 'bell',                   roles: ['DeptAdmin'] },
@@ -96,13 +94,12 @@ const NAV_ITEMS = [
     { label: 'Transcripts',   to: '/transcripts',   icon: 'file-earmark-text',      roles: ['ITAdmin'] },
     { label: 'Programs',      to: '/programs',      icon: 'mortarboard',            roles: ['ITAdmin'] },
     { label: 'Courses',       to: '/courses',       icon: 'book',                   roles: ['ITAdmin'] },
-    { label: 'Syllabi',       to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['ITAdmin'] },
+    { label: 'Syllabus',      to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['ITAdmin'] },
     { label: 'Discussions',   to: '/discussions',   icon: 'chat-square-text',       roles: ['ITAdmin'] },
     { label: 'Assessments',   to: '/assessments',   icon: 'file-earmark-check',     roles: ['ITAdmin'] },
     { label: 'Submissions',   to: '/submissions',   icon: 'cloud-upload',           roles: ['ITAdmin'] },
     { label: 'Grade Changes', to: '/grade-changes', icon: 'arrow-left-right',       roles: ['ITAdmin'] },
     { label: 'Contents',      to: '/contents',      icon: 'collection-play',        roles: ['ITAdmin'] },
-    { label: 'Plagiarism',    to: '/plagiarism',    icon: 'shield-exclamation',     roles: ['ITAdmin'] },
     { label: 'Fees',          to: '/fees',          icon: 'cash-stack',             roles: ['ITAdmin'] },
     { label: 'Invoices',      to: '/invoices',      icon: 'receipt',                roles: ['ITAdmin'] },
     { label: 'Scholarships',  to: '/scholarships',  icon: 'award',                  roles: ['ITAdmin'] },
@@ -118,7 +115,7 @@ export default function Sidebar() {
     const visible = NAV_ITEMS.filter(i => i.roles.includes('*') || i.roles.includes(role));
 
     return (
-        <aside className="bg-white border-end" style={{ width: 240, minHeight: 'calc(100vh - 56px)' }}>
+        <div className="bg-white border-end" style={{ minHeight: '100%' }}>
             <ul className="nav flex-column p-3">
                 {visible.map(item => (
                     <li key={item.to} className="nav-item mb-1">
@@ -134,6 +131,6 @@ export default function Sidebar() {
                     </li>
                 ))}
             </ul>
-        </aside>
+        </div>
     );
 }

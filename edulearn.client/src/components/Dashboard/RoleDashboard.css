@@ -1,0 +1,133 @@
+/* ============================================================
+   RoleDashboard.css — shared scoped styles for all role dashboards.
+   Uses .role-dashboard wrapper. No global selectors.
+   ============================================================ */
+
+@keyframes rd-fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes rd-fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.role-dashboard { animation: rd-fadeIn 0.3s ease both; }
+
+/* ── Hero ── */
+.rd-hero {
+    border-radius: 14px;
+    padding: 26px 30px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    animation: rd-fadeUp 0.35s ease both;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1a3c6e 0%, #185FA5 60%, #1e7ab8 100%);
+}
+.rd-hero::before {
+    content: ''; position: absolute;
+    width: 180px; height: 180px; border-radius: 50%;
+    background: rgba(255,255,255,0.06); top: -50px; right: -30px; pointer-events: none;
+}
+.rd-hero::after {
+    content: ''; position: absolute;
+    width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(255,255,255,0.04); bottom: -40px; left: 50px; pointer-events: none;
+}
+.rd-hero-badge {
+    background: rgba(255,255,255,0.18); color: #fff;
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.8px;
+    text-transform: uppercase; padding: 3px 10px; border-radius: 20px;
+    display: inline-block; margin-bottom: 8px;
+}
+.rd-hero-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+.rd-hero-sub   { font-size: 0.875rem; opacity: 0.8; margin: 0; }
+.rd-hero-icon  { font-size: 3.2rem; opacity: 0.14; position: relative; z-index: 1; flex-shrink: 0; }
+.rd-hero-btn {
+    background: rgba(255,255,255,0.18) !important; color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.35) !important;
+    font-size: 0.82rem; padding: 6px 16px; border-radius: 8px;
+    transition: background 0.2s ease, transform 0.15s ease; cursor: pointer;
+}
+.rd-hero-btn:hover { background: rgba(255,255,255,0.28) !important; transform: translateY(-1px); }
+
+/* ── Stat Cards ── */
+.rd-stat-card {
+    border-radius: 12px; border: none; padding: 18px 16px; cursor: pointer;
+    background: #fff; box-shadow: 0 2px 8px rgba(24,60,110,0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex; align-items: flex-start; justify-content: space-between;
+    position: relative; overflow: hidden;
+    animation: rd-fadeUp 0.4s ease both; height: 100%;
+}
+.rd-stat-card:nth-child(1) { animation-delay: 0.05s; }
+.rd-stat-card:nth-child(2) { animation-delay: 0.10s; }
+.rd-stat-card:nth-child(3) { animation-delay: 0.15s; }
+.rd-stat-card:nth-child(4) { animation-delay: 0.20s; }
+.rd-stat-card:nth-child(5) { animation-delay: 0.25s; }
+.rd-stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(24,60,110,0.14); }
+.rd-stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 12px 12px 0 0; background: var(--rd-accent, #185FA5);
+}
+.rd-stat-card > div:first-child { flex: 1; min-width: 0; overflow: hidden; }
+.rd-stat-label {
+    font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.6px; color: #6b7280; margin-bottom: 6px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rd-stat-value { font-size: 2.1rem; font-weight: 700; line-height: 1; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+.rd-stat-sub   { font-size: 0.75rem; color: #6b7280; white-space: nowrap; }
+.rd-stat-icon-wrap {
+    width: 42px; height: 42px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.25rem; flex-shrink: 0; align-self: flex-start;
+    margin-left: 8px; opacity: 0.85;
+}
+
+/* ── Section card ── */
+.rd-card {
+    border-radius: 12px; border: none;
+    box-shadow: 0 2px 8px rgba(24,60,110,0.08);
+    overflow: hidden; background: #fff;
+    animation: rd-fadeUp 0.45s ease both; animation-delay: 0.3s;
+}
+.rd-card-header {
+    background: #fff; border-bottom: 1px solid #e9ecef;
+    padding: 13px 18px; display: flex; align-items: center; justify-content: space-between;
+}
+.rd-card-header-title { font-size: 0.875rem; font-weight: 600; color: #1a3c6e; margin: 0; }
+
+/* ── Quick actions grid ── */
+.rd-qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px; }
+.rd-qa-btn {
+    display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+    border-radius: 9px; border: 1px solid #dde3ee; background: #f8f9ff;
+    color: #1a3c6e; font-size: 0.8rem; font-weight: 500; cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rd-qa-btn:hover { background: #e8f0fc; border-color: #185FA5; color: #185FA5; transform: translateY(-1px); }
+.rd-qa-btn i { font-size: 1rem; flex-shrink: 0; color: #185FA5; }
+
+/* ── List rows ── */
+.rd-list-row {
+    padding: 11px 18px; border-bottom: 1px solid #f1f3f5;
+    cursor: pointer; transition: background 0.15s ease;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.rd-list-row:last-child { border-bottom: none; }
+.rd-list-row:hover { background: #f0f4fa; }
+.rd-list-title { font-size: 0.875rem; font-weight: 600; color: #212529; }
+.rd-list-meta  { font-size: 0.75rem; color: #6b7280; margin-top: 2px; }
+
+/* ── Success alert ── */
+.rd-success-alert {
+    border-radius: 10px; border: none; background: #d1fae5; color: #065f46;
+    padding: 12px 18px; display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 20px; animation: rd-fadeIn 0.3s ease both; font-size: 0.875rem;
+}

@@ -2,8 +2,26 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import Loading from '../Loading';
+import './RoleDashboard.css';
 
 const TERM = '2026-Spring';
+
+const QUICK_ACTIONS = [
+    { label: 'Fee Schedules',    icon: 'bi-cash-stack',    path: '/fees'          },
+    { label: 'Generate Invoice', icon: 'bi-receipt',       path: '/invoices'      },
+    { label: 'Record Payment',   icon: 'bi-credit-card',   path: '/invoices'      },
+    { label: 'Scholarships',     icon: 'bi-award',         path: '/scholarships'  },
+    { label: 'Notifications',    icon: 'bi-bell',          path: '/notifications' },
+    { label: 'Support Ticket',   icon: 'bi-headset',       path: '/tickets'       },
+];
+
+const STAT_CARDS = [
+    { key: 'totalInvoices',   label: 'Total Invoices',   sub: () => 'this term',        icon: 'bi-receipt',         accent: '#185FA5', iconBg: '#dbeafe', iconColor: '#185FA5', path: '/invoices'     },
+    { key: 'pendingInvoices', label: 'Pending Payment',  sub: () => 'invoices due',     icon: 'bi-hourglass',       accent: '#A32D2D', iconBg: '#fee2e2', iconColor: '#A32D2D', path: '/invoices'     },
+    { key: 'paidInvoices',    label: 'Paid',             sub: () => 'invoices settled', icon: 'bi-check-circle',    accent: '#3B6D11', iconBg: '#dcfce7', iconColor: '#3B6D11', path: '/invoices'     },
+    { key: 'scholarships',    label: 'Scholarships',     sub: () => 'active awards',    icon: 'bi-award-fill',      accent: '#534AB7', iconBg: '#ede9fe', iconColor: '#534AB7', path: '/scholarships' },
+    { key: 'feeSchedules',    label: 'Fee Schedules',    sub: () => 'configured',       icon: 'bi-cash-stack',      accent: '#854F0B', iconBg: '#fef3c7', iconColor: '#854F0B', path: '/fees'         },
+];
 
 export default function FinanceDashboard() {
     const navigate = useNavigate();
@@ -16,100 +34,56 @@ export default function FinanceDashboard() {
 
     const loadStats = async () => {
         setLoading(true);
-        const s = {};
-        // Note: backend has no list-all endpoints for invoices or fees
-        // GET /api/invoices/student/:id and GET /api/fees/program/:id/term/:term are the only endpoints
-        // Dashboard shows placeholder values — real data available on the Invoices/Fees pages
-        s.totalInvoices = null;
-        s.pendingInvoices = null;
-        s.paidInvoices = null;
-        s.feeSchedules = null;
-        s.activeFees = null;
-        setStats(s);
+        // Backend has no list-all endpoints for invoices/fees.
+        // Real data is available on the Invoices and Fees pages per student/program.
+        setStats({});
         setLoading(false);
     };
 
     if (loading) return <Loading message="Loading your dashboard..." />;
 
     return (
-        <div>
-            <div className="d-flex align-items-center justify-content-between mb-4">
-                <div className="d-flex align-items-center gap-3">
-                    <span className="badge" style={{ background: '#EAF3DE', color: '#27500A', fontSize: 13 }}>Finance</span>
-                    <h2 className="mb-0 text-primary-edulearn">Finance Dashboard</h2>
+        <div className="role-dashboard">
+            <div className="rd-hero">
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <span className="rd-hero-badge">Finance · {TERM}</span>
+                    <div className="rd-hero-title">Welcome back, {username}! 👋</div>
+                    <p className="rd-hero-sub">
+                        {today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
                 </div>
-                <small className="text-muted">{today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</small>
-            </div>
-
-            <div className="card shadow-sm mb-4 border-0 bg-light">
-                <div className="card-body d-flex align-items-center justify-content-between">
-                    <div>
-                        <h4 className="mb-1">Welcome back, {username}! 👋</h4>
-                        <p className="mb-0 text-muted">Term: {TERM} &nbsp;·&nbsp; Role: Finance</p>
-                    </div>
-                    <i className="bi bi-cash-stack text-muted" style={{ fontSize: '2.5rem', opacity: 0.3 }}></i>
-                </div>
+                <i className="bi bi-cash-stack rd-hero-icon"></i>
             </div>
 
             <div className="row g-3 mb-4">
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/invoices')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Total Invoices</div>
-                            <div className="display-5 fw-bold" style={{ color: '#185FA5' }}>{stats.totalInvoices ?? '—'}</div>
-                            <small className="text-muted">this term</small>
+                {STAT_CARDS.map((card) => (
+                    <div key={card.key} className="col">
+                        <div className="rd-stat-card" style={{ '--rd-accent': card.accent }} onClick={() => navigate(card.path)}>
+                            <div>
+                                <div className="rd-stat-label">{card.label}</div>
+                                <div className="rd-stat-value" style={{ color: card.accent }}>
+                                    {stats[card.key] ?? '—'}
+                                </div>
+                                <div className="rd-stat-sub">{card.sub(stats)}</div>
+                            </div>
+                            <div className="rd-stat-icon-wrap" style={{ background: card.iconBg, color: card.iconColor }}>
+                                <i className={`bi ${card.icon}`}></i>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/invoices')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Pending Payment</div>
-                            <div className="display-5 fw-bold" style={{ color: '#A32D2D' }}>{stats.pendingInvoices ?? '—'}</div>
-                            <small className="text-muted">invoices due</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/invoices')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Paid</div>
-                            <div className="display-5 fw-bold" style={{ color: '#3B6D11' }}>{stats.paidInvoices ?? '—'}</div>
-                            <small className="text-muted">invoices settled</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/scholarships')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Scholarships</div>
-                            <div className="display-5 fw-bold" style={{ color: '#534AB7' }}>—</div>
-                            <small className="text-muted">active awards</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/fees')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Fee Schedules</div>
-                            <div className="display-5 fw-bold" style={{ color: '#854F0B' }}>{stats.feeSchedules ?? '—'}</div>
-                            <small className="text-muted">{stats.activeFees ?? 0} active</small>
-                        </div>
-                    </div>
-                </div>
+                ))}
             </div>
 
-            <div className="card shadow-sm">
-                <div className="card-header bg-light"><strong><i className="bi bi-lightning me-2"></i>Quick Actions</strong></div>
-                <div className="card-body">
-                    <div className="d-flex flex-wrap gap-2">
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/fees')}><i className="bi bi-cash-stack me-2"></i>Fee Schedules</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/invoices')}><i className="bi bi-receipt me-2"></i>Generate Invoice</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/invoices')}><i className="bi bi-credit-card me-2"></i>Record Payment</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/scholarships')}><i className="bi bi-award me-2"></i>Scholarships</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/notifications')}><i className="bi bi-bell me-2"></i>Notifications</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/tickets')}><i className="bi bi-headset me-2"></i>Support Ticket</button>
-                    </div>
+            <div className="rd-card">
+                <div className="rd-card-header">
+                    <span className="rd-card-header-title"><i className="bi bi-lightning-fill me-2"></i>Quick Actions</span>
+                </div>
+                <div className="rd-qa-grid">
+                    {QUICK_ACTIONS.map((a) => (
+                        <button key={a.path + a.label} className="rd-qa-btn" onClick={() => navigate(a.path)}>
+                            <i className={`bi ${a.icon}`}></i>{a.label}
+                        </button>
+                    ))}
                 </div>
             </div>
         </div>

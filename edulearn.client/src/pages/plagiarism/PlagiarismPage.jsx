@@ -102,7 +102,7 @@ export default function PlagiarismPage() {
             await plagiarismService.updateStatus(reportId, newStatus);
             setActionMessage({
                 type: 'success',
-                text: `Report #${reportId} marked as ${newStatus}.`,
+                text: `Report ${reportId} marked as ${newStatus}.`,
             });
             await loadIntegrity();
         } catch (err) {
@@ -143,15 +143,13 @@ export default function PlagiarismPage() {
                                 className="form-control"
                                 value={studentId}
                                 onChange={(e) => setStudentId(e.target.value)}
-                                placeholder="e.g. 1"
+                                placeholder="Whose integrity status to view"
                                 min="1"
                             />
-                            <small className="text-muted">
-                                Whose integrity status to view
-                            </small>
                         </div>
 
                         <div className="col-md-3">
+                            <label className="form-label fw-bold">&nbsp;</label>
                             <button
                                 className="btn btn-outline-secondary w-100"
                                 onClick={loadIntegrity}
@@ -162,6 +160,7 @@ export default function PlagiarismPage() {
                         </div>
 
                         <div className="col-md-3">
+                            <label className="form-label fw-bold">&nbsp;</label>
                             {canFlag && (
                                 <button
                                     className="btn btn-warning w-100"
@@ -285,7 +284,7 @@ export default function PlagiarismPage() {
                                                 <div className="col-md-8">
                                                     <div className="d-flex align-items-center gap-2 mb-1">
                                                         <h6 className="mb-0">
-                                                            Report #{r.reportID}
+                                                            Report {r.reportID}
                                                         </h6>
                                                         <StatusBadge status={r.status} />
                                                         <span className={`fw-bold ${scoreColor}`}>
@@ -335,7 +334,7 @@ export default function PlagiarismPage() {
                                                                 onClick={() => setStatusConfirm({
                                                                     reportId: r.reportID,
                                                                     newStatus: 'Confirmed',
-                                                                    reportTitle: `Report #${r.reportID}`,
+                                                                    reportTitle: `Report ${r.reportID}`,
                                                                 })}
                                                                 disabled={isBusy}
                                                             >
@@ -350,7 +349,7 @@ export default function PlagiarismPage() {
                                                                 onClick={() => setStatusConfirm({
                                                                     reportId: r.reportID,
                                                                     newStatus: 'Dismissed',
-                                                                    reportTitle: `Report #${r.reportID}`,
+                                                                    reportTitle: `Report ${r.reportID}`,
                                                                 })}
                                                                 disabled={isBusy}
                                                             >

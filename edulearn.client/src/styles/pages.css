@@ -1,0 +1,319 @@
+/* ============================================================
+   pages.css — Shared styles for all page content areas
+   Scoped under .edulearn-page so nothing bleeds outside.
+   Import this once in main.jsx or index.css.
+   ============================================================ */
+
+/* ---------- Page entrance animation ---------- */
+
+@keyframes page-fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes page-fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Every page wrapper — add className="edulearn-page" to the root div */
+.edulearn-page {
+    animation: page-fadeUp 0.3s ease both;
+}
+
+/* ---------- Page Header ---------- */
+
+.edulearn-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    animation: page-fadeUp 0.3s ease both;
+}
+
+.edulearn-page-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1a3c6e;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.edulearn-page-title i {
+    font-size: 1.3rem;
+    color: #185FA5;
+}
+
+/* ---------- Shared Card ---------- */
+
+.edulearn-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(24, 60, 110, 0.08);
+    background: #fff;
+    overflow: hidden;
+    animation: page-fadeUp 0.35s ease both;
+    transition: box-shadow 0.2s ease;
+    margin-bottom: 20px;
+}
+
+.edulearn-card:hover {
+    box-shadow: 0 4px 16px rgba(24, 60, 110, 0.12);
+}
+
+/* Card header — replaces bg-light card-header */
+.edulearn-card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+}
+
+.edulearn-card-header strong,
+.edulearn-card-header-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1a3c6e;
+}
+
+/* Card header with blue gradient — used on generate/create forms */
+.edulearn-card-header-blue {
+    padding: 14px 20px;
+    border-bottom: none;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #1a3c6e 0%, #185FA5 100%);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.edulearn-card-header-blue i {
+    margin-right: 8px;
+}
+
+/* ---------- Filter bar ---------- */
+
+.edulearn-filter-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(24, 60, 110, 0.06);
+    background: #fff;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    animation: page-fadeUp 0.32s ease both;
+    animation-delay: 0.05s;
+}
+
+/* ---------- Table ---------- */
+
+.edulearn-table-wrap {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(24, 60, 110, 0.08);
+    background: #fff;
+    overflow: hidden;
+    animation: page-fadeUp 0.38s ease both;
+    animation-delay: 0.1s;
+}
+
+.edulearn-table-wrap .table {
+    margin-bottom: 0;
+}
+
+.edulearn-table-wrap .table thead th {
+    background: #f0f4fa;
+    color: #1a3c6e;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #dee2e6;
+    padding: 10px 16px;
+    white-space: nowrap;
+}
+
+.edulearn-table-wrap .table tbody tr {
+    transition: background 0.15s ease;
+    animation: page-fadeIn 0.25s ease both;
+}
+
+.edulearn-table-wrap .table tbody tr:hover {
+    background: #f0f4fa;
+}
+
+.edulearn-table-wrap .table tbody td {
+    padding: 10px 16px;
+    vertical-align: middle;
+    font-size: 0.865rem;
+    border-color: #f1f3f5;
+}
+
+.edulearn-table-footer {
+    padding: 10px 16px;
+    font-size: 0.8rem;
+    color: #6b7280;
+    border-top: 1px solid #f1f3f5;
+    background: #fff;
+}
+
+/* ---------- Buttons ---------- */
+
+.edulearn-btn-primary {
+    background: linear-gradient(135deg, #1a3c6e 0%, #185FA5 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 18px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: opacity 0.2s ease, transform 0.15s ease;
+    cursor: pointer;
+}
+
+.edulearn-btn-primary:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    color: #fff;
+}
+
+.edulearn-btn-primary:disabled {
+    opacity: 0.6;
+    transform: none;
+}
+
+/* ---------- Success / Error Alerts ---------- */
+
+.edulearn-alert-success {
+    border-radius: 10px;
+    border: none;
+    background: #d1fae5;
+    color: #065f46;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    animation: page-fadeIn 0.3s ease both;
+    font-size: 0.875rem;
+}
+
+/* ---------- Empty state ---------- */
+
+.edulearn-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7280;
+    animation: page-fadeIn 0.3s ease both;
+}
+
+.edulearn-empty i {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 12px;
+    opacity: 0.4;
+}
+
+/* ---------- Modal animations ---------- */
+
+.modal.show .modal-dialog {
+    animation: page-fadeUp 0.25s ease both;
+}
+
+.modal-content {
+    border: none;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(24, 60, 110, 0.18);
+}
+
+.modal-header.modal-header-blue {
+    background: linear-gradient(135deg, #1a3c6e 0%, #185FA5 100%);
+    color: #fff;
+    border-bottom: none;
+    padding: 16px 24px;
+}
+
+.modal-header.modal-header-blue .btn-close {
+    filter: invert(1);
+}
+
+/* ---------- Dropdown / Select smooth open ---------- */
+
+select.form-select,
+select.form-control {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+select.form-select:focus,
+select.form-control:focus {
+    border-color: #185FA5;
+    box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.12);
+}
+
+/* ---------- Input fields ---------- */
+
+.form-control,
+.form-select {
+    border-radius: 8px;
+    border-color: #d1d5db;
+    font-size: 0.875rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #185FA5;
+    box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.12);
+    outline: none;
+}
+
+/* ---------- Staggered table row animations ---------- */
+
+.edulearn-table-wrap .table tbody tr:nth-child(1)  { animation-delay: 0.02s; }
+.edulearn-table-wrap .table tbody tr:nth-child(2)  { animation-delay: 0.04s; }
+.edulearn-table-wrap .table tbody tr:nth-child(3)  { animation-delay: 0.06s; }
+.edulearn-table-wrap .table tbody tr:nth-child(4)  { animation-delay: 0.08s; }
+.edulearn-table-wrap .table tbody tr:nth-child(5)  { animation-delay: 0.10s; }
+.edulearn-table-wrap .table tbody tr:nth-child(6)  { animation-delay: 0.12s; }
+.edulearn-table-wrap .table tbody tr:nth-child(7)  { animation-delay: 0.14s; }
+.edulearn-table-wrap .table tbody tr:nth-child(8)  { animation-delay: 0.16s; }
+.edulearn-table-wrap .table tbody tr:nth-child(9)  { animation-delay: 0.18s; }
+.edulearn-table-wrap .table tbody tr:nth-child(10) { animation-delay: 0.20s; }
+
+/* ---------- Action button group in tables ---------- */
+
+.edulearn-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.edulearn-actions .btn {
+    border-radius: 7px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.edulearn-actions .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* ---------- Code/ID chips ---------- */
+
+.edulearn-id-chip {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #185FA5;
+    background: #e8f0fc;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-variant-numeric: tabular-nums;
+    font-family: monospace;
+}

@@ -122,7 +122,7 @@ export default function TimetablePage() {
             {/* Filter card */}
             <div className="card shadow-sm mb-4">
                 <div className="card-body">
-                    <div className="row g-3 align-items-end">
+                <div className="row g-3 align-items-end">
                         <div className="col-md-4">
                             <label className="form-label fw-bold">
                                 <i className="bi bi-person me-1"></i>Student ID
@@ -132,16 +132,10 @@ export default function TimetablePage() {
                                 className="form-control"
                                 value={studentId}
                                 onChange={(e) => setStudentId(e.target.value)}
-                                placeholder="e.g. 1"
+                                placeholder={isStudent ? 'Enter your student ID' : 'Whose timetable to view'}
                                 min="1"
                             />
-                            <small className="text-muted">
-                                {isStudent
-                                    ? 'Enter your student ID (find on profile page)'
-                                    : 'Whose timetable to view'}
-                            </small>
                         </div>
-
                         <div className="col-md-4">
                             <label className="form-label fw-bold">
                                 <i className="bi bi-calendar me-1"></i>Term
@@ -154,8 +148,8 @@ export default function TimetablePage() {
                                 placeholder="e.g. 2026-Spring"
                             />
                         </div>
-
                         <div className="col-md-4">
+                            <label className="form-label fw-bold">&nbsp;</label>
                             <button
                                 className="btn btn-primary-edulearn w-100"
                                 onClick={loadTimetable}
@@ -350,7 +344,7 @@ export default function TimetablePage() {
                                 <div className="modal-body">
                                     <dl className="row mb-0">
                                         <dt className="col-sm-4 text-muted">Section ID</dt>
-                                        <dd className="col-sm-8">#{selectedEntry.sectionID}</dd>
+                                        <dd className="col-sm-8">{selectedEntry.sectionID}</dd>
 
                                         <dt className="col-sm-4 text-muted">Term</dt>
                                         <dd className="col-sm-8">{selectedEntry.term}</dd>

@@ -8,6 +8,7 @@ import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
+import ModalPortal from '../../components/ModalPortal';
 
 const DAYS_OPTIONS = [
     'Mon-Wed-Fri',
@@ -336,7 +337,7 @@ export default function SectionsPage() {
             )}
 
             {showModal && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -478,7 +479,7 @@ export default function SectionsPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
         </div>
     );

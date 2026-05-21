@@ -4,6 +4,7 @@ import { courseService } from '../../services/courseService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
+import ModalPortal from '../../components/ModalPortal';
 
 export default function SyllabiPage() {
     const { role } = authService.getCurrentUser();
@@ -130,7 +131,7 @@ export default function SyllabiPage() {
             {/* Page Header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
-                    <i className="bi bi-file-earmark-ruled me-2"></i>Syllabi
+                    <i className="bi bi-file-earmark-ruled me-2"></i>Syllabus
                 </h2>
                 {canManage && selectedCourse && (
                     <button
@@ -331,7 +332,7 @@ export default function SyllabiPage() {
 
             {/* Create / Edit Modal */}
             {showForm && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -478,7 +479,7 @@ export default function SyllabiPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
         </div>
     );

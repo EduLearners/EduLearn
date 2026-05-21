@@ -3,6 +3,7 @@ import { feeService } from '../../services/feeService';
 import { programService } from '../../services/programService';
 import { authService } from '../../services/authService';
 import ErrorAlert from '../../components/ErrorAlert';
+import ModalPortal from '../../components/ModalPortal';
 import Loading from '../../components/Loading';
 import StatusBadge from '../../components/StatusBadge';
 
@@ -289,7 +290,7 @@ export default function FeesPage() {
 
             {/* Create / Edit Modal */}
             {showForm && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -430,7 +431,7 @@ export default function FeesPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
         </div>
     );

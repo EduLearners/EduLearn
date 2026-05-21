@@ -3,6 +3,7 @@ import { invoiceService } from '../../services/invoiceService';
 import { paymentService } from '../../services/paymentService';
 import { authService } from '../../services/authService';
 import ErrorAlert from '../../components/ErrorAlert';
+import ModalPortal from '../../components/ModalPortal';
 import Loading from '../../components/Loading';
 import StatusBadge from '../../components/StatusBadge';
 
@@ -370,7 +371,7 @@ export default function InvoicesPage() {
 
             {/* Generate Invoice Modal */}
             {showGenerate && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered">
@@ -460,12 +461,12 @@ export default function InvoicesPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
 
             {/* Record Payment Modal */}
             {showPayment && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered">
@@ -564,7 +565,7 @@ export default function InvoicesPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
         </div>
     );

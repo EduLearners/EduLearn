@@ -27,9 +27,6 @@ import EnrollmentPage from './pages/enrollment/EnrollmentPage';
 import TimetablePage from './pages/timetable/TimetablePage';
 import TranscriptsPage from './pages/transcripts/TranscriptsPage';
 
-// AGI-04
-import PlagiarismPage from './pages/plagiarism/PlagiarismPage';
-
 // RKA — Programs (Utkarsh)
 import ProgramsPage from './pages/programs/ProgramsPage';
 import ProgramDetailPage from './pages/programs/ProgramDetailPage';
@@ -118,9 +115,6 @@ export default function App() {
                     <Route path="/rooms/:id" element={<RoomDetailPage />} />
                     <Route path="/enrollment" element={<EnrollmentPage />} />
                     <Route path="/timetable" element={<TimetablePage />} />
-
-                    {/* AGI-04 */}
-                    <Route path="/plagiarism" element={<PlagiarismPage />} />
 
                     {/* RKA — Programs */}
                     <Route path="/programs" element={<ProgramsPage />} />

@@ -6,8 +6,26 @@ import { kpiService } from '../../services/kpiService';
 import { auditLogService } from '../../services/auditLogService';
 import { ticketService } from '../../services/ticketService';
 import Loading from '../Loading';
+import './RoleDashboard.css';
 
 const TERM = '2026-Spring';
+
+const QUICK_ACTIONS = [
+    { label: 'Audit Log',      icon: 'bi-journal-text',           path: '/audit-log'     },
+    { label: 'KPIs',           icon: 'bi-bar-chart-line',         path: '/kpis'          },
+    { label: 'Reports',        icon: 'bi-file-earmark-bar-graph', path: '/reports'       },
+    { label: 'Grade Changes',  icon: 'bi-arrow-left-right',       path: '/grade-changes' },
+    { label: 'Notifications',  icon: 'bi-bell',                   path: '/notifications' },
+    { label: 'Support Ticket', icon: 'bi-headset',                path: '/tickets'       },
+];
+
+const STAT_CARDS = [
+    { key: 'auditLogs',       label: 'Audit Logs',       sub: () => 'last 30 days', icon: 'bi-journal-text',           accent: '#0F6E56', iconBg: '#d1fae5', iconColor: '#0F6E56', path: '/audit-log'     },
+    { key: 'reports',         label: 'Reports',          sub: () => 'generated',    icon: 'bi-file-earmark-bar-graph', accent: '#185FA5', iconBg: '#dbeafe', iconColor: '#185FA5', path: '/reports'       },
+    { key: 'kpis',            label: 'KPIs Tracked',     sub: () => 'all active',   icon: 'bi-bar-chart-line',         accent: '#534AB7', iconBg: '#ede9fe', iconColor: '#534AB7', path: '/kpis'          },
+    { key: 'gradeChanges',    label: 'Grade Changes',    sub: () => 'this term',    icon: 'bi-arrow-left-right',       accent: '#854F0B', iconBg: '#fef3c7', iconColor: '#854F0B', path: '/grade-changes' },
+    { key: 'resolvedTickets', label: 'Tickets Resolved', sub: () => 'this month',   icon: 'bi-check-circle-fill',      accent: '#3B6D11', iconBg: '#dcfce7', iconColor: '#3B6D11', path: '/tickets'       },
+];
 
 export default function AuditorDashboard() {
     const navigate = useNavigate();
@@ -43,84 +61,47 @@ export default function AuditorDashboard() {
     if (loading) return <Loading message="Loading your dashboard..." />;
 
     return (
-        <div>
-            <div className="d-flex align-items-center justify-content-between mb-4">
-                <div className="d-flex align-items-center gap-3">
-                    <span className="badge" style={{ background: '#E1F5EE', color: '#085041', fontSize: 13 }}>Auditor</span>
-                    <h2 className="mb-0 text-primary-edulearn">Auditor Dashboard</h2>
+        <div className="role-dashboard">
+            <div className="rd-hero">
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <span className="rd-hero-badge">Auditor · Read Only · {TERM}</span>
+                    <div className="rd-hero-title">Welcome back, {username}! 👋</div>
+                    <p className="rd-hero-sub">
+                        {today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
                 </div>
-                <small className="text-muted">{today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</small>
-            </div>
-
-            <div className="card shadow-sm mb-4 border-0 bg-light">
-                <div className="card-body d-flex align-items-center justify-content-between">
-                    <div>
-                        <h4 className="mb-1">Welcome back, {username}! 👋</h4>
-                        <p className="mb-0 text-muted">Term: {TERM} &nbsp;·&nbsp; Role: Auditor &nbsp;·&nbsp; Read only</p>
-                    </div>
-                    <i className="bi bi-eye text-muted" style={{ fontSize: '2.5rem', opacity: 0.3 }}></i>
-                </div>
+                <i className="bi bi-eye rd-hero-icon"></i>
             </div>
 
             <div className="row g-3 mb-4">
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/audit-log')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Audit Logs</div>
-                            <div className="display-5 fw-bold" style={{ color: '#0F6E56' }}>{stats.auditLogs ?? '—'}</div>
-                            <small className="text-muted">last 30 days</small>
+                {STAT_CARDS.map((card) => (
+                    <div key={card.key} className="col">
+                        <div className="rd-stat-card" style={{ '--rd-accent': card.accent }} onClick={() => navigate(card.path)}>
+                            <div>
+                                <div className="rd-stat-label">{card.label}</div>
+                                <div className="rd-stat-value" style={{ color: card.accent }}>
+                                    {card.key === 'gradeChanges' ? '—' : (stats[card.key] ?? '—')}
+                                </div>
+                                <div className="rd-stat-sub">{card.sub(stats)}</div>
+                            </div>
+                            <div className="rd-stat-icon-wrap" style={{ background: card.iconBg, color: card.iconColor }}>
+                                <i className={`bi ${card.icon}`}></i>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/reports')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Reports</div>
-                            <div className="display-5 fw-bold" style={{ color: '#185FA5' }}>{stats.reports ?? '—'}</div>
-                            <small className="text-muted">generated</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/kpis')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">KPIs Tracked</div>
-                            <div className="display-5 fw-bold" style={{ color: '#534AB7' }}>{stats.kpis ?? '—'}</div>
-                            <small className="text-muted">all active</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/grade-changes')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Grade Changes</div>
-                            <div className="display-5 fw-bold" style={{ color: '#854F0B' }}>—</div>
-                            <small className="text-muted">this term</small>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-3 col-sm-6">
-                    <div className="card shadow-sm h-100 border-0 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/tickets')}>
-                        <div className="card-body">
-                            <div className="text-muted small text-uppercase mb-1">Tickets Resolved</div>
-                            <div className="display-5 fw-bold" style={{ color: '#3B6D11' }}>{stats.resolvedTickets ?? '—'}</div>
-                            <small className="text-muted">this month</small>
-                        </div>
-                    </div>
-                </div>
+                ))}
             </div>
 
-            <div className="card shadow-sm">
-                <div className="card-header bg-light"><strong><i className="bi bi-lightning me-2"></i>Quick Actions</strong></div>
-                <div className="card-body">
-                    <div className="d-flex flex-wrap gap-2">
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/audit-log')}><i className="bi bi-journal-text me-2"></i>Audit Log</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/kpis')}><i className="bi bi-bar-chart-line me-2"></i>KPIs</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/reports')}><i className="bi bi-file-earmark-bar-graph me-2"></i>Reports</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/grade-changes')}><i className="bi bi-arrow-left-right me-2"></i>Grade Changes</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/notifications')}><i className="bi bi-bell me-2"></i>Notifications</button>
-                        <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/tickets')}><i className="bi bi-headset me-2"></i>Support Ticket</button>
-                    </div>
+            <div className="rd-card">
+                <div className="rd-card-header">
+                    <span className="rd-card-header-title"><i className="bi bi-lightning-fill me-2"></i>Quick Actions</span>
+                </div>
+                <div className="rd-qa-grid">
+                    {QUICK_ACTIONS.map((a) => (
+                        <button key={a.path} className="rd-qa-btn" onClick={() => navigate(a.path)}>
+                            <i className={`bi ${a.icon}`}></i>{a.label}
+                        </button>
+                    ))}
                 </div>
             </div>
         </div>

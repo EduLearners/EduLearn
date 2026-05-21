@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { userService } from '../../services/userService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
+import ModalPortal from '../../components/ModalPortal';
 import StatusBadge from '../../components/StatusBadge';
 import ConfirmDialog from '../../components/ConfirmDialog';
 
@@ -183,10 +184,10 @@ export default function UsersPage() {
     });
 
     return (
-        <div>
-            <div className="d-flex align-items-center justify-content-between mb-4">
-                <h2 className="text-primary-edulearn mb-0">
-                    <i className="bi bi-people me-2"></i>User Management
+        <div className="edulearn-page">
+            <div className="edulearn-page-header">
+                <h2 className="edulearn-page-title">
+                    <i className="bi bi-people"></i>User Management
                 </h2>
                 <button
                     className="btn btn-primary-edulearn"
@@ -203,55 +204,53 @@ export default function UsersPage() {
                 </div>
             )}
 
-            <div className="card shadow-sm mb-4">
-                <div className="card-body">
-                    <div className="row g-3">
-                        <div className="col-md-5">
-                            <div className="input-group">
-                                <span className="input-group-text">
-                                    <i className="bi bi-search"></i>
-                                </span>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="Search by username, name or email..."
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
-                                />
-                            </div>
+            <div className="edulearn-filter-card">
+                <div className="row g-3">
+                    <div className="col-md-5">
+                        <div className="input-group">
+                            <span className="input-group-text">
+                                <i className="bi bi-search"></i>
+                            </span>
+                            <input
+                                type="text"
+                                className="form-control"
+                                placeholder="Search by username, name or email..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                            />
                         </div>
-                        <div className="col-md-3">
-                            <select
-                                className="form-select"
-                                value={filterRole}
-                                onChange={e => setFilterRole(e.target.value)}
-                            >
-                                <option value="">All Roles</option>
-                                {ALL_ROLES.map(r => (
-                                    <option key={r} value={r}>{r}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="col-md-2">
-                            <select
-                                className="form-select"
-                                value={filterStatus}
-                                onChange={e => setFilterStatus(e.target.value)}
-                            >
-                                <option value="">All Statuses</option>
-                                {ALL_STATUSES.map(s => (
-                                    <option key={s} value={s}>{s}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="col-md-2">
-                            <button
-                                className="btn btn-outline-secondary w-100"
-                                onClick={() => { setSearch(''); setFilterRole(''); setFilterStatus(''); }}
-                            >
-                                <i className="bi bi-x-lg me-1"></i>Clear
-                            </button>
-                        </div>
+                    </div>
+                    <div className="col-md-3">
+                        <select
+                            className="form-select"
+                            value={filterRole}
+                            onChange={e => setFilterRole(e.target.value)}
+                        >
+                            <option value="">All Roles</option>
+                            {ALL_ROLES.map(r => (
+                                <option key={r} value={r}>{r}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="col-md-2">
+                        <select
+                            className="form-select"
+                            value={filterStatus}
+                            onChange={e => setFilterStatus(e.target.value)}
+                        >
+                            <option value="">All Statuses</option>
+                            {ALL_STATUSES.map(s => (
+                                <option key={s} value={s}>{s}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="col-md-2">
+                        <button
+                            className="btn btn-outline-secondary w-100"
+                            onClick={() => { setSearch(''); setFilterRole(''); setFilterStatus(''); }}
+                        >
+                            <i className="bi bi-x-lg me-1"></i>Clear
+                        </button>
                     </div>
                 </div>
             </div>
@@ -269,12 +268,8 @@ export default function UsersPage() {
             {!loading && filtered.length > 0 && (
                 <div className="card shadow-sm">
                     <div className="card-header bg-light d-flex align-items-center justify-content-between">
-                        <strong>
-                            <i className="bi bi-table me-2"></i>Users
-                        </strong>
-                        <small className="text-muted">
-                            {filtered.length} of {users.length} user(s)
-                        </small>
+                        <strong><i className="bi bi-table me-2"></i>Users</strong>
+                        <small className="text-muted">{filtered.length} of {users.length} user(s)</small>
                     </div>
                     <div className="table-responsive">
                         <table className="table table-hover align-middle mb-0">
@@ -301,7 +296,7 @@ export default function UsersPage() {
                                             style={{ cursor: 'pointer' }}
                                             onClick={() => navigate(`/users/${u.userID}`)}
                                         >
-                                            <td><code>#{u.userID}</code></td>
+                                            <td><code>{u.userID}</code></td>
                                             <td className="fw-bold">{u.username}</td>
                                             <td>{u.fullName}</td>
                                             <td><small>{u.email}</small></td>
@@ -377,7 +372,7 @@ export default function UsersPage() {
 
             {/* ── Create User Modal ──────────────────────────────── */}
             {showCreate && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -541,12 +536,12 @@ export default function UsersPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
 
             {/* ── Edit User Modal ───────────────────────────────── */}
             {showEdit && editTarget && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered">
@@ -636,12 +631,12 @@ export default function UsersPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
 
             {/* ── Change Status Modal ───────────────────────────── */}
             {showStatus && statusTarget && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered">
@@ -731,7 +726,7 @@ export default function UsersPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
 
             {/* ── MFA Reset Confirm ──────────────────────────────── */}
