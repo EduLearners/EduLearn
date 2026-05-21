@@ -554,7 +554,7 @@ export default function GradeChangesPage() {
                                     <tbody>
                                         {searchHistory.map(c => (
                                             <tr key={c.gradeChangeID}>
-                                                <td><code>#{c.gradeChangeID}</code></td>
+                                                <td><code>{c.gradeChangeID}</code></td>
                                                 <td><span className="text-danger fw-bold">{c.oldScore}</span></td>
                                                 <td><span className="text-success fw-bold">{c.newScore}</span></td>
                                                 <td>{c.changedByName || `#${c.changedByFK}`}</td>

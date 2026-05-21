@@ -288,7 +288,7 @@ export default function SectionsPage() {
                                             const isFull = s.enrolledCount >= s.capacity;
                                             return (
                                                 <tr key={s.sectionID}>
-                                                    <td>#{s.sectionID}</td>
+                                                    <td>Section {s.sectionID}</td>
                                                     <td className="fw-bold">{s.courseName}</td>
                                                     <td>{s.term}</td>
                                                     <td>{s.instructorName || '—'}</td>

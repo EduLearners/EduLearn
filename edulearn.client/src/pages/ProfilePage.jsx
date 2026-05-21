@@ -171,9 +171,9 @@ export default function ProfilePage() {
                                         <dt className="col-sm-5 text-muted">User ID</dt>
                                         <dd className="col-sm-7">
                                             {profile.userID ? (
-                                                <code>#{profile.userID}</code>
+                                                <code>{profile.userID}</code>
                                             ) : userId ? (
-                                                <code>#{userId}</code>
+                                                <code>{userId}</code>
                                             ) : '—'}
                                         </dd>
 
@@ -191,7 +191,7 @@ export default function ProfilePage() {
                                                     {studentRecord ? (
                                                         <span className="d-flex align-items-center gap-2">
                                                             <code className="text-primary-edulearn fw-bold">
-                                                                #{studentRecord.studentID}
+                                                                {studentRecord.studentID}
                                                             </code>
                                                             <span className="badge bg-info text-dark" style={{ fontSize: 10 }}>
                                                                 Use for Enrollment

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { studentService } from '../../services/studentService';
+import { programService } from '../../services/programService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -10,6 +11,7 @@ export default function StudentDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [student, setStudent] = useState(null);
+    const [program, setProgram] = useState(null);   // resolved program name
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -45,6 +47,12 @@ export default function StudentDetailPage() {
                 expectedGraduationTerm: data.expectedGraduationTerm || '',
                 enrollmentStatus: data.enrollmentStatus || 'Active',
             });
+            // Load program name
+            if (data.programID) {
+                programService.getById(data.programID)
+                    .then(p => setProgram(p))
+                    .catch(() => setProgram(null));
+            }
         } catch (err) {
             setError(err);
         } finally {
@@ -193,7 +201,7 @@ export default function StudentDetailPage() {
                                     <dd className="col-sm-8">{student.name}</dd>
 
                                     <dt className="col-sm-4 text-muted">Student ID</dt>
-                                    <dd className="col-sm-8"><code>#{student.studentID}</code></dd>
+                                    <dd className="col-sm-8"><code>{student.studentID}</code></dd>
 
                                     <dt className="col-sm-4 text-muted">MRN</dt>
                                     <dd className="col-sm-8"><code>{student.mrn}</code></dd>
@@ -252,8 +260,22 @@ export default function StudentDetailPage() {
                                 </>
                             ) : (
                                 <dl className="row mb-0">
-                                    <dt className="col-sm-5 text-muted">Program ID</dt>
-                                    <dd className="col-sm-7">{student.programID || '—'}</dd>
+                                    <dt className="col-sm-5 text-muted">Program</dt>
+                                    <dd className="col-sm-7">
+                                        {program ? (
+                                            <button
+                                                className="btn btn-link p-0 text-decoration-none text-start fw-bold"
+                                                onClick={() => navigate(`/programs/${student.programID}`)}
+                                                title="View program details"
+                                            >
+                                                <i className="bi bi-mortarboard me-1"></i>
+                                                {program.name}
+                                                <span className="badge bg-secondary ms-2">{program.degreeType}</span>
+                                            </button>
+                                        ) : student.programID ? (
+                                            <span className="text-muted">Program {student.programID}</span>
+                                        ) : '—'}
+                                    </dd>
 
                                     <dt className="col-sm-5 text-muted">Entry Term</dt>
                                     <dd className="col-sm-7">{student.entryTerm || '—'}</dd>
@@ -295,7 +317,7 @@ export default function StudentDetailPage() {
                             </button>
                             <button
                                 className="btn btn-outline-primary"
-                                onClick={() => navigate(`/enrollment?studentId=${student.studentID}`)}
+                                onClick={() => navigate(`/enrollment?studentId=${student.studentID}&programId=${student.programID || ''}`)}
                             >
                                 <i className="bi bi-card-checklist me-1"></i>Enrollments
                             </button>

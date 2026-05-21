@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { enrollmentService } from '../../services/enrollmentService';
 import { sectionService } from '../../services/sectionService';
 import { courseService } from '../../services/courseService';
+import { programService } from '../../services/programService';
 import { timetableService } from '../../services/timetableService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
@@ -11,48 +13,79 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import axiosClient from '../../api/axiosClient';
 
 export default function EnrollmentPage() {
-    // Lookup data
-    const [courses, setCourses] = useState([]);
+    const [searchParams] = useSearchParams();
+
+    // All programs + courses (master lists)
+    const [programs, setPrograms] = useState([]);
+    const [allCourses, setAllCourses] = useState([]);
     const [loadingLookups, setLoadingLookups] = useState(true);
+
+    // Program filter
+    const [selectedProgramId, setSelectedProgramId] = useState('');
+    const [selectedProgram, setSelectedProgram] = useState(null); // full program object
+    const [showAllCourses, setShowAllCourses] = useState(false);   // toggle for "show all"
+
+    // Courses shown in dropdown (filtered by program OR all)
+    const [filteredCourses, setFilteredCourses] = useState([]);
 
     // Search filters
     const [courseId, setCourseId] = useState('');
     const [term, setTerm] = useState('2026-Spring');
-    const [studentId, setStudentId] = useState(() => localStorage.getItem('lastStudentId') || '');
+    const [studentId, setStudentId] = useState('');
 
     // Sections list
     const [sections, setSections] = useState([]);
     const [loadingSections, setLoadingSections] = useState(false);
     const [searchError, setSearchError] = useState(null);
 
-    // Student's enrollments
+    // Student enrollments
     const [enrollments, setEnrollments] = useState([]);
     const [loadingEnrollments, setLoadingEnrollments] = useState(false);
     const [enrollmentsError, setEnrollmentsError] = useState(null);
 
     // Action state
-    const [actionInProgress, setActionInProgress] = useState(null); // sectionID being acted on
-    const [actionMessage, setActionMessage] = useState(null); // { type: 'success'|'error', text }
-    const [conflictResults, setConflictResults] = useState({}); // { sectionID: result }
+    const [actionInProgress, setActionInProgress] = useState(null);
+    const [actionMessage, setActionMessage] = useState(null);
+    const [conflictResults, setConflictResults] = useState({});
 
     // Drop confirmation
-    const [dropConfirm, setDropConfirm] = useState(null); // enrollment object
+    const [dropConfirm, setDropConfirm] = useState(null);
 
     // Roster modal
-    const [rosterModal, setRosterModal] = useState(null); // { sectionID, courseName }
+    const [rosterModal, setRosterModal] = useState(null);
     const [rosterData, setRosterData] = useState([]);
     const [loadingRoster, setLoadingRoster] = useState(false);
 
     const { role } = authService.getCurrentUser();
     const isStudent = role === 'Student';
 
-    // Load courses on mount + auto-resolve Student ID for Student role
+    // ── Mount: load lookups + handle URL params ────────────────────
     useEffect(() => {
-        loadCourses();
+        loadLookups();
         if (isStudent) autoResolveStudentId();
     }, []);
 
-    // Auto-load enrollments when studentId changes
+    // Read URL params AFTER lookups are ready so dropdowns can be pre-selected
+    useEffect(() => {
+        if (loadingLookups) return;
+
+        const urlStudentId = searchParams.get('studentId');
+        const urlProgramId = searchParams.get('programId');
+
+        if (urlStudentId) {
+            setStudentId(urlStudentId);
+            localStorage.setItem('lastStudentId', urlStudentId);
+        } else {
+            const stored = localStorage.getItem('lastStudentId');
+            if (stored) setStudentId(stored);
+        }
+
+        if (urlProgramId) {
+            setSelectedProgramId(urlProgramId);
+        }
+    }, [loadingLookups]);
+
+    // Auto-load enrollments when studentId is set
     useEffect(() => {
         if (studentId && /^\d+$/.test(studentId)) {
             loadEnrollments();
@@ -62,25 +95,66 @@ export default function EnrollmentPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [studentId]);
 
-    // Auto-detect the logged-in student's own StudentID
-    const autoResolveStudentId = async () => {
+    // When program changes, load its course list
+    useEffect(() => {
+        if (!selectedProgramId) {
+            setSelectedProgram(null);
+            setFilteredCourses(showAllCourses ? allCourses : allCourses);
+            setCourseId('');
+            return;
+        }
+        const prog = programs.find(p => String(p.programID) === String(selectedProgramId));
+        if (prog) {
+            setSelectedProgram(prog);
+            applyProgramFilter(prog, allCourses, showAllCourses);
+            setCourseId('');
+        }
+    }, [selectedProgramId, programs, allCourses, showAllCourses]);
+
+    // ── Helpers ────────────────────────────────────────────────────
+    const parseIds = (json) => {
+        if (!json) return [];
         try {
-            const record = await axiosClient.get('/students/me').then(r => r.data);
-            if (record?.studentID) {
-                const sid = String(record.studentID);
-                setStudentId(sid);
-                localStorage.setItem('lastStudentId', sid);
-            }
-        } catch {
-            // Fallback: keep whatever is in localStorage
+            const parsed = JSON.parse(json);
+            if (!Array.isArray(parsed)) return [];
+            return parsed.map(item => {
+                if (typeof item === 'number') return item;
+                if (typeof item === 'object') return item.courseId ?? item.courseID ?? null;
+                return null;
+            }).filter(Boolean);
+        } catch { return []; }
+    };
+
+    const applyProgramFilter = (prog, courses, showAll) => {
+        if (!prog || showAll) {
+            setFilteredCourses(courses);
+            return;
+        }
+        const required = parseIds(prog.requiredCoursesJSON);
+        const electives = parseIds(prog.electivesJSON);
+        const programCourseIds = new Set([...required, ...electives]);
+
+        if (programCourseIds.size === 0) {
+            // Program has no courses assigned yet — show all with a warning
+            setFilteredCourses(courses);
+        } else {
+            setFilteredCourses(courses.filter(c => programCourseIds.has(c.courseID)));
         }
     };
 
-    const loadCourses = async () => {
+    // ── Load all programs + courses ────────────────────────────────
+    const loadLookups = async () => {
         try {
             setLoadingLookups(true);
-            const data = await courseService.getAll();
-            setCourses(data || []);
+            const [programsData, coursesData] = await Promise.allSettled([
+                programService.getAll(),
+                courseService.getAll(),
+            ]);
+            const p = programsData.status === 'fulfilled' ? (programsData.value || []) : [];
+            const c = coursesData.status === 'fulfilled' ? (coursesData.value || []) : [];
+            setPrograms(p);
+            setAllCourses(c);
+            setFilteredCourses(c); // default = all
         } catch (err) {
             setSearchError(err);
         } finally {
@@ -88,15 +162,33 @@ export default function EnrollmentPage() {
         }
     };
 
+    // Auto-detect logged-in student's own ID
+    const autoResolveStudentId = async () => {
+        try {
+            const record = await axiosClient.get('/students/me').then(r => r.data);
+            if (record?.studentID) {
+                const sid = String(record.studentID);
+                setStudentId(sid);
+                localStorage.setItem('lastStudentId', sid);
+                // Auto-select the student's program
+                if (record.programID) {
+                    setSelectedProgramId(String(record.programID));
+                }
+            }
+        } catch {
+            const stored = localStorage.getItem('lastStudentId');
+            if (stored) setStudentId(stored);
+        }
+    };
+
+    // ── Search sections ────────────────────────────────────────────
     const handleSearchSections = async () => {
         setActionMessage(null);
         setConflictResults({});
-
         if (!courseId || !term.trim()) {
             setSearchError({ message: 'Please select a course and term.' });
             return;
         }
-
         try {
             setLoadingSections(true);
             setSearchError(null);
@@ -120,7 +212,6 @@ export default function EnrollmentPage() {
             setEnrollmentsError(null);
             const data = await enrollmentService.getByStudent(studentId);
             setEnrollments(data || []);
-            // Remember the last student ID used (handy for Registrar workflows)
             localStorage.setItem('lastStudentId', studentId);
         } catch (err) {
             setEnrollmentsError(err);
@@ -131,60 +222,39 @@ export default function EnrollmentPage() {
     };
 
     const handleCheckConflict = async (section) => {
-        if (!studentId) {
-            setActionMessage({ type: 'error', text: 'Enter a Student ID first.' });
-            return;
-        }
+        if (!studentId) { setActionMessage({ type: 'error', text: 'Enter a Student ID first.' }); return; }
         try {
             setActionInProgress(section.sectionID);
             const result = await timetableService.validateSection(studentId, section.sectionID);
-            setConflictResults({
-                ...conflictResults,
-                [section.sectionID]: result,
-            });
+            setConflictResults({ ...conflictResults, [section.sectionID]: result });
         } catch (err) {
-            setActionMessage({
-                type: 'error',
-                text: err.response?.data?.error || 'Failed to check conflict.',
-            });
+            setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to check conflict.' });
         } finally {
             setActionInProgress(null);
         }
     };
 
     const handleEnroll = async (section) => {
-        if (!studentId) {
-            setActionMessage({ type: 'error', text: 'Enter a Student ID first.' });
-            return;
-        }
-
+        if (!studentId) { setActionMessage({ type: 'error', text: 'Enter a Student ID first.' }); return; }
         try {
             setActionInProgress(section.sectionID);
             setActionMessage(null);
             const result = await enrollmentService.enroll(parseInt(studentId, 10), section.sectionID);
-
             const msg = result.status === 'Waitlisted'
-                ? `Added to waitlist for ${result.courseName} (position #${result.waitlistPosition}).`
+                ? `Added to waitlist for ${result.courseName} (position ${result.waitlistPosition}).`
                 : `Successfully enrolled in ${result.courseName}.`;
-
             setActionMessage({ type: 'success', text: msg });
-
-            // Refresh both sides
             await Promise.all([handleSearchSections(), loadEnrollments()]);
             setConflictResults({});
         } catch (err) {
             const data = err.response?.data;
             let text = data?.error || err.message || 'Enrollment failed.';
-
-            // Pretty-print known error codes from backend
-            if (data?.code === 'PREREQUISITES_NOT_MET' && data.unmetPrerequisites?.length) {
+            if (data?.code === 'PREREQUISITES_NOT_MET' && data.unmetPrerequisites?.length)
                 text = `Prerequisites not met: ${data.unmetPrerequisites.join(', ')}`;
-            } else if (data?.code === 'SCHEDULE_CONFLICT' && data.conflictingCourseCode) {
+            else if (data?.code === 'SCHEDULE_CONFLICT' && data.conflictingCourseCode)
                 text = `Schedule conflict with ${data.conflictingCourseCode} — ${data.error}`;
-            } else if (data?.code === 'DUPLICATE_ENROLLMENT') {
+            else if (data?.code === 'DUPLICATE_ENROLLMENT')
                 text = 'This student is already enrolled in this section.';
-            }
-
             setActionMessage({ type: 'error', text });
         } finally {
             setActionInProgress(null);
@@ -201,13 +271,9 @@ export default function EnrollmentPage() {
                 text: `Dropped enrollment from ${dropConfirm.courseName}. If anyone was waitlisted, they have been auto-promoted.`,
             });
             setDropConfirm(null);
-            // Refresh enrollments + sections (to update enrolledCount)
             await Promise.all([loadEnrollments(), courseId && handleSearchSections()]);
         } catch (err) {
-            setActionMessage({
-                type: 'error',
-                text: err.response?.data?.error || 'Failed to drop enrollment.',
-            });
+            setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to drop enrollment.' });
             setDropConfirm(null);
         } finally {
             setActionInProgress(null);
@@ -222,30 +288,30 @@ export default function EnrollmentPage() {
             const data = await enrollmentService.getBySection(section.sectionID);
             setRosterData(data || []);
         } catch (err) {
-            setActionMessage({
-                type: 'error',
-                text: err.response?.data?.error || 'Failed to load roster.',
-            });
+            setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to load roster.' });
             setRosterModal(null);
         } finally {
             setLoadingRoster(false);
         }
     };
 
-    // Parse schedule JSON for display
     const parseSchedule = (json) => {
         if (!json) return null;
         try { return JSON.parse(json); } catch { return null; }
     };
 
+    // ── Program has no courses assigned yet? ────────────────────
+    const programHasNoCourses = selectedProgramId && selectedProgram &&
+        parseIds(selectedProgram.requiredCoursesJSON).length === 0 &&
+        parseIds(selectedProgram.electivesJSON).length === 0;
+
     return (
         <div>
-            {/* Page header */}
             <h2 className="text-primary-edulearn mb-4">
                 <i className="bi bi-card-checklist me-2"></i>Enrollment
             </h2>
 
-            {/* Top-of-page status message */}
+            {/* Status message */}
             {actionMessage && (
                 <div className={`alert alert-${actionMessage.type === 'success' ? 'success' : 'danger'} d-flex align-items-center`}>
                     <i className={`bi bi-${actionMessage.type === 'success' ? 'check-circle' : 'exclamation-triangle'}-fill me-2`}></i>
@@ -254,25 +320,106 @@ export default function EnrollmentPage() {
                 </div>
             )}
 
-            {/* Search panel */}
+            {/* Search & Enroll panel */}
             <div className="card shadow-sm mb-4">
                 <div className="card-header bg-primary-edulearn text-white">
                     <i className="bi bi-search me-2"></i>Search & Enroll
                 </div>
                 <div className="card-body">
                     <div className="row g-3 align-items-end">
+
+                        {/* Row 1: Program + Student ID */}
+                        <div className="col-md-5">
+                            <label className="form-label fw-bold">
+                                <i className="bi bi-mortarboard me-1"></i>Program
+                                <small className="text-muted fw-normal ms-2">(filters courses)</small>
+                            </label>
+                            <select
+                                className="form-select"
+                                value={selectedProgramId}
+                                onChange={e => {
+                                    setSelectedProgramId(e.target.value);
+                                    setShowAllCourses(false);
+                                }}
+                                disabled={loadingLookups}
+                            >
+                                <option value="">— All programs —</option>
+                                {programs.map(p => (
+                                    <option key={p.programID} value={p.programID}>
+                                        {p.name} ({p.degreeType})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Student ID — hidden for students, visible for staff */}
+                        {!isStudent && (
+                            <div className="col-md-4">
+                                <label className="form-label fw-bold">
+                                    <i className="bi bi-person me-1"></i>Student ID
+                                </label>
+                                <input
+                                    type="number"
+                                    className="form-control"
+                                    value={studentId}
+                                    onChange={e => setStudentId(e.target.value)}
+                                    placeholder="Who you are enrolling/viewing"
+                                    min="1"
+                                />
+                            </div>
+                        )}
+                        {isStudent && studentId && (
+                            <div className="col-md-4 d-flex align-items-end">
+                                <div className="alert alert-success mb-0 py-2 px-3 w-100 small">
+                                    <i className="bi bi-person-check-fill me-2"></i>
+                                    <strong>You</strong> · Student {studentId}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Program warning / show all toggle */}
+                        {selectedProgramId && !loadingLookups && (
+                            <div className="col-md-3 d-flex align-items-end">
+                                {programHasNoCourses ? (
+                                    <div className="alert alert-warning mb-0 py-2 small w-100">
+                                        <i className="bi bi-exclamation-triangle me-1"></i>
+                                        No courses assigned to this program yet.
+                                    </div>
+                                ) : (
+                                    <div className="form-check mb-0">
+                                        <input
+                                            className="form-check-input"
+                                            type="checkbox"
+                                            id="showAllCourses"
+                                            checked={showAllCourses}
+                                            onChange={e => setShowAllCourses(e.target.checked)}
+                                        />
+                                        <label className="form-check-label small text-muted" htmlFor="showAllCourses">
+                                            Show all courses
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Row 2: Course + Term + Search */}
                         <div className="col-md-4">
                             <label className="form-label fw-bold">
                                 <i className="bi bi-book me-1"></i>Course
+                                {selectedProgramId && !showAllCourses && selectedProgram && !programHasNoCourses && (
+                                    <span className="badge bg-primary ms-2" style={{ fontSize: 10 }}>
+                                        {filteredCourses.length} in program
+                                    </span>
+                                )}
                             </label>
                             <select
                                 className="form-select"
                                 value={courseId}
-                                onChange={(e) => setCourseId(e.target.value)}
+                                onChange={e => setCourseId(e.target.value)}
                                 disabled={loadingLookups}
                             >
                                 <option value="">— Select a course —</option>
-                                {courses.map(c => (
+                                {filteredCourses.map(c => (
                                     <option key={c.courseID} value={c.courseID}>
                                         {c.code} — {c.title}
                                     </option>
@@ -288,38 +435,12 @@ export default function EnrollmentPage() {
                                 type="text"
                                 className="form-control"
                                 value={term}
-                                onChange={(e) => setTerm(e.target.value)}
+                                onChange={e => setTerm(e.target.value)}
                                 placeholder="e.g. 2026-Spring"
                             />
                         </div>
 
-                        {/* Student ID — hidden for students (auto-filled), visible for staff */}
-                        {!isStudent && (
-                            <div className="col-md-3">
-                                <label className="form-label fw-bold">
-                                    <i className="bi bi-person me-1"></i>Student ID
-                                </label>
-                                <input
-                                    type="number"
-                                    className="form-control"
-                                    value={studentId}
-                                    onChange={(e) => setStudentId(e.target.value)}
-                                    placeholder="Who you are enrolling/viewing"
-                                    min="1"
-                                />
-                            </div>
-                        )}
-                        {isStudent && studentId && (
-                            <div className="col-md-3 d-flex align-items-end">
-                                <div className="alert alert-success mb-0 py-2 px-3 w-100 small">
-                                    <i className="bi bi-person-check-fill me-2"></i>
-                                    <strong>You</strong> · Student #{studentId}
-                                </div>
-                            </div>
-                        )}
-
                         <div className="col-md-2">
-                            <label className="form-label fw-bold">&nbsp;</label>
                             <button
                                 className="btn btn-primary-edulearn w-100"
                                 onClick={handleSearchSections}
@@ -328,12 +449,29 @@ export default function EnrollmentPage() {
                                 <i className="bi bi-search me-1"></i>Search
                             </button>
                         </div>
+
                     </div>
+
+                    {/* Program info strip */}
+                    {selectedProgram && !programHasNoCourses && !showAllCourses && (
+                        <div className="mt-3 pt-3 border-top d-flex align-items-center gap-2 flex-wrap">
+                            <i className="bi bi-mortarboard text-primary-edulearn"></i>
+                            <span className="fw-bold text-primary-edulearn small">{selectedProgram.name}</span>
+                            <span className="badge bg-secondary">{selectedProgram.degreeType}</span>
+                            <span className="text-muted small">·</span>
+                            <span className="text-muted small">
+                                {parseIds(selectedProgram.requiredCoursesJSON).length} required
+                            </span>
+                            <span className="text-muted small">·</span>
+                            <span className="text-muted small">
+                                {parseIds(selectedProgram.electivesJSON).length} electives
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
 
             <ErrorAlert error={searchError} onDismiss={() => setSearchError(null)} />
-
             {loadingSections && <Loading message="Searching sections..." />}
 
             {/* Available sections */}
@@ -351,7 +489,6 @@ export default function EnrollmentPage() {
                             const isFull = s.enrolledCount >= s.capacity;
                             const isBusy = actionInProgress === s.sectionID;
                             const conflictResult = conflictResults[s.sectionID];
-
                             return (
                                 <div key={s.sectionID} className="list-group-item p-3">
                                     <div className="row align-items-center">
@@ -365,20 +502,16 @@ export default function EnrollmentPage() {
                                                 {sched && (
                                                     <>
                                                         <span className="mx-2">·</span>
-                                                        <i className="bi bi-calendar3 me-1"></i>
-                                                        {sched.days} {sched.time}
+                                                        <i className="bi bi-calendar3 me-1"></i>{sched.days} {sched.time}
                                                     </>
                                                 )}
                                                 <span className="mx-2">·</span>
                                                 <i className="bi bi-people me-1"></i>
                                                 <span className={isFull ? 'text-danger fw-bold' : ''}>
-                                                    {s.enrolledCount}/{s.capacity}
-                                                    {isFull && ' FULL'}
+                                                    {s.enrolledCount}/{s.capacity}{isFull && ' FULL'}
                                                 </span>
                                                 <span className="ms-2"><StatusBadge status={s.status} /></span>
                                             </div>
-
-                                            {/* Inline conflict result */}
                                             {conflictResult && (
                                                 <div className={`alert mt-2 mb-0 py-2 small alert-${conflictResult.hasConflict ? 'warning' : 'success'}`}>
                                                     <i className={`bi bi-${conflictResult.hasConflict ? 'exclamation-triangle' : 'check-circle'} me-2`}></i>
@@ -386,29 +519,18 @@ export default function EnrollmentPage() {
                                                 </div>
                                             )}
                                         </div>
-
                                         <div className="col-md-5 text-end">
                                             <div className="btn-group btn-group-sm">
-                                                <button
-                                                    className="btn btn-outline-secondary"
-                                                    onClick={() => handleViewRoster(s)}
-                                                    title="View roster"
-                                                >
+                                                <button className="btn btn-outline-secondary" onClick={() => handleViewRoster(s)} title="View roster">
                                                     <i className="bi bi-list-ul me-1"></i>Roster
                                                 </button>
-                                                <button
-                                                    className="btn btn-outline-warning"
-                                                    onClick={() => handleCheckConflict(s)}
-                                                    disabled={isBusy || !studentId}
-                                                    title={!studentId ? 'Enter Student ID first' : 'Check schedule conflict'}
-                                                >
+                                                <button className="btn btn-outline-warning" onClick={() => handleCheckConflict(s)} disabled={isBusy || !studentId}>
                                                     <i className="bi bi-clock-history me-1"></i>Check Conflict
                                                 </button>
                                                 <button
                                                     className={`btn ${isFull ? 'btn-warning' : 'btn-primary-edulearn'}`}
                                                     onClick={() => handleEnroll(s)}
                                                     disabled={isBusy || !studentId || s.status !== 'Open'}
-                                                    title={!studentId ? 'Enter Student ID first' : ''}
                                                 >
                                                     {isBusy ? (
                                                         <><span className="spinner-border spinner-border-sm me-1"></span>...</>
@@ -428,7 +550,6 @@ export default function EnrollmentPage() {
                 </div>
             )}
 
-            {/* Empty state for sections after search */}
             {!loadingSections && sections.length === 0 && courseId && (
                 <div className="alert alert-info">
                     <i className="bi bi-info-circle me-2"></i>
@@ -436,7 +557,7 @@ export default function EnrollmentPage() {
                 </div>
             )}
 
-            {/* Student enrollments */}
+            {/* Student Enrollments */}
             <div className="card shadow-sm">
                 <div className="card-header bg-primary-edulearn text-white d-flex justify-content-between align-items-center">
                     <span>
@@ -444,11 +565,7 @@ export default function EnrollmentPage() {
                         Student Enrollments
                         {studentId && <span className="ms-2 badge bg-light text-dark">Student {studentId}</span>}
                     </span>
-                    <button
-                        className="btn btn-sm btn-outline-light"
-                        onClick={loadEnrollments}
-                        disabled={!studentId || loadingEnrollments}
-                    >
+                    <button className="btn btn-sm btn-outline-light" onClick={loadEnrollments} disabled={!studentId || loadingEnrollments}>
                         <i className="bi bi-arrow-clockwise"></i>
                     </button>
                 </div>
@@ -457,15 +574,12 @@ export default function EnrollmentPage() {
                         <div className="text-center py-4 text-muted">
                             <i className="bi bi-person-x" style={{ fontSize: '2rem' }}></i>
                             <p className="mt-2 mb-0">
-                                {isStudent
-                                    ? 'Resolving your student record...'
-                                    : 'Enter a Student ID above to view enrollments.'}
+                                {isStudent ? 'Resolving your student record...' : 'Enter a Student ID above to view enrollments.'}
                             </p>
                         </div>
                     )}
 
                     <ErrorAlert error={enrollmentsError} onDismiss={() => setEnrollmentsError(null)} />
-
                     {loadingEnrollments && <Loading message="Loading enrollments..." />}
 
                     {studentId && !loadingEnrollments && enrollments.length === 0 && !enrollmentsError && (
@@ -492,7 +606,7 @@ export default function EnrollmentPage() {
                                 <tbody>
                                     {enrollments.map(e => (
                                         <tr key={e.enrollID}>
-                                            <td>{e.enrollID}</td>
+                                            <td>Enroll {e.enrollID}</td>
                                             <td className="fw-bold">{e.courseName}</td>
                                             <td>{e.term}</td>
                                             <td>
@@ -502,11 +616,9 @@ export default function EnrollmentPage() {
                                                 )}
                                             </td>
                                             <td>
-                                                {e.gradePostedFlag ? (
-                                                    <span className="badge bg-success">Posted</span>
-                                                ) : (
-                                                    <span className="text-muted small">Pending</span>
-                                                )}
+                                                {e.gradePostedFlag
+                                                    ? <span className="badge bg-success">Posted</span>
+                                                    : <span className="text-muted small">Pending</span>}
                                             </td>
                                             <td>
                                                 <small className="text-muted">
@@ -539,8 +651,7 @@ export default function EnrollmentPage() {
                 title="Drop Enrollment"
                 message={
                     dropConfirm
-                        ? `Are you sure you want to drop ${dropConfirm.courseName} (${dropConfirm.term})? ` +
-                          'If anyone is on the waitlist, they will be auto-promoted.'
+                        ? `Are you sure you want to drop ${dropConfirm.courseName} (${dropConfirm.term})? If anyone is on the waitlist, they will be auto-promoted.`
                         : ''
                 }
                 onConfirm={handleDrop}
@@ -574,30 +685,13 @@ export default function EnrollmentPage() {
                                     ) : (
                                         <>
                                             <div className="mb-3 d-flex gap-3 small text-muted">
-                                                <span>
-                                                    <span className="badge bg-success me-1">Enrolled</span>
-                                                    {rosterData.filter(r => r.status === 'Enrolled').length}
-                                                </span>
-                                                <span>
-                                                    <span className="badge bg-warning text-dark me-1">Waitlisted</span>
-                                                    {rosterData.filter(r => r.status === 'Waitlisted').length}
-                                                </span>
-                                                <span>
-                                                    <span className="badge bg-secondary me-1">Dropped</span>
-                                                    {rosterData.filter(r => r.status === 'Dropped').length}
-                                                </span>
+                                                <span><span className="badge bg-success me-1">Enrolled</span>{rosterData.filter(r => r.status === 'Enrolled').length}</span>
+                                                <span><span className="badge bg-warning text-dark me-1">Waitlisted</span>{rosterData.filter(r => r.status === 'Waitlisted').length}</span>
+                                                <span><span className="badge bg-secondary me-1">Dropped</span>{rosterData.filter(r => r.status === 'Dropped').length}</span>
                                             </div>
                                             <div className="table-responsive">
                                                 <table className="table table-sm">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>#</th>
-                                                            <th>Student</th>
-                                                            <th>Status</th>
-                                                            <th>Waitlist Pos</th>
-                                                            <th>Enrolled At</th>
-                                                        </tr>
-                                                    </thead>
+                                                    <thead><tr><th>No.</th><th>Student</th><th>Status</th><th>Waitlist Pos</th><th>Enrolled At</th></tr></thead>
                                                     <tbody>
                                                         {rosterData.map((r, idx) => (
                                                             <tr key={r.enrollID}>
@@ -605,9 +699,7 @@ export default function EnrollmentPage() {
                                                                 <td>{r.studentName} <span className="text-muted small">{r.studentID}</span></td>
                                                                 <td><StatusBadge status={r.status} /></td>
                                                                 <td>{r.waitlistPosition || '—'}</td>
-                                                                <td className="small">
-                                                                    {r.enrolledAt ? new Date(r.enrolledAt).toLocaleDateString() : '—'}
-                                                                </td>
+                                                                <td className="small">{r.enrolledAt ? new Date(r.enrolledAt).toLocaleDateString() : '—'}</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
