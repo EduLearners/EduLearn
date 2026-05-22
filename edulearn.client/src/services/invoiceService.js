@@ -19,4 +19,10 @@ export const invoiceService = {
         const { data } = await axiosClient.post('/invoices/generate', invoiceData);
         return data;
     },
+
+    // POST /api/invoices/generate-bulk — Finance, ITAdmin
+    generateBulk: async (bulkData) => {
+        const { data } = await axiosClient.post('/invoices/generate-bulk', bulkData);
+        return data;
+    },
 };

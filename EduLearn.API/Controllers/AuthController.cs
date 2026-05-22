@@ -190,6 +190,58 @@ public class AuthController : ControllerBase
     }
 
     // MFA CHANGE (IAM-03): Inline helper
+    [HttpPost("mfa/setup-self")]
+    [Authorize(Roles = "Registrar,DeptAdmin,Finance,ITAdmin,Auditor")]
+    public async Task<IActionResult> SetupMfaSelf()
+    {
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(idClaim, out var userId))
+            return Unauthorized(new { error = "Invalid token" });
+
+        var (outcome, response) = await _authService.SetupMfaSelfAsync(userId);
+        return outcome switch
+        {
+            AuthService.MfaSetupOutcome.Ok           => Ok(response),
+            AuthService.MfaSetupOutcome.UserNotFound  => Unauthorized(new { error = "User not found" }),
+            _                                         => StatusCode(500)
+        };
+    }
+
+    [HttpPost("mfa/confirm-self")]
+    [Authorize(Roles = "Registrar,DeptAdmin,Finance,ITAdmin,Auditor")]
+    public async Task<IActionResult> ConfirmMfaSelf([FromBody] MfaVerifyDto dto)
+    {
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(idClaim, out var userId))
+            return Unauthorized(new { error = "Invalid token" });
+
+        var (outcome, response) = await _authService.ConfirmMfaSelfAsync(userId, dto.Code);
+        return outcome switch
+        {
+            AuthService.MfaVerifyOutcome.Ok             => Ok(response),
+            AuthService.MfaVerifyOutcome.UserNotFound   => Unauthorized(new { error = "User not found" }),
+            AuthService.MfaVerifyOutcome.NotInitialized => BadRequest(new { error = "Call /mfa/setup-self first" }),
+            AuthService.MfaVerifyOutcome.InvalidCode    => BadRequest(new { error = "Invalid code", code = "MFA_INVALID_CODE" }),
+            _                                           => StatusCode(500)
+        };
+    }
+
+    [HttpPost("mfa/disable")]
+    [Authorize(Roles = "Registrar,DeptAdmin,Finance,ITAdmin,Auditor")]
+    public async Task<IActionResult> DisableMfa()
+    {
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(idClaim, out var userId))
+            return Unauthorized(new { error = "Invalid token" });
+        var outcome = await _authService.DisableMfaAsync(userId);
+        return outcome switch
+        {
+            AuthService.MfaDisableOutcome.Ok           => Ok(new { message = "MFA disabled successfully." }),
+            AuthService.MfaDisableOutcome.UserNotFound  => Unauthorized(new { error = "User not found" }),
+            _                                           => StatusCode(500)
+        };
+    }
+
     private int? TryGetMfaPendingUserId()
     {
         var purpose = User.FindFirst("purpose")?.Value;

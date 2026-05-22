@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { invoiceService } from '../../services/invoiceService';
 import { paymentService } from '../../services/paymentService';
+import { programService } from '../../services/programService';
 import { authService } from '../../services/authService';
 import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
@@ -22,7 +23,16 @@ export default function InvoicesPage() {
     const [success, setSuccess] = useState('');
     const [saving, setSaving] = useState(false);
     const [showGenerate, setShowGenerate] = useState(false);
+    const [showBulk, setShowBulk] = useState(false);
     const [showPayment, setShowPayment] = useState(false);
+    const [programs, setPrograms] = useState([]);
+    const [bulkResult, setBulkResult] = useState(null);
+
+    const [bulkForm, setBulkForm] = useState({
+        programID: '',
+        term: '',
+        dueDate: '',
+    });
 
     const [genForm, setGenForm] = useState({
         studentID: '',
@@ -39,6 +49,37 @@ export default function InvoicesPage() {
 
     const canManage = ['Finance', 'ITAdmin'].includes(role);
     const isStudent = role === 'Student';
+
+    useEffect(() => {
+        if (canManage) {
+            programService.getAll()
+                .then(d => setPrograms(d || []))
+                .catch(() => {});
+        }
+    }, []);
+
+    const handleGenerateBulk = async (e) => {
+        e.preventDefault();
+        setError(null);
+        setSuccess('');
+        setBulkResult(null);
+        setSaving(true);
+        try {
+            const result = await invoiceService.generateBulk({
+                programID: Number(bulkForm.programID),
+                term: bulkForm.term,
+                dueDate: bulkForm.dueDate,
+            });
+            setBulkResult(result);
+            setSuccess(`Bulk generation complete: ${result.generated} generated, ${result.skipped} skipped (already existed).`);
+            setShowBulk(false);
+            setBulkForm({ programID: '', term: '', dueDate: '' });
+        } catch (err) {
+            setError(err);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const handleSearch = async (e) => {
         e.preventDefault();
@@ -137,12 +178,20 @@ export default function InvoicesPage() {
                     <i className="bi bi-receipt me-2"></i>Invoices
                 </h2>
                 {canManage && (
-                    <button
-                        className="btn btn-primary-edulearn"
-                        onClick={() => setShowGenerate(true)}
-                    >
-                        <i className="bi bi-plus-lg me-2"></i>Generate Invoice
-                    </button>
+                    <div className="d-flex gap-2">
+                        <button
+                            className="btn btn-outline-primary"
+                            onClick={() => { setBulkForm({ programID: '', term: '', dueDate: '' }); setBulkResult(null); setShowBulk(true); }}
+                        >
+                            <i className="bi bi-people me-2"></i>Generate for All
+                        </button>
+                        <button
+                            className="btn btn-primary-edulearn"
+                            onClick={() => setShowGenerate(true)}
+                        >
+                            <i className="bi bi-plus-lg me-2"></i>Generate Invoice
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -367,6 +416,94 @@ export default function InvoicesPage() {
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* Generate for All Modal */}
+            {showBulk && (
+                <ModalPortal>
+                    <div className="modal-backdrop fade show"></div>
+                    <div className="modal fade show d-block" tabIndex="-1">
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content">
+                                <div className="modal-header bg-primary-edulearn text-white">
+                                    <h5 className="modal-title">
+                                        <i className="bi bi-people me-2"></i>Generate Invoices for All Students
+                                    </h5>
+                                    <button type="button" className="btn-close btn-close-white"
+                                        onClick={() => setShowBulk(false)} disabled={saving} />
+                                </div>
+                                <form onSubmit={handleGenerateBulk}>
+                                    <div className="modal-body">
+                                        <div className="alert alert-info py-2 small mb-3">
+                                            <i className="bi bi-info-circle me-2"></i>
+                                            Generates invoices for <strong>all active students</strong> in the selected program.
+                                            Students who already have an invoice for this term will be <strong>skipped</strong>.
+                                        </div>
+                                        <div className="row g-3">
+                                            <div className="col-12">
+                                                <label className="form-label fw-bold">
+                                                    Program <span className="text-danger">*</span>
+                                                </label>
+                                                <select
+                                                    className="form-select"
+                                                    value={bulkForm.programID}
+                                                    onChange={e => setBulkForm({ ...bulkForm, programID: e.target.value })}
+                                                    required
+                                                >
+                                                    <option value="">-- Select Program --</option>
+                                                    {programs.map(p => (
+                                                        <option key={p.programID} value={p.programID}>
+                                                            {p.name} ({p.degreeType})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="col-md-6">
+                                                <label className="form-label fw-bold">
+                                                    Term <span className="text-danger">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    value={bulkForm.term}
+                                                    onChange={e => setBulkForm({ ...bulkForm, term: e.target.value })}
+                                                    placeholder="e.g. 2026-Spring"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <label className="form-label fw-bold">
+                                                    Due Date <span className="text-danger">*</span>
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    className="form-control"
+                                                    value={bulkForm.dueDate}
+                                                    onChange={e => setBulkForm({ ...bulkForm, dueDate: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <ErrorAlert error={error} onDismiss={() => setError(null)} />
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button type="button" className="btn btn-outline-secondary"
+                                            onClick={() => setShowBulk(false)} disabled={saving}>
+                                            Cancel
+                                        </button>
+                                        <button type="submit" className="btn btn-primary-edulearn" disabled={saving}>
+                                            {saving ? (
+                                                <><span className="spinner-border spinner-border-sm me-2"></span>Generating...</>
+                                            ) : (
+                                                <><i className="bi bi-people me-2"></i>Generate for All</>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </ModalPortal>
             )}
 
             {/* Generate Invoice Modal */}

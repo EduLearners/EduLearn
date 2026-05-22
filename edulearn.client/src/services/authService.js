@@ -55,6 +55,24 @@ export const authService = {
         );
         return data;
     },
+    // POST /api/auth/mfa/disable — disable MFA for the current user
+    disableMfa: async () => {
+        const { data } = await axiosClient.post('/auth/mfa/disable');
+        return data;
+    },
+
+    // POST /api/auth/mfa/setup-self — generate QR for re-enable (full session JWT)
+    setupMfaSelf: async () => {
+        const { data } = await axiosClient.post('/auth/mfa/setup-self');
+        return data;
+    },
+
+    // POST /api/auth/mfa/confirm-self — confirm code to finish re-enable (full session JWT)
+    confirmMfaSelf: async (code) => {
+        const { data } = await axiosClient.post('/auth/mfa/confirm-self', { code });
+        return data;
+    },
+
     // POST /api/auth/forgot-password — Anonymous
     forgotPassword: async (email) => {
         const { data } = await axiosClient.post('/auth/forgot-password', { email });

@@ -9,6 +9,23 @@ import StatusBadge from '../../components/StatusBadge';
 
 const FEE_STATUSES = ['Draft', 'Active', 'Superseded'];
 
+// Convert fee items array → JSON string for API
+const itemsToJson = (items) =>
+    JSON.stringify(
+        items
+            .filter(i => i.item.trim())
+            .map(i => ({ item: i.item.trim(), amount: Number(i.amount) || 0 }))
+    );
+
+// Parse JSON string → fee items array
+const parseFeeItems = (json) => {
+    if (!json) return [];
+    try {
+        const parsed = JSON.parse(json);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+};
+
 export default function FeesPage() {
     const { role } = authService.getCurrentUser();
 
@@ -27,10 +44,19 @@ export default function FeesPage() {
     const [form, setForm] = useState({
         programID: '',
         term: '',
-        feeItemsJSON: '',
+        feeItems: [{ item: '', amount: '' }], // array of {item, amount}
         effectiveFrom: '',
         effectiveTo: '',
+        status: 'Draft',
     });
+
+    // Helpers for the fee items row UI
+    const addFeeItem = () => setForm(f => ({ ...f, feeItems: [...f.feeItems, { item: '', amount: '' }] }));
+    const removeFeeItem = (idx) => setForm(f => ({ ...f, feeItems: f.feeItems.filter((_, i) => i !== idx) }));
+    const updateFeeItem = (idx, field, value) => setForm(f => ({
+        ...f,
+        feeItems: f.feeItems.map((row, i) => i === idx ? { ...row, [field]: value } : row),
+    }));
 
     const canManage = ['Finance', 'ITAdmin'].includes(role);
 
@@ -61,9 +87,10 @@ export default function FeesPage() {
         setForm({
             programID: programId || '',
             term: term || '',
-            feeItemsJSON: '',
+            feeItems: [{ item: '', amount: '' }],
             effectiveFrom: '',
             effectiveTo: '',
+            status: 'Draft',
         });
         setSuccess('');
         setShowForm(true);
@@ -72,10 +99,13 @@ export default function FeesPage() {
     const openEdit = () => {
         if (!fee) return;
         setIsEdit(true);
+        const existing = parseFeeItems(fee.feeItemsJSON);
         setForm({
             programID: fee.programID,
             term: fee.term,
-            feeItemsJSON: fee.feeItemsJSON || '',
+            feeItems: existing.length > 0
+                ? existing.map(i => ({ item: i.item || i.name || '', amount: String(i.amount || '') }))
+                : [{ item: '', amount: '' }],
             effectiveFrom: fee.effectiveFrom ? fee.effectiveFrom.split('T')[0] : '',
             effectiveTo: fee.effectiveTo ? fee.effectiveTo.split('T')[0] : '',
             status: fee.status,
@@ -90,18 +120,16 @@ export default function FeesPage() {
         setSuccess('');
         setSaving(true);
         try {
+            const feeItemsJSON = itemsToJson(form.feeItems);
             const payload = {
                 programID: Number(form.programID),
                 term: form.term,
-                feeItemsJSON: form.feeItemsJSON,
+                feeItemsJSON,
                 effectiveFrom: form.effectiveFrom,
                 effectiveTo: form.effectiveTo,
             };
             if (isEdit) {
-                const updated = await feeService.update(fee.feeID, {
-                    ...payload,
-                    status: form.status,
-                });
+                const updated = await feeService.update(fee.feeID, { ...payload, status: form.status });
                 setFee(updated);
                 setSuccess('Fee schedule updated successfully.');
             } else {
@@ -117,10 +145,6 @@ export default function FeesPage() {
         }
     };
 
-    const parseFeeItems = (json) => {
-        if (!json) return [];
-        try { return JSON.parse(json); } catch { return []; }
-    };
 
     if (pageLoading) return <Loading message="Loading..." />;
 
@@ -382,20 +406,51 @@ export default function FeesPage() {
                                                 </div>
                                             )}
                                             <div className="col-12">
-                                                <label className="form-label fw-bold">
-                                                    Fee Items JSON <span className="text-danger">*</span>
-                                                    <small className="text-muted fw-normal ms-2">
-                                                        (array of item + amount)
-                                                    </small>
-                                                </label>
-                                                <textarea
-                                                    className="form-control font-monospace"
-                                                    value={form.feeItemsJSON}
-                                                    onChange={e => setForm({ ...form, feeItemsJSON: e.target.value })}
-                                                    rows={5}
-                                                    placeholder='[{"item":"Tuition Fee","amount":50000},{"item":"Library Fee","amount":2000}]'
-                                                    required
-                                                />
+                                                <div className="d-flex align-items-center justify-content-between mb-2">
+                                                    <label className="form-label fw-bold mb-0">
+                                                        Fee Items <span className="text-danger">*</span>
+                                                    </label>
+                                                    <button type="button" className="btn btn-sm btn-outline-primary" onClick={addFeeItem}>
+                                                        <i className="bi bi-plus-lg me-1"></i>Add Item
+                                                    </button>
+                                                </div>
+                                                {form.feeItems.map((row, idx) => (
+                                                    <div key={idx} className="d-flex gap-2 mb-2 align-items-center">
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            placeholder="Item name (e.g. Tuition Fee)"
+                                                            value={row.item}
+                                                            onChange={e => updateFeeItem(idx, 'item', e.target.value)}
+                                                            required
+                                                        />
+                                                        <div className="input-group" style={{ maxWidth: 160 }}>
+                                                            <span className="input-group-text">₹</span>
+                                                            <input
+                                                                type="number"
+                                                                className="form-control"
+                                                                placeholder="Amount"
+                                                                value={row.amount}
+                                                                min="0"
+                                                                onChange={e => updateFeeItem(idx, 'amount', e.target.value)}
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-outline-danger btn-sm"
+                                                            onClick={() => removeFeeItem(idx)}
+                                                            disabled={form.feeItems.length === 1}
+                                                            title="Remove item"
+                                                        >
+                                                            <i className="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {/* Running total */}
+                                                <div className="text-end text-muted small mt-1">
+                                                    Total: <strong>₹{form.feeItems.reduce((s, i) => s + (Number(i.amount) || 0), 0).toLocaleString()}</strong>
+                                                </div>
                                             </div>
                                         </div>
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />

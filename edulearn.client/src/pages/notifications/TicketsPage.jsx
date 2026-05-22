@@ -15,6 +15,58 @@ const PRIORITY_VARIANT = {
     Critical: 'dark',
 };
 
+// Role-specific issue categories
+const ROLE_CATEGORIES = {
+    Student: [
+        'Enrollment not reflecting',
+        'Timetable not loading',
+        'Submission failed',
+        'Invoice incorrect',
+        'Transcript unavailable',
+    ],
+    Instructor: [
+        'Cannot create assessment',
+        'Submission not visible',
+        'Content upload failed',
+        'Grade change not processing',
+        'Section timetable conflict',
+    ],
+    Registrar: [
+        'Applicant status not updating',
+        'Enrollment record missing',
+        'Transcript generation failed',
+        'Section over/under-enrolled',
+        'Student account mismatch',
+    ],
+    DeptAdmin: [
+        'Room booking conflict',
+        'Section under wrong program',
+        'Instructor not assigned',
+        'Timetable clash',
+        'Syllabus not updated',
+    ],
+    Finance: [
+        'Invoice not generated',
+        'Payment not reflecting',
+        'Scholarship not applied',
+        'Fee schedule mismatch',
+        'Incorrect fee amount',
+    ],
+    Auditor: [
+        'Audit log entries missing',
+        'KPI data not updating',
+        'Report generation failed',
+        'Grade change not in audit',
+        'User activity not logged',
+    ],
+};
+
+// Parse category from subject string: "[Category] Subject"
+const parseCategory = (subject) => {
+    const match = subject?.match(/^\[(.+?)\]\s*(.*)$/);
+    return match ? { category: match[1], subject: match[2] } : { category: '', subject: subject || '' };
+};
+
 export default function TicketsPage() {
     const { role } = authService.getCurrentUser();
 
@@ -32,7 +84,10 @@ export default function TicketsPage() {
         subject: '',
         description: '',
         priority: 'Medium',
+        category: '',
     });
+
+    const categories = ROLE_CATEGORIES[role] || [];
 
     const [assignForm, setAssignForm] = useState({ assignedToUserId: '' });
     const [resolveForm, setResolveForm] = useState({
@@ -65,10 +120,18 @@ export default function TicketsPage() {
         setSuccess('');
         setSaving(true);
         try {
-            await ticketService.create(createForm);
+            // Prepend category as [Category] prefix in subject so it's stored in DB
+            const subjectWithCategory = createForm.category
+                ? `[${createForm.category}] ${createForm.subject}`
+                : createForm.subject;
+            await ticketService.create({
+                subject: subjectWithCategory,
+                description: createForm.description,
+                priority: createForm.priority,
+            });
             setSuccess('Ticket created successfully.');
             setShowCreate(false);
-            setCreateForm({ subject: '', description: '', priority: 'Medium' });
+            setCreateForm({ subject: '', description: '', priority: 'Medium', category: '' });
             loadTickets();
         } catch (err) {
             setError(err);
@@ -164,13 +227,20 @@ export default function TicketsPage() {
                                         onClick={() => setSelected(t)}
                                     >
                                         <div className="d-flex align-items-center justify-content-between mb-1">
-                                            <span className="fw-bold small text-truncate me-2">
-                                                #{t.ticketID} {t.subject}
-                                            </span>
-                                            <span className={`badge bg-${PRIORITY_VARIANT[t.priority] || 'secondary'} flex-shrink-0`}>
-                                                {t.priority}
-                                            </span>
+                                        <span className="fw-bold small text-truncate me-2">
+                                        {t.ticketID} {parseCategory(t.subject).subject || t.subject}
+                                        </span>
+                                        <span className={`badge bg-${PRIORITY_VARIANT[t.priority] || 'secondary'} flex-shrink-0`}>
+                                        {t.priority}
+                                        </span>
                                         </div>
+                                            {parseCategory(t.subject).category && (
+                                                <div className="mb-1">
+                                                    <span className="badge rounded-pill" style={{ background: selected?.ticketID === t.ticketID ? 'rgba(255,255,255,0.2)' : '#e8f0fc', color: selected?.ticketID === t.ticketID ? '#fff' : '#1a3c6e', fontSize: '0.7rem' }}>
+                                                        <i className="bi bi-tag me-1"></i>{parseCategory(t.subject).category}
+                                                    </span>
+                                                </div>
+                                            )}
                                         <div className="d-flex align-items-center gap-2">
                                             <StatusBadge status={t.status} />
                                             <small className={selected?.ticketID === t.ticketID ? 'text-white-50' : 'text-muted'}>
@@ -228,9 +298,21 @@ export default function TicketsPage() {
                                     </div>
                                 </div>
                                 <div className="card-body">
-                                    <h5 className="fw-bold mb-3">{selected.subject}</h5>
+                                    <h5 className="fw-bold mb-3">{parseCategory(selected.subject).subject || selected.subject}</h5>
 
                                     <div className="row g-3 mb-3">
+                                        {/* Category badge — shown if subject contains [Category] prefix */}
+                                        {parseCategory(selected.subject).category && (
+                                            <div className="col-12">
+                                                <dt className="text-muted small">Category</dt>
+                                                <dd>
+                                                    <span className="badge rounded-pill" style={{ background: '#e8f0fc', color: '#1a3c6e', fontWeight: 600, fontSize: '0.82rem', padding: '5px 12px' }}>
+                                                        <i className="bi bi-tag me-1"></i>
+                                                        {parseCategory(selected.subject).category}
+                                                    </span>
+                                                </dd>
+                                            </div>
+                                        )}
                                         <div className="col-md-4">
                                             <dt className="text-muted small">Priority</dt>
                                             <dd>
@@ -311,6 +393,26 @@ export default function TicketsPage() {
                                 <form onSubmit={handleCreate}>
                                     <div className="modal-body">
                                         <div className="row g-3">
+                                        {/* Category dropdown — shown only for roles that have categories */}
+                                        {categories.length > 0 && (
+                                            <div className="col-12">
+                                                <label className="form-label fw-bold">
+                                                    Issue Category <span className="text-danger">*</span>
+                                                </label>
+                                                <select
+                                                    className="form-select"
+                                                    value={createForm.category}
+                                                    onChange={e => setCreateForm({ ...createForm, category: e.target.value })}
+                                                    required
+                                                >
+                                                    <option value="">-- Select a category --</option>
+                                                    {categories.map(c => (
+                                                        <option key={c} value={c}>{c}</option>
+                                                    ))}
+                                                    <option value="Other">Other</option>
+                                                </select>
+                                            </div>
+                                        )}
                                             <div className="col-md-8">
                                                 <label className="form-label fw-bold">
                                                     Subject <span className="text-danger">*</span>

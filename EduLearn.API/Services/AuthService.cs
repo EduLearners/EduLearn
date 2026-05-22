@@ -191,18 +191,20 @@ public class AuthService
         // C-24 timing-equality and status-rejection hardenings are preserved verbatim.
         if (PrivilegedRoles.Contains(user.Role))
         {
-            var mfaToken = _tokenService.GenerateMfaPendingToken(user);
-            var message = user.MFAEnabled
-                ? "MFA code required. POST /api/auth/mfa/verify with your authenticator code."
-                : "MFA enrollment required. POST /api/auth/mfa/setup to begin.";
-
-            return new MfaChallengeResponseDto
+            // Only challenge if MFA is actually enabled.
+            // If the user disabled MFA from their profile, log them in directly.
+            if (user.MFAEnabled)
             {
-                MfaToken  = mfaToken,
-                Purpose   = "mfa_pending",
-                ExpiresIn = 300,
-                Message   = message
-            };
+                var mfaToken = _tokenService.GenerateMfaPendingToken(user);
+                return new MfaChallengeResponseDto
+                {
+                    MfaToken  = mfaToken,
+                    Purpose   = "mfa_pending",
+                    ExpiresIn = 300,
+                    Message   = "MFA code required. POST /api/auth/mfa/verify with your authenticator code."
+                };
+            }
+            // MFA disabled — fall through to normal JWT issuance below
         }
 
         // Password matched — generate JWT
@@ -365,6 +367,69 @@ public class AuthService
     // Generates a secure random token, saves it to the user with a 15-minute
     // expiry, and sends a reset link to the user's email via EmailService.
     // Always returns Ok (even if email not found) to prevent email enumeration.
+    // ════════════════════════════════════════
+    // MFA SELF SETUP — for already-logged-in users re-enabling MFA
+    // POST /api/auth/mfa/setup-self  (uses full session JWT)
+    // ════════════════════════════════════════
+    public async Task<(MfaSetupOutcome Outcome, MfaSetupResponseDto? Response)> SetupMfaSelfAsync(int userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null) return (MfaSetupOutcome.UserNotFound, null);
+
+        // Always allow re-setup (clear old secret first)
+        var secret = _mfaService.GenerateSecret();
+        user.MFASecret  = secret;
+        user.MFAEnabled = false; // not enabled until confirmed
+        await _userRepository.UpdateAsync(user);
+
+        var otpauthUri = _mfaService.BuildOtpauthUri(user, secret);
+        return (MfaSetupOutcome.Ok, new MfaSetupResponseDto
+        {
+            Secret     = secret,
+            OtpauthUri = otpauthUri
+        });
+    }
+
+    // POST /api/auth/mfa/confirm-self  (uses full session JWT)
+    public async Task<(MfaVerifyOutcome Outcome, object? Response)> ConfirmMfaSelfAsync(int userId, string code)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null) return (MfaVerifyOutcome.UserNotFound, null);
+
+        if (string.IsNullOrEmpty(user.MFASecret))
+            return (MfaVerifyOutcome.NotInitialized, null);
+
+        if (!_mfaService.VerifyCode(user.MFASecret, code))
+        {
+            await _auditLogService.LogAsync(user.UserID, "MFAReEnrollFailed", "User", user.UserID,
+                new { reason = "Invalid code" });
+            return (MfaVerifyOutcome.InvalidCode, null);
+        }
+
+        user.MFAEnabled = true;
+        user.UpdatedAt  = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user);
+
+        await _auditLogService.LogAsync(user.UserID, "MFAReEnabled", "User", user.UserID,
+            new { role = user.Role.ToString() });
+
+        return (MfaVerifyOutcome.Ok, new { message = "MFA enabled successfully." });
+    }
+
+    public enum MfaDisableOutcome { Ok, UserNotFound }
+
+    public async Task<MfaDisableOutcome> DisableMfaAsync(int userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null) return MfaDisableOutcome.UserNotFound;
+        user.MFAEnabled = false;
+        user.MFASecret  = null;
+        user.UpdatedAt  = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user);
+        await _auditLogService.LogAsync(user.UserID, "MFADisabled", "User", user.UserID, new { role = user.Role.ToString() });
+        return MfaDisableOutcome.Ok;
+    }
+
     public enum ForgotPasswordOutcome { Ok }
 
     public async Task<ForgotPasswordOutcome> ForgotPasswordAsync(ForgotPasswordDto dto)

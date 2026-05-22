@@ -39,6 +39,90 @@ public class InvoicesController : ControllerBase
         _auditLogService = auditLogService;
     }
 
+    // ── POST /api/invoices/generate-bulk ──
+    /// <summary>
+    /// Generate invoices for ALL active students in a program for a given term.
+    /// Skips students who already have an invoice for that term.
+    /// Finance / ITAdmin only.
+    /// </summary>
+    [HttpPost("generate-bulk")]
+    [Authorize(Policy = "FinancePolicy")]
+    public async Task<IActionResult> GenerateBulk([FromBody] GenerateBulkInvoiceDto dto, CancellationToken ct)
+    {
+        if (dto.DueDate.Date < DateTime.UtcNow.Date)
+            return BadRequest(new { error = "DueDate cannot be in the past", code = "INVALID_DUE_DATE" });
+
+        var fee = await _feeScheduleRepository.GetByProgramAndTermAsync(dto.ProgramID, dto.Term, ct);
+        if (fee is null)
+            return NotFound(new { error = "No active fee schedule found for this program and term", code = "FEE_SCHEDULE_NOT_FOUND" });
+
+        // Parse fee items once for the whole batch
+        List<System.Text.Json.JsonElement> feeItems;
+        try { feeItems = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(fee.FeeItemsJSON) ?? new(); }
+        catch { return BadRequest(new { error = "Fee schedule has malformed JSON", code = "INVALID_FEE_JSON" }); }
+
+        decimal totalFees;
+        try { totalFees = feeItems.Sum(item => item.TryGetProperty("amount", out var a) ? a.GetDecimal() : 0m); }
+        catch { return BadRequest(new { error = "Fee schedule contains non-numeric amount", code = "INVALID_FEE_JSON" }); }
+
+        var students = await _studentRepository.GetByProgramIdAsync(dto.ProgramID);
+        var activeStudents = students.Where(s => s.EnrollmentStatus == StudentLifecycleStatus.Active).ToList();
+
+        int generated = 0, skipped = 0;
+        var callerIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0";
+        var callerId = int.Parse(callerIdStr);
+
+        foreach (var student in activeStudents)
+        {
+            // Skip if invoice already exists for this term
+            var existing = await _invoiceRepository.GetByStudentAndTermAsync(student.StudentID, dto.Term);
+            if (existing is not null) { skipped++; continue; }
+
+            var scholarships = await _scholarshipRepository.GetActiveByStudentIdAsync(student.StudentID, ct);
+            decimal scholarshipTotal = scholarships.Sum(s => s.Amount);
+
+            var lineItems = feeItems.Select(item => new
+            {
+                item    = item.TryGetProperty("item",   out var i)  ? i.GetString()    : "Fee",
+                amount  = item.TryGetProperty("amount", out var a)  ? a.GetDecimal()   : 0m,
+                discount = 0m,
+                net     = item.TryGetProperty("amount", out var a2) ? a2.GetDecimal()  : 0m
+            }).ToList<object>();
+
+            if (scholarshipTotal > 0)
+                lineItems.Add(new { item = "Scholarship Deduction", amount = 0m, discount = scholarshipTotal, net = -scholarshipTotal });
+
+            var invoice = new Invoice
+            {
+                StudentID    = student.StudentID,
+                Term         = dto.Term,
+                LineItemsJSON = System.Text.Json.JsonSerializer.Serialize(lineItems),
+                AmountDue    = Math.Round(Math.Max(0m, totalFees - scholarshipTotal), 2),
+                DueDate      = dto.DueDate.Date,
+                Status       = InvoiceStatus.Pending
+            };
+
+            var created = await _invoiceRepository.CreateAsync(invoice);
+            generated++;
+
+            await _notificationService.NotifyAsync(
+                student.UserID, NotificationCategory.Finance, NotificationSeverity.Info,
+                $"Invoice #{created.InvoiceID} generated: ₹{created.AmountDue:0.00} due {created.DueDate:yyyy-MM-dd}.",
+                created.InvoiceID);
+
+            await _auditLogService.LogAsync(callerId, "InvoiceGenerated", "Invoice", created.InvoiceID,
+                new { studentId = created.StudentID, term = created.Term, amountDue = created.AmountDue, bulk = true });
+        }
+
+        return Ok(new
+        {
+            message    = $"Bulk generation complete.",
+            generated,
+            skipped,
+            total      = activeStudents.Count
+        });
+    }
+
     // ── POST /api/invoices/generate — SFB-02: Generate invoice ──
     /// <summary>
     /// Generate a new invoice for a student term, applying any active scholarship deductions. Finance / ITAdmin only.

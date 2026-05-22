@@ -222,13 +222,13 @@ export default function ReportsPage() {
                             <tbody>
                                 {reports.map(r => (
                                     <tr key={r.reportID}>
-                                        <td><code>#{r.reportID}</code></td>
+                                        <td><code>{r.reportID}</code></td>
                                         <td>
                                             <span className="badge bg-secondary">
                                                 {r.scope}
                                             </span>
                                         </td>
-                                        <td>{r.generatedByName || `#${r.generatedByFK}`}</td>
+                                        <td>{r.generatedByName || `User ID ${r.generatedByFK}`}</td>
                                         <td>
                                             {r.generatedAt
                                                 ? new Date(r.generatedAt).toLocaleString()
