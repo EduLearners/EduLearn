@@ -371,8 +371,8 @@ export default function ApplicantDetailPage() {
             {showUserModal && (
                 <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
-                    <div className="modal fade show d-block" tabIndex="-1">
-                        <div className="modal-dialog modal-dialog-centered modal-lg">
+                    <div className="modal fade show d-flex align-items-center justify-content-center" tabIndex="-1" style={{ minHeight: '100vh' }}>
+                        <div className="modal-dialog modal-lg w-100" style={{ margin: '1rem auto' }}>
                             <div className="modal-content">
                                 <div className="modal-header bg-primary-edulearn text-white">
                                     <h5 className="modal-title">
@@ -398,8 +398,8 @@ export default function ApplicantDetailPage() {
                                             <dl className="row">
                                                 <dt className="col-sm-4 text-muted">User ID</dt>
                                                 <dd className="col-sm-8">
-                                                    <code className="text-primary-edulearn fw-bold fs-6">
-                                                        #{createSuccess.userID}
+                                                    <code className="text-primary-edulearn fw-bold fs-5">
+                                                        {createSuccess.userID ?? createSuccess.userId ?? createSuccess.id ?? '—'}
                                                     </code>
                                                     <span className="ms-2 badge bg-info text-dark">
                                                         Use this when creating the Student record
@@ -419,13 +419,11 @@ export default function ApplicantDetailPage() {
                                         <form onSubmit={handleCreateUser} autoComplete="off" id="createUserForm">
                                             <div className="alert alert-info mb-4">
                                                 <i className="bi bi-info-circle me-2"></i>
-                                                This registers a new user with <strong>Student role</strong> via{' '}
-                                                <code>POST /api/auth/register</code>. The backend enforces
-                                                Student role — no other role can be selected here.<br />
-                                                <strong>After creation</strong>, use the returned <strong>User ID</strong> when
-                                                creating the Student record at <em>Students → New Student</em>.
+                                                This registers a new user with <strong>Student role</strong> 
+                                                {/* <br /> */}
+                                                {/* <strong>After creation</strong>, use the returned <strong>User ID</strong> when
+                                                creating the Student record at <em>Students → New Student</em>. */}
                                             </div>
-
                                             <div className="row g-3">
                                                 <div className="col-md-6">
                                                     <label className="form-label fw-bold">

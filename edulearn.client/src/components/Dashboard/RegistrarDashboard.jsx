@@ -138,8 +138,8 @@ export default function RegistrarDashboard() {
             setCreatedUser(data);
             setCreateSuccess(
                 userForm.sendInvite
-                    ? `User "${userForm.username}" created. Welcome email sent to ${userForm.email}. User ID: ${data.userId}`
-                    : `User "${userForm.username}" created successfully. User ID: ${data.userId}`
+                    ? `User "${userForm.username}" created. Welcome email sent to ${userForm.email}. User ID: ${data.userID}`
+                    : `User "${userForm.username}" created successfully. User ID: ${data.userID}`
             );
             setUserForm(EMPTY_USER_FORM);
         } catch (err) {
@@ -186,7 +186,7 @@ export default function RegistrarDashboard() {
                         {createdUser && (
                             <div className="mt-1">
                                 <small>
-                                    <strong>Next:</strong> Use User ID <code>{createdUser.userId}</code> when creating the Student record at{' '}
+                                    <strong>Next:</strong> Use User ID <code>{createdUser.userID}</code> when creating the Student record at{' '}
                                     <button className="btn btn-link btn-sm p-0" style={{ color: '#065f46' }} onClick={() => navigate('/students/new')}>New Student →</button>
                                 </small>
                             </div>
@@ -267,7 +267,7 @@ export default function RegistrarDashboard() {
             {showCreateUser && (
                 <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
-                    <div className="modal fade show d-block" tabIndex="-1">
+                    <div className="modal fade show d-flex align-items-center justify-content-center" tabIndex="-1" style={{ minHeight: '100vh' }}>
                         <div className="modal-dialog modal-dialog-centered modal-lg">
                             <div className="modal-content">
                                 <div className="modal-header bg-primary-edulearn text-white">
@@ -281,11 +281,11 @@ export default function RegistrarDashboard() {
                                             Registers a new user with <strong>Student role</strong>. After creation, use the returned <strong>User ID</strong> when creating the Student record at <em>Students → New Student</em>.
                                         </div>
                                         {createSuccess && createdUser && (
-                                            <div className="alert alert-success mb-3">
-                                                <i className="bi bi-check-circle me-2"></i>
-                                                <strong>User created!</strong> User ID: <code className="fs-6">{createdUser.userId}</code>
-                                                <br /><small>Copy this ID — you will need it in the next step.</small>
-                                            </div>
+                                        <div className="alert alert-success mb-3">
+                                        <i className="bi bi-check-circle me-2"></i>
+                                        <strong>User created!</strong> User ID: <code className="fs-6">{createdUser.userID}</code>
+                                        <br /><small>Copy this ID — you will need it in the next step.</small>
+                                        </div>
                                         )}
                                         <div className="row g-3">
                                             <div className="col-md-6">

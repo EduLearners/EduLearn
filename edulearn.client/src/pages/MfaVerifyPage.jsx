@@ -55,7 +55,7 @@ export default function MfaVerifyPage() {
                     <div className="text-center mb-4">
                         <i className="bi bi-shield-check text-primary-edulearn" style={{ fontSize: '3rem' }}></i>
                         <h3 className="text-primary-edulearn mt-2">Two-Factor Authentication</h3>
-                        <p className="text-muted">{message}</p>
+                        {/* <p className="text-muted">{message}</p> */}
                     </div>
 
                     <form onSubmit={handleVerify}>

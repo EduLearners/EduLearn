@@ -25,6 +25,10 @@ export default function NewApplicantPage() {
         programApplied: '',
     });
 
+    // Phone validation — must be exactly 10 digits if provided
+    const phoneDigits = form.phone.replace(/\D/g, '');
+    const phoneInvalid = form.phone.length > 0 && phoneDigits.length !== 10;
+
     // Load all active programs on mount
     useEffect(() => {
         const fetchPrograms = async () => {
@@ -53,6 +57,13 @@ export default function NewApplicantPage() {
         e.preventDefault();
         setError(null);
         setSaving(true);
+
+        // Block submission if phone is invalid
+        if (phoneInvalid) {
+            setError({ message: 'Phone number must be exactly 10 digits.' });
+            setSaving(false);
+            return;
+        }
 
         try {
             // Build contactInfoJSON from individual fields
@@ -102,7 +113,7 @@ export default function NewApplicantPage() {
 
                         <div className="row g-3">
                             <div className="col-md-8">
-                                <label className="form-label fw-bold">Full Name *</label>
+                                <label className="form-label fw-bold">Full Name <span className="text-danger">*</span></label>
                                 <input
                                     type="text"
                                     className="form-control"
@@ -115,7 +126,7 @@ export default function NewApplicantPage() {
                             </div>
 
                             <div className="col-md-4">
-                                <label className="form-label fw-bold">Date of Birth *</label>
+                                <label className="form-label fw-bold">Date of Birth <span className="text-danger">*</span></label>
                                 <input
                                     type="date"
                                     className="form-control"
@@ -127,47 +138,68 @@ export default function NewApplicantPage() {
                             </div>
 
                             <div className="col-md-6">
-                                <label className="form-label fw-bold">National ID</label>
+                                <label className="form-label fw-bold">National ID <span className="text-danger">*</span></label>
                                 <input
                                     type="text"
                                     className="form-control"
                                     value={form.nationalID}
                                     onChange={handleChange('nationalID')}
                                     placeholder="e.g. NATID001"
-                                    maxLength={50}
+                                    maxLength={12}
+                                    required
                                 />
+                                <div className="form-text">
+                                    Max 12 characters.
+                                    {form.nationalID.length > 0 && (
+                                        <span className={form.nationalID.length === 12 ? ' text-danger' : ' text-muted'}>
+                                            {' '}{form.nationalID.length}/12
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="col-md-6">
-                                <label className="form-label fw-bold">Email</label>
+                                <label className="form-label fw-bold">Email <span className="text-danger">*</span></label>
                                 <input
                                     type="email"
                                     className="form-control"
                                     value={form.email}
                                     onChange={handleChange('email')}
                                     placeholder="applicant@example.com"
+                                    required
                                 />
                             </div>
 
                             <div className="col-md-6">
-                                <label className="form-label fw-bold">Phone</label>
+                                <label className="form-label fw-bold">Phone <span className="text-danger">*</span></label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control ${phoneInvalid ? 'is-invalid' : ''}`}
                                     value={form.phone}
                                     onChange={handleChange('phone')}
-                                    placeholder="+91-9876543210"
+                                    placeholder="9876543210"
+                                    maxLength={15}
+                                    required
                                 />
+                                {phoneInvalid ? (
+                                    <div className="invalid-feedback">
+                                        <i className="bi bi-exclamation-circle me-1"></i>
+                                        Phone number must be exactly 10 digits.
+                                    </div>
+                                ) : (
+                                    <div className="form-text">Enter 10-digit mobile number.</div>
+                                )}
                             </div>
 
                             <div className="col-md-6">
-                                <label className="form-label fw-bold">Address</label>
+                                <label className="form-label fw-bold">Address <span className="text-danger">*</span></label>
                                 <input
                                     type="text"
                                     className="form-control"
                                     value={form.address}
                                     onChange={handleChange('address')}
                                     placeholder="Chennai, TN"
+                                    required
                                 />
                             </div>
                         </div>
@@ -179,7 +211,7 @@ export default function NewApplicantPage() {
                         <div className="row g-3">
                             <div className="col-12">
                                 <label className="form-label fw-bold">
-                                    Program Applied *
+                                    Program Applied <span className="text-danger">*</span>
                                 </label>
 
                                 {loadingPrograms ? (

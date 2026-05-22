@@ -119,7 +119,7 @@ export default function NewStudentPage() {
                         <div className="alert alert-success mb-3">
                             <i className="bi bi-check-circle me-2"></i>
                             Creating student record for accepted applicant{' '}
-                            <strong>#{fromApplicantID}</strong>. Name and DOB have been
+                            <strong>{fromApplicantID}</strong>. Name and DOB have been
                             pre-filled. Select the User account and Program to complete.
                         </div>
                     )}
