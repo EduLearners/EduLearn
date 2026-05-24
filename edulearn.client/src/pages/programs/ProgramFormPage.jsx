@@ -195,8 +195,8 @@ export default function ProgramFormPage() {
                                 <label className="form-label fw-bold">Degree Type <span className="text-danger">*</span></label>
                                 <select className="form-select" name="degreeType" value={form.degreeType} onChange={handleChange} required>
                                     <option value="">-- Select --</option>
-                                    <option value="B.Tech">B.Tech</option>
-                                    <option value="B.Sc">B.Sc</option>
+                                    <option value="Bachelor">Bachelor</option>
+                                    <option value="Master">Master</option>
                                     <option value="B.Com">B.Com</option>
                                     <option value="B.A">B.A</option>
                                     <option value="M.Tech">M.Tech</option>
