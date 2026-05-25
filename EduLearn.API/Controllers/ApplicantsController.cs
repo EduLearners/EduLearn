@@ -31,10 +31,15 @@ public class ApplicantsController : ControllerBase
     {
         // BUG-6 FIX: Validate DOB is in the past
         if (dto.DOB >= DateTime.UtcNow)
+            return BadRequest(new { error = "Date of birth must be in the past", code = "INVALID_DOB" });
+
+        // AGE VALIDATION: applicant must be at least 15 years old
+        var minDOB = DateTime.UtcNow.AddYears(-15);
+        if (dto.DOB > minDOB)
             return BadRequest(new
             {
-                error = "Date of birth must be in the past",
-                code = "INVALID_DOB"
+                error = "Applicant must be at least 15 years old.",
+                code  = "APPLICANT_TOO_YOUNG"
             });
 
         // If NationalID is provided, check it is not already registered

@@ -506,7 +506,7 @@ export default function ApplicantDetailPage() {
                                                 <div className="col-md-6">
                                                     <label className="form-label fw-bold">Role</label>
                                                     <div className="form-control bg-light text-muted">
-                                                        Student (enforced by backend)
+                                                        Student {/* //(enforced by backend) */}
                                                     </div>
                                                     <small className="text-muted">
                                                         <i className="bi bi-lock me-1"></i>

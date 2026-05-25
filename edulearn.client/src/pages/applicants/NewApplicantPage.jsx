@@ -25,9 +25,15 @@ export default function NewApplicantPage() {
         programApplied: '',
     });
 
-    // Phone validation — must be exactly 10 digits if provided
+    // Phone validation — must be exactly 10 digits
     const phoneDigits = form.phone.replace(/\D/g, '');
     const phoneInvalid = form.phone.length > 0 && phoneDigits.length !== 10;
+
+    // DOB validation — applicant must be at least 15 years old
+    const maxDOB = new Date();
+    maxDOB.setFullYear(maxDOB.getFullYear() - 15);
+    const maxDOBString = maxDOB.toISOString().split('T')[0];
+    const dobInvalid = form.dob && new Date(form.dob) > maxDOB;
 
     // Load all active programs on mount
     useEffect(() => {
@@ -61,6 +67,13 @@ export default function NewApplicantPage() {
         // Block submission if phone is invalid
         if (phoneInvalid) {
             setError({ message: 'Phone number must be exactly 10 digits.' });
+            setSaving(false);
+            return;
+        }
+
+        // Block submission if DOB fails age requirement
+        if (dobInvalid) {
+            setError({ message: 'Applicant must be at least 15 years old.' });
             setSaving(false);
             return;
         }
@@ -129,12 +142,20 @@ export default function NewApplicantPage() {
                                 <label className="form-label fw-bold">Date of Birth <span className="text-danger">*</span></label>
                                 <input
                                     type="date"
-                                    className="form-control"
+                                    className={`form-control ${dobInvalid ? 'is-invalid' : ''}`}
                                     value={form.dob}
                                     onChange={handleChange('dob')}
                                     required
-                                    max={new Date().toISOString().split('T')[0]}
+                                    max={maxDOBString}
                                 />
+                                {dobInvalid ? (
+                                    <div className="invalid-feedback">
+                                        <i className="bi bi-exclamation-circle me-1"></i>
+                                        Applicant must be at least 15 years old.
+                                    </div>
+                                ) : (
+                                    <div className="form-text">Applicant must be at least <strong>15 years</strong> old.</div>
+                                )}
                             </div>
 
                             <div className="col-md-6">
