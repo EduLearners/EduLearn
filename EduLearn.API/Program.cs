@@ -215,7 +215,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AdminPolicy", p => p.RequireRole("ITAdmin"));
 
     options.AddPolicy("UserViewPolicy", p => p.RequireRole(
-        "ITAdmin", "Registrar"));
+        "ITAdmin", "Registrar", "DeptAdmin"));
 
     options.AddPolicy("AuditViewPolicy", p => p.RequireRole(
         "Auditor", "ITAdmin"));

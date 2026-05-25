@@ -127,9 +127,10 @@ export default function FeesPage() {
                 feeItemsJSON,
                 effectiveFrom: form.effectiveFrom,
                 effectiveTo: form.effectiveTo,
+                status: form.status,
             };
             if (isEdit) {
-                const updated = await feeService.update(fee.feeID, { ...payload, status: form.status });
+                const updated = await feeService.update(fee.feeID, payload);
                 setFee(updated);
                 setSuccess('Fee schedule updated successfully.');
             } else {
@@ -391,20 +392,18 @@ export default function FeesPage() {
                                                     required
                                                 />
                                             </div>
-                                            {isEdit && (
-                                                <div className="col-md-4">
-                                                    <label className="form-label fw-bold">Status</label>
-                                                    <select
-                                                        className="form-select"
-                                                        value={form.status}
-                                                        onChange={e => setForm({ ...form, status: e.target.value })}
-                                                    >
-                                                        {FEE_STATUSES.map(s => (
-                                                            <option key={s} value={s}>{s}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            )}
+                                            <div className="col-md-4">
+                                                <label className="form-label fw-bold">Status</label>
+                                                <select
+                                                    className="form-select"
+                                                    value={form.status}
+                                                    onChange={e => setForm({ ...form, status: e.target.value })}
+                                                >
+                                                    {FEE_STATUSES.map(s => (
+                                                        <option key={s} value={s}>{s}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                             <div className="col-12">
                                                 <div className="d-flex align-items-center justify-content-between mb-2">
                                                     <label className="form-label fw-bold mb-0">

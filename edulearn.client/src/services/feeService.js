@@ -2,6 +2,12 @@ import axiosClient from '../api/axiosClient';
 
 export const feeService = {
 
+    // GET /api/fees — Finance, ITAdmin only
+    getAll: async () => {
+        const { data } = await axiosClient.get('/fees');
+        return data;
+    },
+
     // GET /api/fees/program/:programId/term/:term — Finance, ITAdmin
     getByProgramAndTerm: async (programId, term) => {
         const { data } = await axiosClient.get(`/fees/program/${programId}/term/${term}`);

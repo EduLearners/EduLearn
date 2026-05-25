@@ -28,6 +28,28 @@ public class SectionsController : ControllerBase
         _roomRepo = roomRepo;
     }
 
+    // GET /api/sections
+    /// <summary>
+    /// List all sections. Registrar, DeptAdmin, and ITAdmin only.
+    /// </summary>
+    [HttpGet]
+    [Authorize(Roles = "Registrar,DeptAdmin,ITAdmin")]
+    public async Task<ActionResult<IEnumerable<SectionResponseDto>>> GetAll(
+        CancellationToken cancellationToken)
+    {
+        var sections = await _sectionRepo.GetAllAsync();
+        var result = new List<SectionResponseDto>();
+        foreach (var s in sections)
+        {
+            var course = await _courseRepo.GetByIdAsync(s.CourseID);
+            var instructor = await _userRepo.GetByIdAsync(s.InstructorID);
+            result.Add(MapToDto(s,
+                course?.Title ?? string.Empty,
+                instructor?.FullName ?? string.Empty));
+        }
+        return Ok(result);
+    }
+
     // POST /api/sections
     /// <summary>
     /// Create a new course section with an assigned instructor and optional room. Registrar, DeptAdmin, and ITAdmin only.

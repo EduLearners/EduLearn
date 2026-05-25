@@ -70,6 +70,7 @@ const NAV_ITEMS = [
     // Can: fees, invoices, payments, scholarships, notifications, tickets
     { label: 'Fees',          to: '/fees',          icon: 'cash-stack',             roles: ['Finance'] },
     { label: 'Invoices',      to: '/invoices',      icon: 'receipt',                roles: ['Finance'] },
+    { label: 'Payments',      to: '/payments',      icon: 'credit-card',            roles: ['Finance'] },
     { label: 'Scholarships',  to: '/scholarships',  icon: 'award',                  roles: ['Finance'] },
     { label: 'Notifications', to: '/notifications', icon: 'bell',                   roles: ['Finance'] },
     { label: 'Tickets',       to: '/tickets',       icon: 'headset',                roles: ['Finance'] },
@@ -102,6 +103,7 @@ const NAV_ITEMS = [
     { label: 'Contents',      to: '/contents',      icon: 'collection-play',        roles: ['ITAdmin'] },
     { label: 'Fees',          to: '/fees',          icon: 'cash-stack',             roles: ['ITAdmin'] },
     { label: 'Invoices',      to: '/invoices',      icon: 'receipt',                roles: ['ITAdmin'] },
+    { label: 'Payments',      to: '/payments',      icon: 'credit-card',            roles: ['ITAdmin'] },
     { label: 'Scholarships',  to: '/scholarships',  icon: 'award',                  roles: ['ITAdmin'] },
     { label: 'Reports',       to: '/reports',       icon: 'file-earmark-bar-graph', roles: ['ITAdmin'] },
     { label: 'KPIs',          to: '/kpis',          icon: 'bar-chart-line',         roles: ['ITAdmin'] },

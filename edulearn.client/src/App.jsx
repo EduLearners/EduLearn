@@ -69,6 +69,7 @@ import DiscussionsPage from './pages/discussions/DiscussionsPage';
 import FeesPage from './pages/finance/FeesPage';
 import InvoicesPage from './pages/finance/InvoicesPage';
 import ScholarshipsPage from './pages/finance/ScholarshipsPage';
+import PaymentsPage from './pages/finance/PaymentsPage';
 
 // NHT module — Swarna
 import NotificationsPage from './pages/notifications/NotificationsPage';
@@ -162,6 +163,7 @@ export default function App() {
                     <Route path="/fees" element={<FeesPage />} />
                     <Route path="/invoices" element={<InvoicesPage />} />
                     <Route path="/scholarships" element={<ScholarshipsPage />} />
+                    <Route path="/payments" element={<PaymentsPage />} />
                     {/* NHT module — Swarna */}
                     <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="/tickets" element={<TicketsPage />} />
