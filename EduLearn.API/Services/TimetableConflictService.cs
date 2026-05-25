@@ -2,7 +2,7 @@
 // BUG-3 FIX: TimetableConflictService.cs
 // Shared schedule-conflict detector for ETS-01 (enroll) and ETS-03 (validate).
 // Previously the parse + overlap logic lived only in TimetableController, so
-// EnrollmentsController had no way to enforce PRD §14.1 ("Prerequisite check
+// EnrollmentsController had no way to enforce PRD  ("Prerequisite check
 // and timetable conflict detection are embedded in the enrollment POST").
 //
 // Usage:

@@ -1,9 +1,9 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
-using EduLearn.API.Repositories.Interfaces;          // TEAMMATE: added for repository pattern
-using EduLearn.API.Services;                          // NHT-01: INotificationService
-using Microsoft.AspNetCore.Authorization;             // AUTH CHANGE: added for [Authorize]
+using EduLearn.API.Repositories.Interfaces;          
+using EduLearn.API.Services;                          
+using Microsoft.AspNetCore.Authorization;           
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -14,7 +14,7 @@ namespace EduLearn.API.Controllers;
 [Authorize] // AUTH CHANGE: All endpoints require a valid JWT token
 public class EnrollmentsController : ControllerBase
 {
-    // TEAMMATE: Changed from AppDbContext to repositories
+    // Changed from AppDbContext to repositories
     private readonly IEnrollmentRepository _enrollRepo;
     private readonly IStudentRepository _studentRepo;
     private readonly ISectionRepository _sectionRepo;
@@ -22,7 +22,7 @@ public class EnrollmentsController : ControllerBase
     // AUDIT CHANGE (interim-polish): log enrollment state changes to the append-only audit trail
     // so the Auditor demo has meaningful IAM-04 content beyond auth events.
     private readonly AuditLogService _auditLogService;
-    // BUG-2 FIX: PRD §14.1 requires prereq + conflict detection embedded in enroll POST.
+    // requires prereq + conflict detection embedded in enroll POST.
     private readonly PrerequisiteEngine _prerequisiteEngine;
     private readonly TimetableConflictService _conflictService;
 

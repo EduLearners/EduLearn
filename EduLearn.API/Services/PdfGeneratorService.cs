@@ -127,7 +127,7 @@ public class PdfGeneratorService
         }
     }
 
-    // ── Shared signature + disclaimer ────────────────────────────
+    // Shared signature + disclaimer
     private static void BuildSignatureAndDisclaimer(ColumnDescriptor col, string disclaimerText)
     {
         col.Item().PaddingTop(24);
