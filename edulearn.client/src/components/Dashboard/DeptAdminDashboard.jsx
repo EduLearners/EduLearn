@@ -5,6 +5,7 @@ import { programService } from '../../services/programService';
 import { courseService } from '../../services/courseService';
 import { roomService } from '../../services/roomService';
 import { userService } from '../../services/userService';
+import { sectionService } from '../../services/sectionService';
 import Loading from '../Loading';
 import './RoleDashboard.css';
 
@@ -43,14 +44,16 @@ export default function DeptAdminDashboard() {
         setLoading(true);
         const s = {};
         try {
-            const [programs, courses, rooms, instructors] = await Promise.allSettled([
+            const [programs, courses, sections, rooms, instructors] = await Promise.allSettled([
                 programService.getAll(),
                 courseService.getAll(),
+                sectionService.getAll(),
                 roomService.getAll(),
                 userService.getByRole('Instructor'),
             ]);
             if (programs.status === 'fulfilled') s.programs = (programs.value || []).filter(p => p.status === 'Active').length;
             if (courses.status === 'fulfilled') s.courses = (courses.value || []).length;
+            if (sections.status === 'fulfilled') s.sections = (sections.value || []).length;
             if (rooms.status === 'fulfilled') {
                 const d = rooms.value || [];
                 s.rooms = d.length;
@@ -84,7 +87,7 @@ export default function DeptAdminDashboard() {
                             <div>
                                 <div className="rd-stat-label">{card.label}</div>
                                 <div className="rd-stat-value" style={{ color: card.accent }}>
-                                    {card.key === 'sections' ? '—' : (stats[card.key] ?? '—')}
+                                    {stats[card.key] ?? '—'}
                                 </div>
                                 <div className="rd-stat-sub">{card.sub(stats)}</div>
                             </div>

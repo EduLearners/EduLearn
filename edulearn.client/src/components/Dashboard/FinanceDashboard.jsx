@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
+import { invoiceService } from '../../services/invoiceService';
+import { feeService } from '../../services/feeService';
+import { scholarshipService } from '../../services/scholarshipService';
 import Loading from '../Loading';
 import './RoleDashboard.css';
 
@@ -9,7 +12,7 @@ const TERM = '2026-Spring';
 const QUICK_ACTIONS = [
     { label: 'Fee Schedules',    icon: 'bi-cash-stack',    path: '/fees'          },
     { label: 'Generate Invoice', icon: 'bi-receipt',       path: '/invoices'      },
-    { label: 'Record Payment',   icon: 'bi-credit-card',   path: '/invoices'      },
+    { label: 'Record Payment',   icon: 'bi-credit-card',   path: '/payments'      },
     { label: 'Scholarships',     icon: 'bi-award',         path: '/scholarships'  },
     { label: 'Notifications',    icon: 'bi-bell',          path: '/notifications' },
     { label: 'Support Ticket',   icon: 'bi-headset',       path: '/tickets'       },
@@ -34,9 +37,30 @@ export default function FinanceDashboard() {
 
     const loadStats = async () => {
         setLoading(true);
-        // Backend has no list-all endpoints for invoices/fees.
-        // Real data is available on the Invoices and Fees pages per student/program.
-        setStats({});
+        const s = {};
+        try {
+            const [invoices, fees, scholarships] = await Promise.allSettled([
+                invoiceService.getAll(),
+                feeService.getAll(),
+                scholarshipService.getAll(),
+            ]);
+
+            if (invoices.status === 'fulfilled') {
+                const all = invoices.value || [];
+                s.totalInvoices   = all.length;
+                s.pendingInvoices = all.filter(i => i.status === 'Pending' || i.status === 'Overdue').length;
+                s.paidInvoices    = all.filter(i => i.status === 'Paid').length;
+            }
+
+            if (fees.status === 'fulfilled') {
+                s.feeSchedules = (fees.value || []).length;
+            }
+
+            if (scholarships.status === 'fulfilled') {
+                s.scholarships = (scholarships.value || []).filter(sc => sc.status === 'Active').length;
+            }
+        } catch { }
+        setStats(s);
         setLoading(false);
     };
 

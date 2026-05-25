@@ -12,6 +12,13 @@ public class ScholarshipRepository : IScholarshipRepository
 
     public ScholarshipRepository(AppDbContext context) => _context = context;
 
+    public async Task<IEnumerable<Scholarship>> GetAllAsync(CancellationToken ct)
+        => await _context.Scholarships
+            .AsNoTracking()
+            .Include(s => s.Student)
+            .OrderByDescending(s => s.AppliedAt)
+            .ToListAsync(ct);
+
     public async Task<IEnumerable<Scholarship>> GetByStudentIdAsync(int studentId, CancellationToken ct)
         => await _context.Scholarships
             .AsNoTracking()

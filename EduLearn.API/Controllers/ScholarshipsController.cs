@@ -28,6 +28,18 @@ public class ScholarshipsController : ControllerBase
         _notificationService = notificationService;
     }
 
+    // ── GET /api/scholarships — Finance / ITAdmin: list all scholarships ──
+    /// <summary>
+    /// List all scholarships across all students. Finance / ITAdmin only.
+    /// </summary>
+    [HttpGet]
+    [Authorize(Policy = "FinancePolicy")]
+    public async Task<ActionResult<IEnumerable<ScholarshipResponseDto>>> GetAll(CancellationToken ct)
+    {
+        var scholarships = await _scholarshipRepository.GetAllAsync(ct);
+        return Ok(scholarships.Select(MapToDto));
+    }
+
     // ── POST /api/scholarships — SFB-04: Award scholarship ──
     /// <summary>
     /// Award a scholarship to a student and notify them. Finance / ITAdmin only.

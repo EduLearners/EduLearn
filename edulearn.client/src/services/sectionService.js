@@ -1,6 +1,10 @@
 import axiosClient from '../api/axiosClient';
 
 export const sectionService = {
+    getAll: async () => {
+        const { data } = await axiosClient.get('/sections');
+        return data;
+    },
     getById: async (id) => {
         const { data } = await axiosClient.get(`/sections/${id}`);
         return data;

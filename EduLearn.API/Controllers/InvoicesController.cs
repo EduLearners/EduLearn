@@ -39,6 +39,24 @@ public class InvoicesController : ControllerBase
         _auditLogService = auditLogService;
     }
 
+    // ── GET /api/invoices — Finance / ITAdmin: list all invoices ──
+    /// <summary>
+    /// List all invoices across all students. Finance / ITAdmin only.
+    /// </summary>
+    [HttpGet]
+    [Authorize(Policy = "FinancePolicy")]
+    public async Task<ActionResult<IEnumerable<InvoiceResponseDto>>> GetAll(CancellationToken ct)
+    {
+        var invoices = await _invoiceRepository.GetAllAsync();
+        var result = new List<InvoiceResponseDto>();
+        foreach (var i in invoices)
+        {
+            var student = await _studentRepository.GetByIdAsync(i.StudentID);
+            result.Add(MapToDto(i, student));
+        }
+        return Ok(result);
+    }
+
     // ── POST /api/invoices/generate-bulk ──
     /// <summary>
     /// Generate invoices for ALL active students in a program for a given term.

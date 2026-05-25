@@ -23,6 +23,18 @@ public class FeesController : ControllerBase
         _programRepository = programRepository;
     }
 
+    // ── GET /api/fees — Finance / ITAdmin: list all fee schedules ──
+    /// <summary>
+    /// List all fee schedules. Finance / ITAdmin only.
+    /// </summary>
+    [HttpGet]
+    [Authorize(Policy = "FinancePolicy")]
+    public async Task<ActionResult<IEnumerable<FeeScheduleResponseDto>>> GetAll(CancellationToken ct)
+    {
+        var fees = await _feeScheduleRepository.GetAllAsync(ct);
+        return Ok(fees.Select(MapToDto));
+    }
+
     /// <summary>
     /// Create a new fee schedule for a program and term. FinancePolicy only.
     /// Validates that the program exists and EffectiveFrom precedes EffectiveTo.

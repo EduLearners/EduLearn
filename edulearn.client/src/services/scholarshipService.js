@@ -2,6 +2,12 @@ import axiosClient from '../api/axiosClient';
 
 export const scholarshipService = {
 
+    // GET /api/scholarships — Finance, ITAdmin only
+    getAll: async () => {
+        const { data } = await axiosClient.get('/scholarships');
+        return data;
+    },
+
     // GET /api/scholarships/student/:studentId — Finance, ITAdmin
     getByStudent: async (studentId) => {
         const { data } = await axiosClient.get(`/scholarships/student/${studentId}`);
