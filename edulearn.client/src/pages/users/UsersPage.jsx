@@ -131,6 +131,13 @@ export default function UsersPage() {
     const handleEdit = async (e) => {
         e.preventDefault();
         setEditError(null);
+
+        // FIX: Validate phone format (10 digits) if provided — matches Create modal guard
+        if (editForm.phone && !/^[0-9]{10}$/.test(editForm.phone)) {
+            setEditError({ message: 'Phone number must be exactly 10 digits.' });
+            return;
+        }
+
         setEditing(true);
         try {
             await userService.update(editTarget.userID, editForm);
