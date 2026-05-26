@@ -120,6 +120,7 @@ public class SectionsController : ControllerBase
     /// Returns 404 if the section does not exist.
     /// </summary>
     [HttpGet("{id}")]
+    [Authorize(Policy = "RosterViewPolicy")]
     public async Task<ActionResult<SectionResponseDto>> GetSection(
         int id, CancellationToken cancellationToken)
     {
@@ -145,6 +146,7 @@ public class SectionsController : ControllerBase
     /// Returns 404 if the course does not exist or no sections are found for the specified term.
     /// </summary>
     [HttpGet("course/{courseId}/term/{term}")]
+    [Authorize(Policy = "RosterViewPolicy")]
     public async Task<ActionResult<IEnumerable<SectionResponseDto>>> GetByCourseAndTerm(
         int courseId, string term, CancellationToken cancellationToken)
     {
