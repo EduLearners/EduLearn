@@ -115,10 +115,10 @@ export default function ApplicantDetailPage() {
     };
 
     const handleGoToCreateRecord = () => {
-        // Navigate to New Student page, pre-filling applicant data
+        // phase4-fix-16: DOB removed from URL (PII in logs/history).
+        // NewStudentPage resolves DOB server-side via applicantID.
         const params = new URLSearchParams({
             name: applicant.name || '',
-            dob: applicant.dob ? applicant.dob.split('T')[0] : '',
             applicantID: applicant.applicantID,
         });
         navigate(`/students/new?${params.toString()}`);

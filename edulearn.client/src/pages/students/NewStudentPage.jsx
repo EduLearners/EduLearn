@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { studentService } from '../../services/studentService';
 import { programService } from '../../services/programService';
 import { userService } from '../../services/userService';
+import { applicantService } from '../../services/applicantService';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
 
@@ -16,13 +17,13 @@ export default function NewStudentPage() {
     const [users, setUsers] = useState([]);
 
     const fromApplicantName = searchParams.get('name') || '';
-    const fromApplicantDob  = searchParams.get('dob')  || '';
+    // phase4-fix-16: DOB no longer read from URL (PII). Resolved server-side from applicantID.
     const fromApplicantID   = searchParams.get('applicantID') || '';
 
     const [form, setForm] = useState({
         userID: '',
         name: fromApplicantName,
-        dob: fromApplicantDob,
+        dob: '',
         gender: '',
         email: '',
         phone: '',
@@ -36,12 +37,18 @@ export default function NewStudentPage() {
     const loadDropdowns = async () => {
         try {
             setPageLoading(true);
-            const [programData, userData] = await Promise.allSettled([
+            const tasks = [
                 programService.getAll(),
                 userService.getByRole('Student'),
-            ]);
+            ];
+            // phase4-fix-16: fetch DOB from server instead of from URL param
+            if (fromApplicantID) tasks.push(applicantService.getById(fromApplicantID));
+            const [programData, userData, applicantData] = await Promise.allSettled(tasks);
             if (programData.status === 'fulfilled') setPrograms(programData.value || []);
             if (userData.status === 'fulfilled')   setUsers(userData.value || []);
+            if (applicantData?.status === 'fulfilled' && applicantData.value?.dob) {
+                setForm(prev => ({ ...prev, dob: applicantData.value.dob.split('T')[0] }));
+            }
         } catch { }
         finally { setPageLoading(false); }
     };
