@@ -1,4 +1,5 @@
 using System.Text.Json;
+using EduLearn.API.Services;
 
 namespace EduLearn.API.Middleware;
 
@@ -35,6 +36,13 @@ public class GlobalExceptionMiddleware
                 "Unhandled exception for {Method} {Path}",
                 context.Request.Method,
                 context.Request.Path);
+
+            var logSvc = context.RequestServices.GetService<IErrorLogService>();
+            if (logSvc != null)
+            {
+                try { await logSvc.LogServerErrorAsync(ex, context, context.RequestAborted); }
+                catch (Exception logEx) { /* swallow — logging must never re-throw */ }
+            }
 
             await WriteResponseAsync(context, ex);
         }

@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using EduLearn.API.Data;
 using EduLearn.API.Middleware;
 using EduLearn.API.Repositories.Implementations;
@@ -108,6 +110,18 @@ builder.Services.AddScoped<PdfGeneratorService>();
 // MFA CHANGE (IAM-03): TOTP helper (RFC 6238) used by AuthService for setup/verify
 builder.Services.AddScoped<MfaService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<IErrorLogService, ErrorLogService>();
+builder.Services.AddHostedService<AppErrorRetentionHostedService>();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("clientlog", o =>
+    {
+        o.PermitLimit = 30;
+        o.Window = TimeSpan.FromMinutes(1);
+        o.QueueLimit = 0;
+    });
+});
 // JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -264,6 +278,7 @@ app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapControllers();
 
