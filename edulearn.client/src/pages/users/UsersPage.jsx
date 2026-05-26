@@ -641,15 +641,30 @@ export default function UsersPage() {
                                                     required
                                                 />
                                             </div>
+                                            {/* phase4-fix-12: match Create modal — 10-digit enforcement + inline feedback */}
                                             <div className="col-12">
                                                 <label className="form-label fw-bold">Phone</label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control ${
+                                                        editForm.phone && editForm.phone.replace(/\D/g, '').length !== 10
+                                                            ? 'is-invalid' : ''
+                                                    }`}
                                                     value={editForm.phone}
                                                     onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                                                    maxLength={20}
+                                                    placeholder="9876543210"
+                                                    pattern="[0-9]{10}"
+                                                    minLength={10}
+                                                    maxLength={10}
                                                 />
+                                                {editForm.phone && editForm.phone.replace(/\D/g, '').length !== 10 ? (
+                                                    <div className="invalid-feedback">
+                                                        <i className="bi bi-exclamation-circle me-1"></i>
+                                                        Enter a 10-digit phone number.
+                                                    </div>
+                                                ) : (
+                                                    <div className="form-text">Enter 10-digit mobile number (optional).</div>
+                                                )}
                                             </div>
                                         </div>
                                         <ErrorAlert error={editError} onDismiss={() => setEditError(null)} />
