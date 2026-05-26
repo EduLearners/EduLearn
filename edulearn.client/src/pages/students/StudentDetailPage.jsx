@@ -17,11 +17,12 @@ export default function StudentDetailPage() {
     const [error, setError] = useState(null);
     const [editMode, setEditMode] = useState(false);
 
-    // Editable form fields
+    // Editable form fields (phase4-fix-11: contactInfoJSON replaced with email + phone)
     const [form, setForm] = useState({
         name: '',
         gender: '',
-        contactInfoJSON: '',
+        email: '',
+        phone: '',
         expectedGraduationTerm: '',
         enrollmentStatus: 'Active',
     });
@@ -40,10 +41,21 @@ export default function StudentDetailPage() {
             setError(null);
             const data = await studentService.getById(id);
             setStudent(data);
+            // phase4-fix-11: parse contactInfoJSON into separate email/phone fields
+            let parsedEmail = '';
+            let parsedPhone = '';
+            if (data.contactInfoJSON) {
+                try {
+                    const ci = JSON.parse(data.contactInfoJSON);
+                    parsedEmail = ci.email || '';
+                    parsedPhone = ci.phone || '';
+                } catch { /* ignore malformed JSON */ }
+            }
             setForm({
                 name: data.name || '',
                 gender: data.gender || '',
-                contactInfoJSON: data.contactInfoJSON || '',
+                email: parsedEmail,
+                phone: parsedPhone,
                 expectedGraduationTerm: data.expectedGraduationTerm || '',
                 enrollmentStatus: data.enrollmentStatus || 'Active',
             });
@@ -60,12 +72,24 @@ export default function StudentDetailPage() {
         }
     };
 
+    // phase4-fix-11: validate email + phone before saving
+    const phoneDigits = form.phone.replace(/\D/g, '');
+    const phoneInvalid = form.phone.length > 0 && phoneDigits.length !== 10;
+    const emailInvalid = form.email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
+
     const handleSave = async (e) => {
         e.preventDefault();
+        if (phoneInvalid) { setError({ message: 'Phone number must be exactly 10 digits.' }); return; }
+        if (emailInvalid) { setError({ message: 'Please enter a valid email address.' }); return; }
         try {
             setSaving(true);
             setError(null);
-            await studentService.update(id, form);
+            // Build contactInfoJSON from individual fields
+            const contactInfo = {};
+            if (form.email) contactInfo.email = form.email;
+            if (form.phone) contactInfo.phone = form.phone;
+            const payload = { ...form, contactInfoJSON: JSON.stringify(contactInfo) };
+            await studentService.update(id, payload);
             await loadStudent();
             setEditMode(false);
         } catch (err) {
@@ -166,15 +190,36 @@ export default function StudentDetailPage() {
                                             <option value="Prefer not to say">Prefer not to say</option>
                                         </select>
                                     </div>
+                                    {/* phase4-fix-11: individual email + phone fields instead of raw JSON textarea */}
                                     <div className="mb-3">
-                                        <label className="form-label fw-bold">Contact Info (JSON)</label>
-                                        <textarea
-                                            className="form-control font-monospace small"
-                                            rows={3}
-                                            value={form.contactInfoJSON}
-                                            onChange={(e) => setForm({ ...form, contactInfoJSON: e.target.value })}
-                                            placeholder='{"email":"...","phone":"..."}'
+                                        <label className="form-label fw-bold">Email</label>
+                                        <input
+                                            type="email"
+                                            className={`form-control${emailInvalid ? ' is-invalid' : ''}`}
+                                            value={form.email}
+                                            onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                            placeholder="student@example.com"
+                                            maxLength={255}
                                         />
+                                        {emailInvalid && (
+                                            <div className="invalid-feedback">Enter a valid email address.</div>
+                                        )}
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">Phone</label>
+                                        <input
+                                            type="text"
+                                            className={`form-control${phoneInvalid ? ' is-invalid' : ''}`}
+                                            value={form.phone}
+                                            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                                            placeholder="9876543210"
+                                            pattern="[0-9]{10}"
+                                            minLength={10}
+                                            maxLength={10}
+                                        />
+                                        {phoneInvalid && (
+                                            <div className="invalid-feedback">Enter a 10-digit phone number.</div>
+                                        )}
                                     </div>
 
                                     <div className="d-flex gap-2">
