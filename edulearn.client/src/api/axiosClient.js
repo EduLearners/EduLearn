@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { errorReporter } from '../services/errorReporterService';
 
 // Base axios instance — uses Vite proxy to reach https://localhost:5001/api
 // phase4-fix-13: add 15 s timeout so requests don't hang indefinitely
@@ -42,13 +43,15 @@ axiosClient.interceptors.response.use(
         if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
             console.warn('[axiosClient] Request timed out — please retry.', { url });
             error._userMessage = 'Request timed out — please retry.';
+            errorReporter.reportNetwork(error, error.config);
             return Promise.reject(error);
         }
 
-        // phase4-fix-14: log 5xx server errors (Phase 5 Task 5.11 will extend with errorReporter)
+        // phase4-fix-14: log 5xx server errors
         const status = error.response?.status;
         if (status >= 500 && !isAuthEndpoint) {
             console.error('[axiosClient] Server error', status, url);
+            errorReporter.reportApi(error);
         }
 
         if (status === 401 && !isAuthEndpoint) {

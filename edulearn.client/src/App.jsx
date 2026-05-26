@@ -79,6 +79,9 @@ import TicketsPage from './pages/notifications/TicketsPage';
 import UsersPage from './pages/users/UsersPage';
 import UserDetailPage from './pages/users/UserDetailPage';
 
+// Admin — Error Monitoring (ITAdmin)
+import ErrorsPage from './pages/admin/ErrorsPage';
+
 export default function App() {
     return (
         <BrowserRouter>
@@ -171,6 +174,13 @@ export default function App() {
                     {/* IAM — User Management (ITAdmin) */}
                     <Route path="/users" element={<UsersPage />} />
                     <Route path="/users/:id" element={<UserDetailPage />} />
+
+                    {/* Admin — Error Monitoring (ITAdmin) */}
+                    <Route path="/admin/errors" element={
+                        <ProtectedRoute allowedRoles={['ITAdmin']}>
+                            <ErrorsPage />
+                        </ProtectedRoute>
+                    } />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" replace />} />
