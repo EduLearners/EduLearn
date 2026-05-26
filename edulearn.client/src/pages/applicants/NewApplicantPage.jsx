@@ -10,7 +10,6 @@ export default function NewApplicantPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
 
-    // Programs dropdown state
     const [programs, setPrograms] = useState([]);
     const [loadingPrograms, setLoadingPrograms] = useState(true);
     const [programsError, setProgramsError] = useState(null);
@@ -35,14 +34,15 @@ export default function NewApplicantPage() {
     const maxDOBString = maxDOB.toISOString().split('T')[0];
     const dobInvalid = form.dob && new Date(form.dob) > maxDOB;
 
-    // Load all active programs on mount
+    // FIX: National ID minimum length validation (at least 4 characters)
+    const nationalIDInvalid = form.nationalID.length > 0 && form.nationalID.trim().length < 4;
+
     useEffect(() => {
         const fetchPrograms = async () => {
             try {
                 setLoadingPrograms(true);
                 setProgramsError(null);
                 const data = await programService.getAll();
-                // Only show Active programs in the dropdown
                 const active = (data || []).filter(p => p.status === 'Active');
                 setPrograms(active);
             } catch (err) {
@@ -62,24 +62,28 @@ export default function NewApplicantPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
-        setSaving(true);
 
-        // Block submission if phone is invalid
         if (phoneInvalid) {
             setError({ message: 'Phone number must be exactly 10 digits.' });
             setSaving(false);
             return;
         }
 
-        // Block submission if DOB fails age requirement
         if (dobInvalid) {
             setError({ message: 'Applicant must be at least 15 years old.' });
             setSaving(false);
             return;
         }
 
+        // FIX: Block submission if National ID is too short
+        if (nationalIDInvalid) {
+            setError({ message: 'National ID must be at least 4 characters.' });
+            setSaving(false);
+            return;
+        }
+
+        setSaving(true);
         try {
-            // Build contactInfoJSON from individual fields
             const contactInfo = {};
             if (form.email) contactInfo.email = form.email;
             if (form.phone) contactInfo.phone = form.phone;
@@ -158,25 +162,34 @@ export default function NewApplicantPage() {
                                 )}
                             </div>
 
+                            {/* FIX: Added minLength={4} to National ID — prevents single-char IDs */}
                             <div className="col-md-6">
                                 <label className="form-label fw-bold">National ID <span className="text-danger">*</span></label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control ${nationalIDInvalid ? 'is-invalid' : ''}`}
                                     value={form.nationalID}
                                     onChange={handleChange('nationalID')}
                                     placeholder="e.g. NATID001"
+                                    minLength={4}
                                     maxLength={12}
                                     required
                                 />
-                                <div className="form-text">
-                                    Max 12 characters.
-                                    {form.nationalID.length > 0 && (
-                                        <span className={form.nationalID.length === 12 ? ' text-danger' : ' text-muted'}>
-                                            {' '}{form.nationalID.length}/12
-                                        </span>
-                                    )}
-                                </div>
+                                {nationalIDInvalid ? (
+                                    <div className="invalid-feedback">
+                                        <i className="bi bi-exclamation-circle me-1"></i>
+                                        National ID must be at least 4 characters.
+                                    </div>
+                                ) : (
+                                    <div className="form-text">
+                                        4–12 characters.
+                                        {form.nationalID.length > 0 && (
+                                            <span className={form.nationalID.length === 12 ? ' text-danger' : ' text-muted'}>
+                                                {' '}{form.nationalID.length}/12
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="col-md-6">
@@ -298,7 +311,11 @@ export default function NewApplicantPage() {
                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
 
                         <div className="d-flex gap-2">
-                            <button type="submit" className="btn btn-primary-edulearn" disabled={saving || loadingPrograms}>
+                            <button
+                                type="submit"
+                                className="btn btn-primary-edulearn"
+                                disabled={saving || loadingPrograms || nationalIDInvalid || phoneInvalid || dobInvalid}
+                            >
                                 {saving ? (
                                     <><span className="spinner-border spinner-border-sm me-2"></span>Submitting...</>
                                 ) : (

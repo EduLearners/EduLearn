@@ -32,8 +32,6 @@ export default function SubmitPage() {
             setPageLoading(true);
             setError(null);
 
-            // Fetch assessment and student record in parallel
-            // GET /api/students/{userId} — backend allows student to view own record
             const [assessmentData, studentData] = await Promise.allSettled([
                 assessmentService.getById(id),
                 axiosClient.get('/students/me').then(r => r.data),
@@ -68,16 +66,27 @@ export default function SubmitPage() {
         setForm(prev => ({ ...prev, [name]: value }));
     };
 
+    // FIX: Validate that fileURI looks like a proper URL when provided
+    const fileURIInvalid = form.fileURI.trim().length > 0 &&
+        !/^https?:\/\/.+/.test(form.fileURI.trim());
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
         setSuccess('');
+
+        // FIX: Block if fileURI is provided but doesn't look like a URL
+        if (fileURIInvalid) {
+            setError({ message: 'Please enter a valid URL starting with https:// (e.g. a Google Drive or GitHub link).' });
+            return;
+        }
+
         setLoading(true);
 
         const payload = {
             assessmentID: form.assessmentID,
             studentID: studentID,
-            fileURI: form.fileURI || null,
+            fileURI: form.fileURI.trim() || null,
         };
 
         try {
@@ -104,7 +113,6 @@ export default function SubmitPage() {
 
     return (
         <div>
-            {/* Page Header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
                     <i className="bi bi-cloud-upload me-2"></i>
@@ -118,7 +126,6 @@ export default function SubmitPage() {
                 </button>
             </div>
 
-            {/* Assessment Info Banner */}
             {assessment && (
                 <div className="alert alert-info mb-4">
                     <div className="row">
@@ -128,12 +135,8 @@ export default function SubmitPage() {
                                 {assessment.title}
                             </strong>
                             <div className="mt-1">
-                                <span className="badge bg-secondary me-2">
-                                    {assessment.type}
-                                </span>
-                                <small className="text-muted">
-                                    Max Score: {assessment.maxScore}
-                                </small>
+                                <span className="badge bg-secondary me-2">{assessment.type}</span>
+                                <small className="text-muted">Max Score: {assessment.maxScore}</small>
                             </div>
                         </div>
                         <div className="col-md-6 text-md-end">
@@ -141,14 +144,10 @@ export default function SubmitPage() {
                                 <i className="bi bi-calendar3 me-1"></i>
                                 Due:{' '}
                                 {assessment.dueAt
-                                    ? new Date(assessment.dueAt).toLocaleString(
-                                        'en-US', {
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                        })
+                                    ? new Date(assessment.dueAt).toLocaleString('en-US', {
+                                        year: 'numeric', month: 'long', day: 'numeric',
+                                        hour: '2-digit', minute: '2-digit',
+                                    })
                                     : 'No due date set'}
                             </small>
                         </div>
@@ -156,17 +155,14 @@ export default function SubmitPage() {
                 </div>
             )}
 
-            {/* Success Alert */}
             {success && (
                 <div className="alert alert-success">
                     <i className="bi bi-check-circle me-2"></i>{success}
                 </div>
             )}
 
-            {/* Error Alert */}
             <ErrorAlert error={error} onDismiss={() => setError(null)} />
 
-            {/* Submission Form */}
             <div className="card shadow-sm">
                 <div className="card-header bg-primary-edulearn text-white">
                     <strong>
@@ -178,12 +174,12 @@ export default function SubmitPage() {
                     <form onSubmit={handleSubmit}>
                         <div className="row g-3">
 
-                            {/* File URI */}
+                            {/* FIX: Changed type to "url" and added live URL validation */}
                             <div className="col-12">
                                 <label className="form-label fw-bold">
                                     File Link
                                     <small className="text-muted fw-normal ms-2">
-                                        (paste a link to your file e.g. Google Drive, GitHub)
+                                        (paste a link to your file — Google Drive, GitHub, etc.)
                                     </small>
                                 </label>
                                 <div className="input-group">
@@ -191,21 +187,26 @@ export default function SubmitPage() {
                                         <i className="bi bi-link-45deg"></i>
                                     </span>
                                     <input
-                                        type="text"
-                                        className="form-control"
+                                        type="url"
+                                        className={`form-control ${fileURIInvalid ? 'is-invalid' : ''}`}
                                         name="fileURI"
                                         value={form.fileURI}
                                         onChange={handleChange}
                                         placeholder="https://drive.google.com/..."
                                         maxLength={500}
                                     />
+                                    {fileURIInvalid && (
+                                        <div className="invalid-feedback">
+                                            <i className="bi bi-exclamation-circle me-1"></i>
+                                            Must be a valid URL starting with https://
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="form-text">
-                                    Paste a shareable link to your submitted work.
+                                    Paste a shareable link to your submitted work. Leave blank if submitting in person.
                                 </div>
                             </div>
 
-                            {/* Confirmation Checkbox */}
                             <div className="col-12">
                                 <div className="form-check">
                                     <input
@@ -214,35 +215,23 @@ export default function SubmitPage() {
                                         id="confirmOriginal"
                                         required
                                     />
-                                    <label
-                                        className="form-check-label"
-                                        htmlFor="confirmOriginal"
-                                    >
-                                        I confirm this is my own original work and I
-                                        have not plagiarised from any source.
+                                    <label className="form-check-label" htmlFor="confirmOriginal">
+                                        I confirm this is my own original work and I have not plagiarised from any source.
                                     </label>
                                 </div>
                             </div>
-
                         </div>
 
-                        {/* Form Actions */}
                         <div className="d-flex gap-2 mt-4">
                             <button
                                 type="submit"
                                 className="btn btn-primary-edulearn"
-                                disabled={loading || !studentID}
+                                disabled={loading || !studentID || fileURIInvalid}
                             >
                                 {loading ? (
-                                    <>
-                                        <span className="spinner-border spinner-border-sm me-2"></span>
-                                        Submitting...
-                                    </>
+                                    <><span className="spinner-border spinner-border-sm me-2"></span>Submitting...</>
                                 ) : (
-                                    <>
-                                        <i className="bi bi-cloud-upload me-2"></i>
-                                        Submit Assessment
-                                    </>
+                                    <><i className="bi bi-cloud-upload me-2"></i>Submit Assessment</>
                                 )}
                             </button>
                             <button

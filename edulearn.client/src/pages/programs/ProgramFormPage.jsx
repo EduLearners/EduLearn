@@ -19,12 +19,10 @@ export default function ProgramFormPage() {
         durationTerms: 8,
     });
 
-    // Course selections
     const [allCourses, setAllCourses] = useState([]);
-    const [requiredSelected, setRequiredSelected] = useState([]); // array of courseIDs
-    const [electivesSelected, setElectivesSelected] = useState([]); // array of courseIDs
+    const [requiredSelected, setRequiredSelected] = useState([]);
+    const [electivesSelected, setElectivesSelected] = useState([]);
     const [loadingCourses, setLoadingCourses] = useState(false);
-
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(isEditMode);
     const [error, setError] = useState(null);
@@ -60,7 +58,6 @@ export default function ProgramFormPage() {
                 departmentID: data.departmentID || '',
                 durationTerms: data.durationTerms || 8,
             });
-            // Parse existing course selections
             setRequiredSelected(parseIds(data.requiredCoursesJSON));
             setElectivesSelected(parseIds(data.electivesJSON));
         } catch (err) {
@@ -97,13 +94,11 @@ export default function ProgramFormPage() {
             setRequiredSelected(prev =>
                 prev.includes(courseId) ? prev.filter(id => id !== courseId) : [...prev, courseId]
             );
-            // Remove from electives if added to required
             setElectivesSelected(prev => prev.filter(id => id !== courseId));
         } else {
             setElectivesSelected(prev =>
                 prev.includes(courseId) ? prev.filter(id => id !== courseId) : [...prev, courseId]
             );
-            // Remove from required if added to electives
             setRequiredSelected(prev => prev.filter(id => id !== courseId));
         }
     };
@@ -155,14 +150,6 @@ export default function ProgramFormPage() {
 
     if (pageLoading) return <Loading message="Loading program..." />;
 
-    // Group courses by level for easier browsing
-    const coursesByLevel = allCourses.reduce((acc, c) => {
-        const level = c.level || 'Other';
-        if (!acc[level]) acc[level] = [];
-        acc[level].push(c);
-        return acc;
-    }, {});
-
     return (
         <div>
             <div className="d-flex align-items-center justify-content-between mb-4">
@@ -179,7 +166,6 @@ export default function ProgramFormPage() {
             <ErrorAlert error={error} onDismiss={() => setError(null)} />
 
             <form onSubmit={handleSubmit}>
-                {/* Program Details Card */}
                 <div className="card shadow-sm mb-4">
                     <div className="card-header bg-primary-edulearn text-white">
                         <strong><i className="bi bi-pencil-square me-2"></i>Program Details</strong>
@@ -188,7 +174,8 @@ export default function ProgramFormPage() {
                         <div className="row g-3">
                             <div className="col-md-8">
                                 <label className="form-label fw-bold">Program Name <span className="text-danger">*</span></label>
-                                <input type="text" className="form-control" name="name" value={form.name} onChange={handleChange} placeholder="e.g. Bachelor of Technology - Computer Science" maxLength={200} required />
+                                <input type="text" className="form-control" name="name" value={form.name} onChange={handleChange}
+                                    placeholder="e.g. Bachelor of Technology - Computer Science" maxLength={200} required />
                             </div>
 
                             <div className="col-md-4">
@@ -197,12 +184,6 @@ export default function ProgramFormPage() {
                                     <option value="">-- Select --</option>
                                     <option value="Bachelor">Bachelor</option>
                                     <option value="Master">Master</option>
-                                    {/* <option value="B.Com">B.Com</option>
-                                    <option value="B.A">B.A</option>
-                                    <option value="M.Tech">M.Tech</option>
-                                    <option value="M.Sc">M.Sc</option>
-                                    <option value="MBA">MBA</option>
-                                    <option value="MCA">MCA</option>  */}
                                     <option value="Ph.D">Ph.D</option>
                                     <option value="Diploma">Diploma</option>
                                 </select>
@@ -210,25 +191,26 @@ export default function ProgramFormPage() {
 
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">Duration (Terms) <span className="text-danger">*</span></label>
-                                <input type="number" className="form-control" name="durationTerms" value={form.durationTerms} onChange={handleChange} min={1} max={20} required />
+                                {/* FIX: Added step={1} to prevent decimal term values */}
+                                <input type="number" className="form-control" name="durationTerms" value={form.durationTerms}
+                                    onChange={handleChange} min={1} max={20} step={1} required />
                                 <div className="form-text">e.g. 8 terms = 4 years</div>
                             </div>
 
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">Department ID <small className="text-muted fw-normal ms-2">(optional)</small></label>
-                                <input type="number" className="form-control" name="departmentID" value={form.departmentID} onChange={handleChange} placeholder="Optional" min={1} />
+                                <input type="number" className="form-control" name="departmentID" value={form.departmentID}
+                                    onChange={handleChange} placeholder="Optional" min={1} />
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Course Picker Card */}
                 <div className="card shadow-sm mb-4">
                     <div className="card-header bg-light">
                         <strong><i className="bi bi-book me-2"></i>Assign Courses to this Program</strong>
                     </div>
                     <div className="card-body">
-                        {/* Summary badges */}
                         <div className="d-flex gap-3 mb-3">
                             <div className="p-2 rounded border text-center" style={{ minWidth: 120 }}>
                                 <div className="fw-bold text-primary-edulearn fs-5">{requiredSelected.length}</div>
@@ -264,8 +246,7 @@ export default function ProgramFormPage() {
                                 <table className="table table-hover align-middle mb-0">
                                     <thead className="table-light">
                                         <tr>
-                                            <th>Code</th>
-                                            <th>Title</th>
+                                            <th>Code</th><th>Title</th>
                                             <th className="text-center">Credits</th>
                                             <th className="text-center">Level</th>
                                             <th className="text-center">Required</th>
@@ -277,36 +258,24 @@ export default function ProgramFormPage() {
                                             const isRequired = requiredSelected.includes(c.courseID);
                                             const isElective = electivesSelected.includes(c.courseID);
                                             return (
-                                                <tr
-                                                    key={c.courseID}
-                                                    className={isRequired ? 'table-primary' : isElective ? 'table-secondary' : ''}
-                                                >
+                                                <tr key={c.courseID}
+                                                    className={isRequired ? 'table-primary' : isElective ? 'table-secondary' : ''}>
                                                     <td><code>{c.code}</code></td>
                                                     <td className="fw-bold">{c.title}</td>
                                                     <td className="text-center">{c.credits}</td>
-                                                    <td className="text-center">
-                                                        <span className="badge bg-secondary">{c.level}</span>
-                                                    </td>
+                                                    <td className="text-center"><span className="badge bg-secondary">{c.level}</span></td>
                                                     <td className="text-center">
                                                         <div className="form-check d-flex justify-content-center mb-0">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={isRequired}
+                                                            <input className="form-check-input" type="checkbox" checked={isRequired}
                                                                 onChange={() => toggleCourse(c.courseID, 'required')}
-                                                                style={{ cursor: 'pointer', width: 20, height: 20 }}
-                                                            />
+                                                                style={{ cursor: 'pointer', width: 20, height: 20 }} />
                                                         </div>
                                                     </td>
                                                     <td className="text-center">
                                                         <div className="form-check d-flex justify-content-center mb-0">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={isElective}
+                                                            <input className="form-check-input" type="checkbox" checked={isElective}
                                                                 onChange={() => toggleCourse(c.courseID, 'elective')}
-                                                                style={{ cursor: 'pointer', width: 20, height: 20 }}
-                                                            />
+                                                                style={{ cursor: 'pointer', width: 20, height: 20 }} />
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -323,10 +292,10 @@ export default function ProgramFormPage() {
                     <button type="submit" className="btn btn-primary-edulearn" disabled={loading}>
                         {loading
                             ? <><span className="spinner-border spinner-border-sm me-2"></span>{isEditMode ? 'Saving...' : 'Creating...'}</>
-                            : <><i className="bi bi-check-lg me-2"></i>{isEditMode ? 'Save Changes' : 'Create Program'}</>
-                        }
+                            : <><i className="bi bi-check-lg me-2"></i>{isEditMode ? 'Save Changes' : 'Create Program'}</>}
                     </button>
-                    <button type="button" className="btn btn-outline-secondary" onClick={() => navigate(isEditMode ? `/programs/${id}` : '/programs')} disabled={loading}>
+                    <button type="button" className="btn btn-outline-secondary"
+                        onClick={() => navigate(isEditMode ? `/programs/${id}` : '/programs')} disabled={loading}>
                         Cancel
                     </button>
                 </div>

@@ -18,7 +18,6 @@ export default function CourseFormPage() {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState('');
 
-    // Backend CourseManagerPolicy: Instructor + DeptAdmin + ITAdmin
     const canManage = ['Instructor', 'DeptAdmin', 'ITAdmin'].includes(role);
 
     useEffect(() => {
@@ -87,7 +86,6 @@ export default function CourseFormPage() {
 
     return (
         <div>
-            {/* Page Header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
                     <i className="bi bi-book me-2"></i>
@@ -160,6 +158,7 @@ export default function CourseFormPage() {
                                 <label className="form-label fw-bold">
                                     Credits <span className="text-danger">*</span>
                                 </label>
+                                {/* FIX: Added step="1" to prevent decimal credit values */}
                                 <input
                                     type="number"
                                     className="form-control"
@@ -168,6 +167,7 @@ export default function CourseFormPage() {
                                     onChange={handleChange}
                                     min={1}
                                     max={12}
+                                    step="1"
                                     required
                                 />
                             </div>
@@ -216,7 +216,7 @@ export default function CourseFormPage() {
                             <div className="col-12">
                                 <label className="form-label fw-bold">
                                     Prerequisites
-                                    <small className="text-muted fw-normal ms-2">(plain text or JSON)</small>
+                                    <small className="text-muted fw-normal ms-2">(JSON array of Course IDs)</small>
                                 </label>
                                 <textarea
                                     className="form-control font-monospace"
@@ -224,18 +224,18 @@ export default function CourseFormPage() {
                                     value={form.prerequisitesJSON}
                                     onChange={handleChange}
                                     rows={4}
-                                    placeholder='e.g. {"courses":["CS100","MATH101"]}'
+                                    placeholder='e.g. [1, 2] — array of prerequisite Course IDs'
                                 />
+                                <div className="form-text">
+                                    Enter a JSON array of Course IDs (numbers), e.g. <code>[1, 3]</code>.
+                                    Leave blank if there are no prerequisites.
+                                </div>
                             </div>
 
                         </div>
 
                         <div className="d-flex gap-2 mt-4">
-                            <button
-                                type="submit"
-                                className="btn btn-primary-edulearn"
-                                disabled={loading}
-                            >
+                            <button type="submit" className="btn btn-primary-edulearn" disabled={loading}>
                                 {loading ? (
                                     <>
                                         <span className="spinner-border spinner-border-sm me-2"></span>

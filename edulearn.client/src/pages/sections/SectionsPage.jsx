@@ -155,18 +155,37 @@ export default function SectionsPage() {
         setFormError(null);
     };
 
+    // FIX: Validate that schedule end time is after start time (e.g. 10:00-11:30)
+    const validateTimeRange = (time) => {
+        if (!time || !time.trim()) return true; // empty is fine (optional field)
+        const match = time.match(/^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
+        if (!match) return false;
+        const start = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+        const end   = parseInt(match[3], 10) * 60 + parseInt(match[4], 10);
+        return start < end;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFormError(null);
+
+        // FIX: Validate time range before saving
+        if (form.scheduleTime && !validateTimeRange(form.scheduleTime)) {
+            setFormError({ message: 'Schedule end time must be after start time (e.g. 10:00-11:30).' });
+            return;
+        }
+
         setSaving(true);
         try {
+            // FIX: Store null for empty time instead of "" to avoid breaking conflict detection
+            const scheduleTime = form.scheduleTime && form.scheduleTime.trim() ? form.scheduleTime.trim() : null;
             const payload = {
                 courseID: parseInt(form.courseID, 10),
                 term: form.term,
                 instructorID: parseInt(form.instructorID, 10),
                 roomID: form.roomID ? parseInt(form.roomID, 10) : null,
                 capacity: parseInt(form.capacity, 10),
-                scheduleJSON: JSON.stringify({ days: form.scheduleDays, time: form.scheduleTime }),
+                scheduleJSON: JSON.stringify({ days: form.scheduleDays, time: scheduleTime }),
             };
             if (editingId) {
                 await sectionService.update(editingId, payload);
@@ -449,15 +468,23 @@ export default function SectionsPage() {
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">Time</label>
+                                                {/* FIX: Real-time validation that end time > start time */}
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control ${form.scheduleTime && !validateTimeRange(form.scheduleTime) ? 'is-invalid' : ''}`}
                                                     value={form.scheduleTime}
                                                     onChange={(e) => setForm({ ...form, scheduleTime: e.target.value })}
                                                     placeholder="HH:MM-HH:MM"
                                                     pattern="\d{2}:\d{2}-\d{2}:\d{2}"
                                                 />
-                                                <small className="text-muted">Format: <code>10:00-11:00</code></small>
+                                                {form.scheduleTime && !validateTimeRange(form.scheduleTime) ? (
+                                                    <div className="invalid-feedback">
+                                                        <i className="bi bi-exclamation-circle me-1"></i>
+                                                        End time must be after start time.
+                                                    </div>
+                                                ) : (
+                                                    <small className="text-muted">Format: <code>10:00-11:00</code></small>
+                                                )}
                                             </div>
                                         </div>
 

@@ -25,10 +25,8 @@ export default function AssessmentFormPage() {
         gradingRubricJSON: '',
     });
 
-    // Instructor's own sections (for dropdowns)
     const [mySections, setMySections] = useState([]);
     const [loadingSections, setLoadingSections] = useState(false);
-
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(isEditMode);
     const [error, setError] = useState(null);
@@ -36,11 +34,8 @@ export default function AssessmentFormPage() {
 
     const canManage = ['Instructor', 'ITAdmin'].includes(role);
 
-    // Load instructor's sections on mount
     useEffect(() => {
-        if (isInstructor && userId) {
-            loadMySections();
-        }
+        if (isInstructor && userId) loadMySections();
     }, []);
 
     useEffect(() => {
@@ -86,7 +81,6 @@ export default function AssessmentFormPage() {
         setForm(prev => ({ ...prev, [name]: value }));
     };
 
-    // When instructor selects a section, auto-fill courseID
     const handleSectionChange = (e) => {
         const sectionId = e.target.value;
         const section = mySections.find(s => String(s.sectionID) === sectionId);
@@ -97,7 +91,6 @@ export default function AssessmentFormPage() {
         }));
     };
 
-    // Unique courses from instructor's sections (for course dropdown)
     const myCourses = mySections.reduce((acc, sec) => {
         if (!acc.find(c => c.courseID === sec.courseID)) {
             acc.push({ courseID: sec.courseID, courseName: sec.courseName });
@@ -105,7 +98,6 @@ export default function AssessmentFormPage() {
         return acc;
     }, []);
 
-    // Sections filtered by selected course
     const filteredSections = form.courseID
         ? mySections.filter(s => String(s.courseID) === String(form.courseID))
         : mySections;
@@ -164,6 +156,9 @@ export default function AssessmentFormPage() {
         try { return json ? JSON.parse(json) : null; } catch { return null; }
     };
 
+    // FIX: For new assessments, the due date cannot be in the past
+    const minDueAt = !isEditMode ? new Date().toISOString().slice(0, 16) : undefined;
+
     return (
         <div>
             <div className="d-flex align-items-center justify-content-between mb-4">
@@ -198,7 +193,6 @@ export default function AssessmentFormPage() {
                     <form onSubmit={handleSubmit}>
                         <div className="row g-3">
 
-                            {/* Title */}
                             <div className="col-md-6">
                                 <label className="form-label fw-bold">Title <span className="text-danger">*</span></label>
                                 <input
@@ -213,7 +207,6 @@ export default function AssessmentFormPage() {
                                 />
                             </div>
 
-                            {/* Type */}
                             <div className="col-md-3">
                                 <label className="form-label fw-bold">Type <span className="text-danger">*</span></label>
                                 <select className="form-select" name="type" value={form.type} onChange={handleChange} required>
@@ -221,7 +214,6 @@ export default function AssessmentFormPage() {
                                 </select>
                             </div>
 
-                            {/* Status */}
                             <div className="col-md-3">
                                 <label className="form-label fw-bold">Status <span className="text-danger">*</span></label>
                                 <select className="form-select" name="status" value={form.status} onChange={handleChange} required>
@@ -238,7 +230,6 @@ export default function AssessmentFormPage() {
                                 </div>
                             </div>
 
-                            {/* Course dropdown (instructor) / number input (ITAdmin) */}
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">Course <span className="text-danger">*</span></label>
                                 {isInstructor ? (
@@ -287,7 +278,6 @@ export default function AssessmentFormPage() {
                                 )}
                             </div>
 
-                            {/* Section dropdown (instructor) / number input (ITAdmin) */}
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">
                                     Section
@@ -331,7 +321,6 @@ export default function AssessmentFormPage() {
                                 </div>
                             </div>
 
-                            {/* Max Score */}
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">Max Score <span className="text-danger">*</span></label>
                                 <input
@@ -347,7 +336,7 @@ export default function AssessmentFormPage() {
                                 />
                             </div>
 
-                            {/* Due At */}
+                            {/* FIX: min prevents selecting past due dates on new assessments */}
                             <div className="col-md-6">
                                 <label className="form-label fw-bold">
                                     Due At <small className="text-muted fw-normal ms-2">(optional)</small>
@@ -358,10 +347,13 @@ export default function AssessmentFormPage() {
                                     name="dueAt"
                                     value={form.dueAt}
                                     onChange={handleChange}
+                                    min={minDueAt}
                                 />
+                                {!isEditMode && (
+                                    <div className="form-text">Must be a future date and time.</div>
+                                )}
                             </div>
 
-                            {/* Grading Rubric */}
                             <div className="col-12">
                                 <label className="form-label fw-bold">
                                     Grading Rubric <small className="text-muted fw-normal ms-2">(optional JSON)</small>

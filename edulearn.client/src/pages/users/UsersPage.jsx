@@ -27,6 +27,7 @@ const EMPTY_FORM = {
     phone: '',
     role: 'Student',
     password: '',
+    confirmPassword: '',   // FIX: confirm password field added
     sendInvite: true,
 };
 
@@ -77,9 +78,23 @@ export default function UsersPage() {
         }
     };
 
-   const handleCreate = async (e) => {
+    const handleCreate = async (e) => {
         e.preventDefault();
         setCreateError(null);
+
+        // FIX: Validate phone format (10 digits) if provided
+        const phoneDigits = createForm.phone.replace(/\D/g, '');
+        if (createForm.phone && phoneDigits.length !== 10) {
+            setCreateError({ message: 'Phone number must be exactly 10 digits.' });
+            return;
+        }
+
+        // FIX: Validate password confirmation matches
+        if (createForm.password !== createForm.confirmPassword) {
+            setCreateError({ message: 'Passwords do not match. Please re-enter the password.' });
+            return;
+        }
+
         setCreating(true);
         try {
             await userService.create({
@@ -105,6 +120,7 @@ export default function UsersPage() {
             setCreating(false);
         }
     };
+
     const openEdit = (user) => {
         setEditTarget(user);
         setEditForm({ fullName: user.fullName, email: user.email, phone: user.phone || '' });
@@ -438,16 +454,28 @@ export default function UsersPage() {
                                                     required
                                                 />
                                             </div>
+                                            {/* FIX: Phone with 10-digit validation */}
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">Phone</label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control ${
+                                                        createForm.phone && createForm.phone.replace(/\D/g, '').length !== 10
+                                                            ? 'is-invalid' : ''
+                                                    }`}
                                                     value={createForm.phone}
                                                     onChange={e => setCreateForm({ ...createForm, phone: e.target.value })}
-                                                    placeholder="e.g. +91-9876543210"
+                                                    placeholder="9876543210"
                                                     maxLength={20}
                                                 />
+                                                {createForm.phone && createForm.phone.replace(/\D/g, '').length !== 10 ? (
+                                                    <div className="invalid-feedback">
+                                                        <i className="bi bi-exclamation-circle me-1"></i>
+                                                        Phone must be exactly 10 digits.
+                                                    </div>
+                                                ) : (
+                                                    <div className="form-text">Enter 10-digit mobile number (optional).</div>
+                                                )}
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">
@@ -479,6 +507,32 @@ export default function UsersPage() {
                                                     required
                                                 />
                                             </div>
+                                            {/* FIX: Confirm Password field — prevents locked-out accounts from typos */}
+                                            <div className="col-md-6">
+                                                <label className="form-label fw-bold">
+                                                    Confirm Password <span className="text-danger">*</span>
+                                                </label>
+                                                <input
+                                                    type="password"
+                                                    className={`form-control ${
+                                                        createForm.confirmPassword && createForm.password !== createForm.confirmPassword
+                                                            ? 'is-invalid' : ''
+                                                    }`}
+                                                    value={createForm.confirmPassword}
+                                                    onChange={e => setCreateForm({ ...createForm, confirmPassword: e.target.value })}
+                                                    placeholder="Re-enter password"
+                                                    minLength={8}
+                                                    required
+                                                />
+                                                {createForm.confirmPassword && createForm.password !== createForm.confirmPassword && (
+                                                    <div className="invalid-feedback">Passwords do not match.</div>
+                                                )}
+                                                {createForm.confirmPassword && createForm.password === createForm.confirmPassword && (
+                                                    <div className="form-text text-success">
+                                                        <i className="bi bi-check-circle me-1"></i>Passwords match
+                                                    </div>
+                                                )}
+                                            </div>
 
                                             {/* Send Invite Checkbox */}
                                             <div className="col-12">
@@ -497,7 +551,7 @@ export default function UsersPage() {
                                                         </div>
                                                         <small className="text-muted">
                                                             Sends login details (username, role, login URL
-                                                            and temporary password) to {createForm.email || 'the user\'s email'}.
+                                                            and temporary password) to {createForm.email || "the user's email"}.
                                                         </small>
                                                     </label>
                                                 </div>
@@ -517,7 +571,7 @@ export default function UsersPage() {
                                         <button
                                             type="submit"
                                             className="btn btn-primary-edulearn"
-                                            disabled={creating}
+                                            disabled={creating || (createForm.password !== createForm.confirmPassword)}
                                         >
                                             {creating ? (
                                                 <>

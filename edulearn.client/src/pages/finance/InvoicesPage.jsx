@@ -50,6 +50,15 @@ export default function InvoicesPage() {
     const canManage = ['Finance', 'ITAdmin'].includes(role);
     const isStudent = role === 'Student';
 
+    // FIX: Today's date string for minimum due date validation
+    const todayString = new Date().toISOString().split('T')[0];
+
+    // FIX: Compute balance so payment modal can enforce max = outstanding balance
+    const totalPaid = payments
+        .filter(p => p.status === 'Completed')
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+    const balance = selected ? Math.max(0, Number(selected.amountDue) - totalPaid) : 0;
+
     useEffect(() => {
         if (canManage) {
             programService.getAll()
@@ -149,11 +158,9 @@ export default function InvoicesPage() {
             });
             setSuccess('Payment recorded successfully.');
             setShowPayment(false);
-            // Refresh selected invoice payments
             if (selected) {
                 const data = await paymentService.getByInvoice(selected.invoiceID);
                 setPayments(data || []);
-                // Refresh invoice list
                 const inv = await invoiceService.getById(selected.invoiceID);
                 setSelected(inv);
                 setInvoices(prev => prev.map(i => i.invoiceID === inv.invoiceID ? inv : i));
@@ -172,7 +179,6 @@ export default function InvoicesPage() {
 
     return (
         <div>
-            {/* Page Header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
                     <i className="bi bi-receipt me-2"></i>Invoices
@@ -240,7 +246,6 @@ export default function InvoicesPage() {
 
             {invoices.length > 0 && (
                 <div className="row g-4">
-                    {/* Invoice List */}
                     <div className="col-md-4">
                         <div className="card shadow-sm">
                             <div className="card-header bg-light">
@@ -258,17 +263,13 @@ export default function InvoicesPage() {
                                     >
                                         <div className="d-flex align-items-center justify-content-between">
                                             <div>
-                                                <div className="fw-bold">
-                                                    Invoice #{inv.invoiceID}
-                                                </div>
+                                                <div className="fw-bold">Invoice #{inv.invoiceID}</div>
                                                 <small className={selected?.invoiceID === inv.invoiceID ? 'text-white-50' : 'text-muted'}>
                                                     {inv.term}
                                                 </small>
                                             </div>
                                             <div className="text-end">
-                                                <div className="fw-bold">
-                                                    ₹{Number(inv.amountDue).toFixed(2)}
-                                                </div>
+                                                <div className="fw-bold">₹{Number(inv.amountDue).toFixed(2)}</div>
                                                 <StatusBadge status={inv.status} />
                                             </div>
                                         </div>
@@ -278,7 +279,6 @@ export default function InvoicesPage() {
                         </div>
                     </div>
 
-                    {/* Invoice Detail */}
                     <div className="col-md-8">
                         {!selected ? (
                             <div className="card shadow-sm h-100 d-flex align-items-center justify-content-center">
@@ -325,11 +325,7 @@ export default function InvoicesPage() {
                                                 <dd>{new Date(selected.dueDate).toLocaleDateString()}</dd>
                                             </div>
                                         </div>
-
-                                        {/* Line Items */}
-                                        <label className="form-label text-muted small text-uppercase">
-                                            Line Items
-                                        </label>
+                                        <label className="form-label text-muted small text-uppercase">Line Items</label>
                                         <div className="table-responsive mb-3">
                                             <table className="table table-bordered table-sm mb-0">
                                                 <thead className="table-light">
@@ -361,7 +357,6 @@ export default function InvoicesPage() {
                                     </div>
                                 </div>
 
-                                {/* Payments Card */}
                                 <div className="card shadow-sm">
                                     <div className="card-header bg-light">
                                         <strong>
@@ -370,24 +365,16 @@ export default function InvoicesPage() {
                                         </strong>
                                     </div>
                                     {paymentsLoading ? (
-                                        <div className="card-body">
-                                            <Loading message="Loading payments..." />
-                                        </div>
+                                        <div className="card-body"><Loading message="Loading payments..." /></div>
                                     ) : payments.length === 0 ? (
-                                        <div className="card-body text-center text-muted py-4">
-                                            No payments recorded yet.
-                                        </div>
+                                        <div className="card-body text-center text-muted py-4">No payments recorded yet.</div>
                                     ) : (
                                         <div className="table-responsive">
                                             <table className="table table-sm align-middle mb-0">
                                                 <thead className="table-light">
                                                     <tr>
-                                                        <th>ID</th>
-                                                        <th>Amount</th>
-                                                        <th>Method</th>
-                                                        <th>Reference</th>
-                                                        <th>Status</th>
-                                                        <th>Paid At</th>
+                                                        <th>ID</th><th>Amount</th><th>Method</th>
+                                                        <th>Reference</th><th>Status</th><th>Paid At</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -395,16 +382,10 @@ export default function InvoicesPage() {
                                                         <tr key={p.paymentID}>
                                                             <td><code>#{p.paymentID}</code></td>
                                                             <td className="fw-bold">₹{Number(p.amount).toFixed(2)}</td>
-                                                            <td>
-                                                                <span className="badge bg-secondary">{p.method}</span>
-                                                            </td>
+                                                            <td><span className="badge bg-secondary">{p.method}</span></td>
                                                             <td>{p.reference || '—'}</td>
                                                             <td><StatusBadge status={p.status} /></td>
-                                                            <td>
-                                                                {p.paidAt
-                                                                    ? new Date(p.paidAt).toLocaleString()
-                                                                    : '—'}
-                                                            </td>
+                                                            <td>{p.paidAt ? new Date(p.paidAt).toLocaleString() : '—'}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -475,11 +456,13 @@ export default function InvoicesPage() {
                                                 <label className="form-label fw-bold">
                                                     Due Date <span className="text-danger">*</span>
                                                 </label>
+                                                {/* FIX: min prevents past dates being submitted */}
                                                 <input
                                                     type="date"
                                                     className="form-control"
                                                     value={bulkForm.dueDate}
                                                     onChange={e => setBulkForm({ ...bulkForm, dueDate: e.target.value })}
+                                                    min={todayString}
                                                     required
                                                 />
                                             </div>
@@ -488,15 +471,11 @@ export default function InvoicesPage() {
                                     </div>
                                     <div className="modal-footer">
                                         <button type="button" className="btn btn-outline-secondary"
-                                            onClick={() => setShowBulk(false)} disabled={saving}>
-                                            Cancel
-                                        </button>
+                                            onClick={() => setShowBulk(false)} disabled={saving}>Cancel</button>
                                         <button type="submit" className="btn btn-primary-edulearn" disabled={saving}>
-                                            {saving ? (
-                                                <><span className="spinner-border spinner-border-sm me-2"></span>Generating...</>
-                                            ) : (
-                                                <><i className="bi bi-people me-2"></i>Generate for All</>
-                                            )}
+                                            {saving
+                                                ? <><span className="spinner-border spinner-border-sm me-2"></span>Generating...</>
+                                                : <><i className="bi bi-people me-2"></i>Generate for All</>}
                                         </button>
                                     </div>
                                 </form>
@@ -517,12 +496,8 @@ export default function InvoicesPage() {
                                     <h5 className="modal-title">
                                         <i className="bi bi-receipt me-2"></i>Generate Invoice
                                     </h5>
-                                    <button
-                                        type="button"
-                                        className="btn-close btn-close-white"
-                                        onClick={() => setShowGenerate(false)}
-                                        disabled={saving}
-                                    />
+                                    <button type="button" className="btn-close btn-close-white"
+                                        onClick={() => setShowGenerate(false)} disabled={saving} />
                                 </div>
                                 <form onSubmit={handleGenerate}>
                                     <div className="modal-body">
@@ -536,6 +511,7 @@ export default function InvoicesPage() {
                                                     className="form-control"
                                                     value={genForm.studentID}
                                                     onChange={e => setGenForm({ ...genForm, studentID: e.target.value })}
+                                                    min={1}
                                                     required
                                                 />
                                             </div>
@@ -556,11 +532,13 @@ export default function InvoicesPage() {
                                                 <label className="form-label fw-bold">
                                                     Due Date <span className="text-danger">*</span>
                                                 </label>
+                                                {/* FIX: min prevents past dates */}
                                                 <input
                                                     type="date"
                                                     className="form-control"
                                                     value={genForm.dueDate}
                                                     onChange={e => setGenForm({ ...genForm, dueDate: e.target.value })}
+                                                    min={todayString}
                                                     required
                                                 />
                                             </div>
@@ -568,30 +546,12 @@ export default function InvoicesPage() {
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
                                     </div>
                                     <div className="modal-footer">
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline-secondary"
-                                            onClick={() => setShowGenerate(false)}
-                                            disabled={saving}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="btn btn-primary-edulearn"
-                                            disabled={saving}
-                                        >
-                                            {saving ? (
-                                                <>
-                                                    <span className="spinner-border spinner-border-sm me-2"></span>
-                                                    Generating...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <i className="bi bi-check-lg me-2"></i>
-                                                    Generate
-                                                </>
-                                            )}
+                                        <button type="button" className="btn btn-outline-secondary"
+                                            onClick={() => setShowGenerate(false)} disabled={saving}>Cancel</button>
+                                        <button type="submit" className="btn btn-primary-edulearn" disabled={saving}>
+                                            {saving
+                                                ? <><span className="spinner-border spinner-border-sm me-2"></span>Generating...</>
+                                                : <><i className="bi bi-check-lg me-2"></i>Generate</>}
                                         </button>
                                     </div>
                                 </form>
@@ -610,15 +570,10 @@ export default function InvoicesPage() {
                             <div className="modal-content">
                                 <div className="modal-header bg-primary-edulearn text-white">
                                     <h5 className="modal-title">
-                                        <i className="bi bi-credit-card me-2"></i>
-                                        Record Payment
+                                        <i className="bi bi-credit-card me-2"></i>Record Payment
                                     </h5>
-                                    <button
-                                        type="button"
-                                        className="btn-close btn-close-white"
-                                        onClick={() => setShowPayment(false)}
-                                        disabled={saving}
-                                    />
+                                    <button type="button" className="btn-close btn-close-white"
+                                        onClick={() => setShowPayment(false)} disabled={saving} />
                                 </div>
                                 <form onSubmit={handlePayment}>
                                     <div className="modal-body">
@@ -629,6 +584,7 @@ export default function InvoicesPage() {
                                                 </label>
                                                 <div className="input-group">
                                                     <span className="input-group-text">₹</span>
+                                                    {/* FIX: max enforces outstanding balance cap, consistent with PaymentsPage */}
                                                     <input
                                                         type="number"
                                                         className="form-control"
@@ -636,9 +592,15 @@ export default function InvoicesPage() {
                                                         onChange={e => setPayForm({ ...payForm, amount: e.target.value })}
                                                         step="0.01"
                                                         min="0.01"
+                                                        max={balance > 0 ? balance.toFixed(2) : undefined}
                                                         required
                                                     />
                                                 </div>
+                                                {balance > 0 && (
+                                                    <div className="form-text">
+                                                        Outstanding balance: <strong>₹{balance.toFixed(2)}</strong>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">
@@ -672,30 +634,12 @@ export default function InvoicesPage() {
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
                                     </div>
                                     <div className="modal-footer">
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline-secondary"
-                                            onClick={() => setShowPayment(false)}
-                                            disabled={saving}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="btn btn-primary-edulearn"
-                                            disabled={saving}
-                                        >
-                                            {saving ? (
-                                                <>
-                                                    <span className="spinner-border spinner-border-sm me-2"></span>
-                                                    Recording...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <i className="bi bi-check-lg me-2"></i>
-                                                    Record Payment
-                                                </>
-                                            )}
+                                        <button type="button" className="btn btn-outline-secondary"
+                                            onClick={() => setShowPayment(false)} disabled={saving}>Cancel</button>
+                                        <button type="submit" className="btn btn-primary-edulearn" disabled={saving}>
+                                            {saving
+                                                ? <><span className="spinner-border spinner-border-sm me-2"></span>Recording...</>
+                                                : <><i className="bi bi-check-lg me-2"></i>Record Payment</>}
                                         </button>
                                     </div>
                                 </form>

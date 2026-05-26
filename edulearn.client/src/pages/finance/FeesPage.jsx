@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { feeService } from '../../services/feeService';
 import { programService } from '../../services/programService';
 import { authService } from '../../services/authService';
@@ -44,7 +44,7 @@ export default function FeesPage() {
     const [form, setForm] = useState({
         programID: '',
         term: '',
-        feeItems: [{ item: '', amount: '' }], // array of {item, amount}
+        feeItems: [{ item: '', amount: '' }],
         effectiveFrom: '',
         effectiveTo: '',
         status: 'Draft',
@@ -60,7 +60,8 @@ export default function FeesPage() {
 
     const canManage = ['Finance', 'ITAdmin'].includes(role);
 
-    useState(() => {
+    // FIX: Was useState() misused as useEffect — replaced with correct useEffect
+    useEffect(() => {
         programService.getAll()
             .then(d => setPrograms(d || []))
             .catch(() => {})
@@ -118,6 +119,20 @@ export default function FeesPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+
+        // FIX: Cross-validate effectiveFrom < effectiveTo
+        if (form.effectiveFrom && form.effectiveTo && form.effectiveFrom >= form.effectiveTo) {
+            setError({ message: '"Effective From" date must be before "Effective To" date.' });
+            return;
+        }
+
+        // FIX: Ensure at least one fee item has an amount > 0
+        const totalAmount = form.feeItems.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+        if (totalAmount <= 0) {
+            setError({ message: 'At least one fee item must have an amount greater than ₹0.' });
+            return;
+        }
+
         setSaving(true);
         try {
             const feeItemsJSON = itemsToJson(form.feeItems);
@@ -146,6 +161,9 @@ export default function FeesPage() {
         }
     };
 
+    // FIX: Inline date cross-validation flag for UI feedback
+    const dateRangeInvalid =
+        form.effectiveFrom && form.effectiveTo && form.effectiveFrom >= form.effectiveTo;
 
     if (pageLoading) return <Loading message="Loading..." />;
 
@@ -368,13 +386,15 @@ export default function FeesPage() {
                                                     disabled={isEdit}
                                                 />
                                             </div>
+
+                                            {/* FIX: Date cross-validation with inline feedback */}
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">
                                                     Effective From <span className="text-danger">*</span>
                                                 </label>
                                                 <input
                                                     type="date"
-                                                    className="form-control"
+                                                    className={`form-control ${dateRangeInvalid ? 'is-invalid' : ''}`}
                                                     value={form.effectiveFrom}
                                                     onChange={e => setForm({ ...form, effectiveFrom: e.target.value })}
                                                     required
@@ -386,12 +406,19 @@ export default function FeesPage() {
                                                 </label>
                                                 <input
                                                     type="date"
-                                                    className="form-control"
+                                                    className={`form-control ${dateRangeInvalid ? 'is-invalid' : ''}`}
                                                     value={form.effectiveTo}
                                                     onChange={e => setForm({ ...form, effectiveTo: e.target.value })}
                                                     required
                                                 />
+                                                {dateRangeInvalid && (
+                                                    <div className="invalid-feedback">
+                                                        <i className="bi bi-exclamation-circle me-1"></i>
+                                                        "Effective To" must be after "Effective From".
+                                                    </div>
+                                                )}
                                             </div>
+
                                             <div className="col-md-4">
                                                 <label className="form-label fw-bold">Status</label>
                                                 <select
@@ -425,12 +452,14 @@ export default function FeesPage() {
                                                         />
                                                         <div className="input-group" style={{ maxWidth: 160 }}>
                                                             <span className="input-group-text">₹</span>
+                                                            {/* FIX: min changed from "0" to "0.01" to prevent zero-amount items */}
                                                             <input
                                                                 type="number"
                                                                 className="form-control"
                                                                 placeholder="Amount"
                                                                 value={row.amount}
-                                                                min="0"
+                                                                min="0.01"
+                                                                step="0.01"
                                                                 onChange={e => updateFeeItem(idx, 'amount', e.target.value)}
                                                                 required
                                                             />
@@ -466,7 +495,7 @@ export default function FeesPage() {
                                         <button
                                             type="submit"
                                             className="btn btn-primary-edulearn"
-                                            disabled={saving}
+                                            disabled={saving || dateRangeInvalid}
                                         >
                                             {saving ? (
                                                 <>

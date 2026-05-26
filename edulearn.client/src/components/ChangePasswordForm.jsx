@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { userService } from '../services/userService';
 import ErrorAlert from './ErrorAlert';
 
-export default function ChangePasswordForm({ userId ,onClose }) {
+export default function ChangePasswordForm({ userId, onClose }) {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,7 +19,9 @@ export default function ChangePasswordForm({ userId ,onClose }) {
     const rules = {
         minLength: newPassword.length >= 8,
         hasLetter: /[a-zA-Z]/.test(newPassword),
-        isDifferent: newPassword !== currentPassword || newPassword === '',
+        // FIX: isDifferent was true when newPassword is empty (misleading green checkmark).
+        // Now it is only true when the user has actually typed something AND it differs.
+        isDifferent: newPassword.length > 0 && newPassword !== currentPassword,
     };
     const allRulesPassed = rules.minLength && rules.hasLetter && rules.isDifferent;
     const passwordsMatch = newPassword === confirmPassword && confirmPassword !== '';
@@ -90,29 +92,37 @@ export default function ChangePasswordForm({ userId ,onClose }) {
             </div>
             <div className="card-body">
 
-                {/* Password Requirements */}
+                {/* Password Requirements — FIX: only show rule states after user starts typing */}
                 <div className="p-3 bg-light rounded mb-4">
                     <p className="text-muted small text-uppercase fw-bold mb-2">
                         Password Requirements
                     </p>
                     <div className="d-flex flex-column gap-1">
-                        <RuleItem passed={rules.minLength} text="At least 8 characters" />
-                        <RuleItem passed={rules.hasLetter} text="At least one letter" />
-                        <RuleItem passed={rules.isDifferent} text="Must differ from current password" />
+                        <RuleItem
+                            passed={rules.minLength}
+                            active={newPassword.length > 0}
+                            text="At least 8 characters"
+                        />
+                        <RuleItem
+                            passed={rules.hasLetter}
+                            active={newPassword.length > 0}
+                            text="At least one letter"
+                        />
+                        <RuleItem
+                            passed={rules.isDifferent}
+                            active={newPassword.length > 0}
+                            text="Must differ from current password"
+                        />
                     </div>
                 </div>
 
-                {/* Success Alert */}
                 {success && (
                     <div className="alert alert-success d-flex align-items-center justify-content-between mb-4">
                         <span>
                             <i className="bi bi-check-circle me-2"></i>
                             {success}
                         </span>
-                        <button
-                            className="btn-close"
-                            onClick={() => setSuccess('')}
-                        ></button>
+                        <button className="btn-close" onClick={() => setSuccess('')}></button>
                     </div>
                 )}
 
@@ -121,7 +131,6 @@ export default function ChangePasswordForm({ userId ,onClose }) {
                 <form onSubmit={handleSubmit}>
                     <div className="row g-3">
 
-                        {/* Current Password */}
                         <div className="col-md-6">
                             <label className="form-label fw-bold">
                                 Current Password <span className="text-danger">*</span>
@@ -149,15 +158,11 @@ export default function ChangePasswordForm({ userId ,onClose }) {
                                     <i className={`bi ${showCurrent ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                                 </button>
                             </div>
-                            <div className="form-text text-muted">
-                                Your existing account password
-                            </div>
+                            <div className="form-text text-muted">Your existing account password</div>
                         </div>
 
-                        {/* Empty col for layout */}
                         <div className="col-md-6 d-none d-md-block"></div>
 
-                        {/* New Password */}
                         <div className="col-md-6">
                             <label className="form-label fw-bold">
                                 New Password <span className="text-danger">*</span>
@@ -188,7 +193,6 @@ export default function ChangePasswordForm({ userId ,onClose }) {
                             </div>
                         </div>
 
-                        {/* Confirm New Password */}
                         <div className="col-md-6">
                             <label className="form-label fw-bold">
                                 Confirm New Password <span className="text-danger">*</span>
@@ -216,7 +220,6 @@ export default function ChangePasswordForm({ userId ,onClose }) {
                                     <i className={`bi ${showConfirm ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                                 </button>
                             </div>
-                            {/* Match indicator */}
                             {confirmPassword && (
                                 <div className={`form-text ${passwordsMatch ? 'text-success' : 'text-danger'}`}>
                                     <i className={`bi ${passwordsMatch ? 'bi-check-circle' : 'bi-x-circle'} me-1`}></i>
@@ -227,7 +230,6 @@ export default function ChangePasswordForm({ userId ,onClose }) {
 
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="d-flex gap-2 mt-4">
                         <button
                             type="submit"
@@ -251,13 +253,15 @@ export default function ChangePasswordForm({ userId ,onClose }) {
                                 </>
                             )}
                         </button>
-                        <button type="button" className="btn btn-outline-secondary"  onClick={() => { handleCancel(); onClose?.(); }}
+                        <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            onClick={() => { handleCancel(); onClose?.(); }}
                             disabled={loading}
-                       >
-                         Cancel
+                        >
+                            Cancel
                         </button>
                     </div>
-
                 </form>
             </div>
         </div>
@@ -265,11 +269,23 @@ export default function ChangePasswordForm({ userId ,onClose }) {
     );
 }
 
-// Small helper component for each rule row
-function RuleItem({ passed, text }) {
+// FIX: Added `active` prop — when false (user hasn't started typing), rules show neutral grey
+// instead of prematurely green. Once active, shows green (passed) or muted (not yet).
+function RuleItem({ passed, active, text }) {
+    let icon, className;
+    if (!active) {
+        icon = 'bi-circle';
+        className = 'text-muted';
+    } else if (passed) {
+        icon = 'bi-check-circle-fill';
+        className = 'text-success';
+    } else {
+        icon = 'bi-x-circle-fill';
+        className = 'text-danger';
+    }
     return (
-        <div className={`small d-flex align-items-center gap-2 ${passed ? 'text-success' : 'text-muted'}`}>
-            <i className={`bi ${passed ? 'bi-check-circle-fill' : 'bi-circle'}`}></i>
+        <div className={`small d-flex align-items-center gap-2 ${className}`}>
+            <i className={`bi ${icon}`}></i>
             {text}
         </div>
     );

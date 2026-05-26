@@ -46,6 +46,16 @@ export default function NewStudentPage() {
         finally { setPageLoading(false); }
     };
 
+    // FIX: DOB validation — student must be at least 15 years old (consistent with NewApplicantPage)
+    const maxDOB = new Date();
+    maxDOB.setFullYear(maxDOB.getFullYear() - 15);
+    const maxDOBString = maxDOB.toISOString().split('T')[0];
+    const dobInvalid = form.dob && new Date(form.dob) > maxDOB;
+
+    // FIX: Phone validation — must be exactly 10 digits when provided
+    const phoneDigits = form.phone.replace(/\D/g, '');
+    const phoneInvalid = form.phone.length > 0 && phoneDigits.length !== 10;
+
     // When a user is selected, silently auto-fill email, phone and name
     const handleUserChange = (e) => {
         const selectedId = e.target.value;
@@ -74,6 +84,19 @@ export default function NewStudentPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
+
+        // FIX: Block submission if DOB fails age requirement
+        if (dobInvalid) {
+            setError({ message: 'Student must be at least 15 years old.' });
+            return;
+        }
+
+        // FIX: Block submission if phone is provided but invalid
+        if (phoneInvalid) {
+            setError({ message: 'Phone number must be exactly 10 digits.' });
+            return;
+        }
+
         setSaving(true);
         try {
             const contactInfo = {};
@@ -217,17 +240,27 @@ export default function NewStudentPage() {
                                 </select>
                             </div>
 
+                            {/* FIX: DOB — added max constraint and age validation feedback */}
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">
                                     Date of Birth <span className="text-danger">*</span>
                                 </label>
                                 <input
                                     type="date"
-                                    className="form-control"
+                                    className={`form-control ${dobInvalid ? 'is-invalid' : ''}`}
                                     value={form.dob}
                                     onChange={handleChange('dob')}
                                     required
+                                    max={maxDOBString}
                                 />
+                                {dobInvalid ? (
+                                    <div className="invalid-feedback">
+                                        <i className="bi bi-exclamation-circle me-1"></i>
+                                        Student must be at least 15 years old.
+                                    </div>
+                                ) : (
+                                    <div className="form-text">Student must be at least <strong>15 years</strong> old.</div>
+                                )}
                             </div>
 
                             <div className="col-md-4">
@@ -241,15 +274,25 @@ export default function NewStudentPage() {
                                 />
                             </div>
 
+                            {/* FIX: Phone — added 10-digit validation consistent with NewApplicantPage */}
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">Phone</label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control ${phoneInvalid ? 'is-invalid' : ''}`}
                                     value={form.phone}
                                     onChange={handleChange('phone')}
-                                    placeholder="+91-9876543210"
+                                    placeholder="9876543210"
+                                    maxLength={15}
                                 />
+                                {phoneInvalid ? (
+                                    <div className="invalid-feedback">
+                                        <i className="bi bi-exclamation-circle me-1"></i>
+                                        Phone number must be exactly 10 digits.
+                                    </div>
+                                ) : (
+                                    <div className="form-text">Enter 10-digit mobile number (optional).</div>
+                                )}
                             </div>
 
                             <div className="col-md-4">
@@ -272,7 +315,11 @@ export default function NewStudentPage() {
                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
 
                         <div className="d-flex gap-2">
-                            <button type="submit" className="btn btn-primary-edulearn" disabled={saving}>
+                            <button
+                                type="submit"
+                                className="btn btn-primary-edulearn"
+                                disabled={saving || dobInvalid || phoneInvalid}
+                            >
                                 {saving ? (
                                     <><span className="spinner-border spinner-border-sm me-2"></span>Creating...</>
                                 ) : (
