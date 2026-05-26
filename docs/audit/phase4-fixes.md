@@ -23,3 +23,25 @@ All fixes to be applied in Phase 4, ordered by severity then area.
 | phase4-fix-15 | ux-safety | `edulearn.client/src/pages/students/NewStudentPage.jsx`, `CourseFormPage.jsx`, `ProgramFormPage.jsx`, `AssessmentFormPage.jsx` | No "unsaved changes" warning on navigate-away for full-page create/edit forms. Implement `useBlocker` (React Router v6) to prompt users before discarding entered data. | Medium | Phase 3 |
 | phase4-fix-16 | pii-url | `edulearn.client/src/pages/students/NewStudentPage.jsx:18-20` | Applicant DOB (PII) is passed as a URL query parameter (`?dob=YYYY-MM-DD`), making it visible in browser history, server access logs, and referrer headers. Pass only `applicantID`; resolve the DOB server-side. | Low | Phase 3 |
 | phase4-fix-17 | rbac-ux | `edulearn.client/src/components/Layout/Sidebar.jsx:65` | DeptAdmin sidebar shows a Timetable link but `EnrollmentViewPolicy` excludes DeptAdmin — navigating to `/timetable` returns a 403 from the backend. Remove the Timetable nav item for DeptAdmin role or extend `EnrollmentViewPolicy` to include DeptAdmin. | Medium | Phase 2 |
+
+## Verification Summary
+
+Completed 2026-05-27. Fixes 6–17 applied (fix-15 deferred). Backend builds clean (`dotnet build` 0 errors, warnings only from pre-existing migration naming). All backend changes include NUnit test extensions verifying 403 for excluded roles.
+
+| Fix ID | Status | Commit SHA | Notes |
+|--------|--------|-----------|-------|
+| phase4-fix-6 | Applied | `962b30a` | `[Authorize(Policy = "FinancePolicy")]` + runtime role guard on `GET /api/payments/invoice/{invoiceId}`. Student-ownership retained. NUnit tests added for Instructor/Registrar/DeptAdmin/Auditor → 403. |
+| phase4-fix-7 | Applied | `8764f28` | `[Authorize(Policy = "FinancePolicy")]` + runtime role guard on `GET /api/invoices/student/{studentId}` and `GET /api/invoices/{id}`. Student-ownership retained. NUnit tests added for 4 excluded roles. |
+| phase4-fix-8 | Applied | `bf9b428` | New `TranscriptViewPolicy` (Registrar, ITAdmin) added to Program.cs. Applied to `GetByStudent` and `GetTranscript` endpoints with runtime guard. Student-ownership retained. NUnit tests added for Finance/DeptAdmin/Instructor/Auditor → 403. |
+| phase4-fix-9 | Applied | `d8e60c2` | `[Authorize(Policy = "RosterViewPolicy")]` on `GET /api/sections/{id}` and `GET /api/sections/course/{courseId}/term/{term}`. No runtime claim check needed (no ownership). Placeholder Playwright spec created. |
+| phase4-fix-10 | Applied | `42ba530` | `[Authorize(Policy = "RosterViewPolicy")]` + runtime guard (Instructor/Registrar/ITAdmin/Student) on `GET /api/submissions/student/{studentId}`. DeptAdmin/Finance/Auditor → 403. NUnit tests added. |
+| phase4-fix-11 | Applied | `828a6c4` | `StudentDetailPage.jsx`: raw JSON textarea replaced with separate `Email` (email input, regex validated) and `Phone` (10-digit, pattern/minLength/maxLength) fields. `handleSave` builds `contactInfoJSON`. `loadStudent` parses existing JSON into fields. |
+| phase4-fix-12 | Applied | `edb493b` | `UsersPage.jsx` Edit User modal phone field: added `pattern="[0-9]{10}"`, `minLength={10}`, `maxLength={10}`, `.is-invalid` class, and `invalid-feedback` div matching the Create modal pattern. |
+| phase4-fix-13 | Applied | `d19ac58` | `axiosClient.js`: `timeout: 15000` added to axios instance config. `ECONNABORTED`/`ERR_NETWORK` errors caught in interceptor and tagged with `_userMessage: 'Request timed out — please retry.'`. |
+| phase4-fix-14 | Applied | `47d2f51` | `axiosClient.js`: response interceptor extended with `status >= 500` branch that calls `console.error('[axiosClient] Server error', status, url)`. Full errorReporter integration deferred to Phase 5 Task 5.11. |
+| phase4-fix-15 | Deferred | `38996ef` | `useBlocker` is not exported from the installed `react-router-dom@7.15.0`. Confirmed by checking `dist/index.d.ts` and `dist/index.js` — no export found. Deferred to post-sprint branch after confirming correct RRD v7 API or performing upgrade. Pages: `NewStudentPage`, `CourseFormPage`, `ProgramFormPage`, `AssessmentFormPage`. |
+| phase4-fix-16 | Applied | `3b1ec50` | `ApplicantDetailPage.jsx`: `dob` removed from `URLSearchParams`. `NewStudentPage.jsx`: imports `applicantService`, fetches applicant by ID when `applicantID` param is present, resolves DOB server-side. URL no longer exposes PII in browser history or access logs. |
+| phase4-fix-17 | Applied | `ea22d14` | `Sidebar.jsx`: Timetable nav item removed from DeptAdmin role entries. Option (a) chosen — safer than extending `EnrollmentViewPolicy`. Backend policy extension (option b) deferred to post-sprint. |
+
+### KG Refresh
+Ruflo KG refresh is deferred — ruflo agents do not autonomously read codebase files. KG update should be triggered manually via `/kg` skill in a dedicated session after this branch is merged.
