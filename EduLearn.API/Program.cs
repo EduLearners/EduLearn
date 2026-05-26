@@ -115,6 +115,7 @@ builder.Services.AddHostedService<AppErrorRetentionHostedService>();
 
 builder.Services.AddRateLimiter(options =>
 {
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddFixedWindowLimiter("clientlog", o =>
     {
         o.PermitLimit = 30;

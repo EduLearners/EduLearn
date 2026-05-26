@@ -19,6 +19,7 @@ public class AppError
     public string? UserAgent { get; set; }
     public string? ClientUrl { get; set; }
     public string? ComponentStack { get; set; }
+    public string? Kind { get; set; }
     public bool Resolved { get; set; }
     public DateTime? ResolvedAt { get; set; }
     public int? ResolvedById { get; set; }

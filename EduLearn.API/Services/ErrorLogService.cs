@@ -9,18 +9,21 @@ namespace EduLearn.API.Services;
 
 public class ErrorLogService : IErrorLogService
 {
+    private readonly IServiceProvider _sp;
     private readonly AppDbContext _ctx;
     private readonly ILogger<ErrorLogService> _logger;
 
-    public ErrorLogService(AppDbContext ctx, ILogger<ErrorLogService> logger)
-    { _ctx = ctx; _logger = logger; }
+    public ErrorLogService(IServiceProvider sp, AppDbContext ctx, ILogger<ErrorLogService> logger)
+    { _sp = sp; _ctx = ctx; _logger = logger; }
 
     public async Task LogServerErrorAsync(Exception ex, HttpContext ctx, CancellationToken ct)
     {
         try
         {
+            using var scope = _sp.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var userIdStr = ctx.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            _ctx.AppErrors.Add(new AppError {
+            db.AppErrors.Add(new AppError {
                 Source = ErrorSource.Server,
                 Severity = ErrorSeverity.Error,
                 Message = ex.Message,
@@ -33,7 +36,7 @@ public class ErrorLogService : IErrorLogService
                 UserAgent = ctx.Request?.Headers["User-Agent"].ToString(),
                 CorrelationId = ctx.TraceIdentifier
             });
-            await _ctx.SaveChangesAsync(ct);
+            await db.SaveChangesAsync(CancellationToken.None);  // CancellationToken.None — must not be skipped by client disconnect
         }
         catch (Exception logEx)
         {
@@ -45,9 +48,12 @@ public class ErrorLogService : IErrorLogService
     {
         try
         {
+            using var scope = _sp.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var userIdStr = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            Enum.TryParse<ErrorSeverity>(dto.Severity, true, out var sev);
-            _ctx.AppErrors.Add(new AppError {
+            if (!Enum.TryParse<ErrorSeverity>(dto.Severity, true, out var sev))
+                sev = ErrorSeverity.Error;  // safe default — unknown severity → Error, not Info
+            db.AppErrors.Add(new AppError {
                 Source = ErrorSource.Client,
                 Severity = sev,
                 Message = dto.Message ?? "",
@@ -56,10 +62,11 @@ public class ErrorLogService : IErrorLogService
                 ClientUrl = dto.ClientUrl,
                 UserAgent = dto.UserAgent,
                 CorrelationId = dto.CorrelationId,
+                Kind = dto.Kind,
                 UserId = int.TryParse(userIdStr, out var uid) ? uid : null,
                 Role = user?.FindFirst(ClaimTypes.Role)?.Value
             });
-            await _ctx.SaveChangesAsync(ct);
+            await db.SaveChangesAsync(CancellationToken.None);  // CancellationToken.None — must persist regardless of client state
         }
         catch (Exception logEx)
         {
