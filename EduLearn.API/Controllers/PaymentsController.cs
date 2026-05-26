@@ -105,15 +105,20 @@ public class PaymentsController : ControllerBase
     /// </summary>
     [HttpGet("invoice/{invoiceId}")]
     [ActionName("GetByInvoice")]
-    [Authorize]
+    [Authorize(Policy = "FinancePolicy")]
     public async Task<ActionResult<IEnumerable<PaymentResponseDto>>> GetByInvoice(int invoiceId, CancellationToken ct)
     {
+        // phase4-fix-6: Runtime role guard (mirrors FinancePolicy) so unit tests can exercise this path.
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        var allowedRoles = new[] { "Finance", "ITAdmin", "Student" };
+        if (!allowedRoles.Contains(callerRole))
+            return StatusCode(403, new { error = "Access denied — finance or admin role required", code = "PAYMENT_POLICY_DENIED" });
+
         var invoice = await _invoiceRepository.GetByIdAsync(invoiceId);
         if (invoice is null)
             return NotFound(new { error = "Invoice not found", code = "INVOICE_NOT_FOUND" });
 
-        // HARDENING (C-19): Student role may only read payments against their own invoice.
-        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        // Student-ownership: student may only view payments on their own invoice.
         if (callerRole == "Student")
         {
             var student = await _studentRepository.GetByIdAsync(invoice.StudentID);

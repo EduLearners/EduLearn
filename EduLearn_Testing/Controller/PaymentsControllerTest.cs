@@ -370,4 +370,49 @@ public class PaymentsControllerTest
         var forbidden = result.Result as ObjectResult;
         Assert.That(forbidden!.StatusCode, Is.EqualTo(403));
     }
+
+    // ════════════════════════════════════════════════════════════════
+    // phase4-fix-6: GetByInvoice must reject non-Finance, non-Student roles
+    // ════════════════════════════════════════════════════════════════
+
+    [Test]
+    [TestCase("Instructor")]
+    [TestCase("Registrar")]
+    [TestCase("DeptAdmin")]
+    [TestCase("Auditor")]
+    public async Task GetByInvoice_NonFinanceRole_Returns403(string role)
+    {
+        // Arrange — non-Finance, non-ITAdmin, non-Student caller
+        SetCaller(20, role);
+        _invoiceRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(_pendingInvoice);
+        _studentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(_testStudent);
+        _paymentRepoMock.Setup(r => r.GetByInvoiceIdAsync(1))
+            .ReturnsAsync(new List<Payment>());
+
+        // Act
+        var result = await _controller.GetByInvoice(1, CancellationToken.None);
+
+        // Assert — policy check returns 403 for unauthorized roles
+        var forbidden = result.Result as ObjectResult;
+        Assert.That(forbidden, Is.Not.Null);
+        Assert.That(forbidden!.StatusCode, Is.EqualTo(403));
+    }
+
+    [Test]
+    public async Task GetByInvoice_FinanceRole_Returns200()
+    {
+        // Arrange — Finance role is allowed
+        SetCaller(10, "Finance");
+        _invoiceRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(_pendingInvoice);
+        _paymentRepoMock.Setup(r => r.GetByInvoiceIdAsync(1))
+            .ReturnsAsync(new List<Payment>());
+
+        // Act
+        var result = await _controller.GetByInvoice(1, CancellationToken.None);
+
+        // Assert
+        var ok = result.Result as OkObjectResult;
+        Assert.That(ok, Is.Not.Null);
+        Assert.That(ok!.StatusCode, Is.EqualTo(200));
+    }
 }
