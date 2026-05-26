@@ -14,6 +14,7 @@ export default function KpisPage() {
     const [seeding, setSeeding] = useState(false);
     const [success, setSuccess] = useState('');
     const [lastRecalculated, setLastRecalculated] = useState(null);
+    const [deltas, setDeltas] = useState({});
 
     const isITAdmin = role === 'ITAdmin';
 
@@ -39,10 +40,13 @@ export default function KpisPage() {
             setRecalculating(true);
             setError(null);
             setSuccess('');
-            const result = await kpiService.recalculate();
-            setKpis(result.kPIs || result.kpis || []);
-            setLastRecalculated(result.recalculatedAt);
-            setSuccess(`${result.kPIsUpdated || 0} KPIs recalculated successfully.`);
+            const data = await kpiService.recalculate();
+            // data is now an array of KpiRecalcResultDto
+            const changed = data.filter(d => d.changed);
+            setSuccess(`${changed.length} of ${data.length} KPIs changed.`);
+            setDeltas(Object.fromEntries(data.map(d => [d.kpiId, d])));
+            setLastRecalculated(new Date().toISOString());
+            await loadKpis(); // reload cards
         } catch (err) {
             setError(err);
         } finally {
@@ -162,6 +166,11 @@ export default function KpisPage() {
                                             <i className="bi bi-graph-up me-2"></i>
                                             {kpi.name}
                                         </strong>
+                                        {deltas[kpi.kPIID || kpi.kpiID]?.changed && (
+                                            <span className="badge bg-success ms-2">
+                                                {deltas[kpi.kPIID || kpi.kpiID].oldValue} &rarr; {deltas[kpi.kPIID || kpi.kpiID].newValue}
+                                            </span>
+                                        )}
                                         <span className="badge bg-secondary ms-2 float-end">
                                             {kpi.reportingPeriod}
                                         </span>

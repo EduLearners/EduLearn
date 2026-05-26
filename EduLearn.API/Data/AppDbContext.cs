@@ -355,6 +355,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<KPI>(entity =>
         {
             entity.Property(k => k.ReportingPeriod).HasConversion<string>().HasMaxLength(20);
+            entity.Property(k => k.ComputationKey).HasConversion<int>();
         });
 
         // ════════════════════════════════════════

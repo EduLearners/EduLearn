@@ -1,4 +1,5 @@
 using EduLearn.API.Data;
+using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
@@ -10,8 +11,13 @@ namespace EduLearn.API.Repositories.Implementations;
 public class ReportRepository : IReportRepository
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<ReportRepository> _logger;
 
-    public ReportRepository(AppDbContext context) => _context = context;
+    public ReportRepository(AppDbContext context, ILogger<ReportRepository> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
 
     // ── Report methods ─────────────────────────────────────────────────────────
 
@@ -91,34 +97,39 @@ public class ReportRepository : IReportRepository
         await _context.SaveChangesAsync(ct);
     }
 
-    public async Task<IEnumerable<KPI>> RecalculateAndSaveAsync(CancellationToken ct)
+    public async Task<List<KpiRecalcResultDto>> RecalculateKpisAsync(CancellationToken ct)
     {
-        // Load with tracking so EF Core detects and persists the changes
         var kpis = await _context.KPIs.ToListAsync(ct);
+        var results = new List<KpiRecalcResultDto>();
 
         foreach (var kpi in kpis)
         {
-            kpi.CurrentValue = kpi.Name switch
+            var old = kpi.CurrentValue;
+            decimal? next = kpi.ComputationKey switch
             {
-                "Active Student Count" =>
-                    (decimal)await _context.Students
-                        .AsNoTracking()
-                        .CountAsync(s => s.EnrollmentStatus == StudentLifecycleStatus.Active, ct),
-
-                "Section Fill Rate" => await ComputeSectionFillRateAsync(ct),
-
-                "Assessment Published Rate" => await ComputeAssessmentPublishedRateAsync(ct),
-
-                "Enrollment Waitlist Rate" => await ComputeEnrollmentWaitlistRateAsync(ct),
-
-                _ => kpi.CurrentValue   // leave unchanged for unknown KPI names
+                KpiComputationKey.ActiveStudentCount       => (decimal)await _context.Students.CountAsync(s => s.EnrollmentStatus == StudentLifecycleStatus.Active, ct),
+                KpiComputationKey.SectionFillRate          => await ComputeSectionFillRateAsync(ct),
+                KpiComputationKey.InvoiceCollectionRate    => await ComputeCollectionRateAsync(ct),
+                KpiComputationKey.AssessmentCompletionRate => await ComputeAssessmentCompletionAsync(ct),
+                _ => null
             };
+
+            var changed = next.HasValue && next.Value != old;
+            if (next.HasValue)
+            {
+                kpi.CurrentValue = next.Value;
+            }
+            else
+            {
+                _logger.LogWarning("KPI {Id} '{Name}' has no recognized ComputationKey ({Key}) — skipping",
+                    kpi.KPIID, kpi.Name, kpi.ComputationKey);
+            }
+
+            results.Add(new KpiRecalcResultDto(kpi.KPIID, kpi.Name, old, next, changed));
         }
 
-        // Single SaveChangesAsync for all updates
         await _context.SaveChangesAsync(ct);
-
-        return kpis;
+        return results;
     }
 
     // ── AuditPackage methods ───────────────────────────────────────────────────
@@ -139,26 +150,24 @@ public class ReportRepository : IReportRepository
 
     private async Task<decimal> ComputeSectionFillRateAsync(CancellationToken ct)
     {
-        var sections = await _context.Sections.AsNoTracking().ToListAsync(ct);
-        if (!sections.Any()) return 0m;
-        return Math.Round(
-            sections.Average(s => s.Capacity == 0 ? 0m : (decimal)s.EnrolledCount / s.Capacity * 100m),
-            2);
+        var sections = await _context.Sections.Select(s => new { s.Capacity, s.EnrolledCount }).ToListAsync(ct);
+        if (sections.Count == 0) return 0m;
+        var totalCap = sections.Sum(s => s.Capacity);
+        return totalCap == 0 ? 0m : Math.Round((decimal)sections.Sum(s => s.EnrolledCount) / totalCap * 100m, 2);
     }
 
-    private async Task<decimal> ComputeAssessmentPublishedRateAsync(CancellationToken ct)
+    private async Task<decimal> ComputeCollectionRateAsync(CancellationToken ct)
     {
-        var total     = await _context.Assessments.AsNoTracking().CountAsync(ct);
-        var published = await _context.Assessments.AsNoTracking()
-                            .CountAsync(a => a.Status == AssessmentStatus.Published, ct);
-        return total == 0 ? 0m : Math.Round((decimal)published / total * 100m, 2);
+        var totalInvoiced = await _context.Invoices.SumAsync(i => (decimal?)i.AmountDue, ct) ?? 0m;
+        var totalPaid     = await _context.Payments.SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
+        return totalInvoiced == 0 ? 0m : Math.Round(totalPaid / totalInvoiced * 100m, 2);
     }
 
-    private async Task<decimal> ComputeEnrollmentWaitlistRateAsync(CancellationToken ct)
+    private async Task<decimal> ComputeAssessmentCompletionAsync(CancellationToken ct)
     {
-        var total     = await _context.Enrollments.AsNoTracking().CountAsync(ct);
-        var waitlisted = await _context.Enrollments.AsNoTracking()
-                             .CountAsync(e => e.Status == EnrollmentStatus.Waitlisted, ct);
-        return total == 0 ? 0m : Math.Round((decimal)waitlisted / total * 100m, 2);
+        var pub  = await _context.Assessments.CountAsync(a => a.Status == AssessmentStatus.Published, ct);
+        if (pub == 0) return 0m;
+        var subs = await _context.Submissions.Select(s => s.AssessmentID).Distinct().CountAsync(ct);
+        return Math.Round((decimal)subs / pub * 100m, 2);
     }
 }

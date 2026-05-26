@@ -1,3 +1,4 @@
+using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 
 namespace EduLearn.API.Repositories.Interfaces;
@@ -13,7 +14,7 @@ public interface IReportRepository
     Task<IEnumerable<KPI>> GetAllKPIsAsync(CancellationToken ct);
     Task<bool> AnyKPIsExistAsync(CancellationToken ct);
     Task SeedKPIsAsync(IEnumerable<KPI> kpis, CancellationToken ct);
-    Task<IEnumerable<KPI>> RecalculateAndSaveAsync(CancellationToken ct);
+    Task<List<KpiRecalcResultDto>> RecalculateKpisAsync(CancellationToken ct);
 
     // --- AuditPackage methods ---
     Task<AuditPackage> CreateAuditPackageAsync(AuditPackage package, CancellationToken ct);

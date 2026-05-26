@@ -26,4 +26,6 @@ public class KPI
 
     [Required]
     public ReportingPeriod ReportingPeriod { get; set; }
+
+    public KpiComputationKey ComputationKey { get; set; } = KpiComputationKey.Unknown;
 }

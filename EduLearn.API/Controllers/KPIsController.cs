@@ -36,24 +36,16 @@ public class KPIsController : ControllerBase
     // ── POST /api/kpis/recalculate — Recalculate all KPI current values ──
     /// <summary>
     /// Recalculate and persist the current values for all KPIs. ITAdmin only.
-    /// Returns the updated KPI list along with the recalculation timestamp.
+    /// Returns a per-KPI delta list showing old value, new value, and whether it changed.
     /// </summary>
     [HttpPost("recalculate")]
     [Authorize(Roles = "ITAdmin")]
-    public async Task<ActionResult<RecalculateResponseDto>> Recalculate(CancellationToken ct)
+    public async Task<ActionResult<List<KpiRecalcResultDto>>> Recalculate(CancellationToken ct)
     {
-        var recalculatedAt = DateTime.UtcNow;
-        var updatedKpis = await _reportRepository.RecalculateAndSaveAsync(ct);
-        var kpiList = updatedKpis.Select(MapToDto).ToList();
-
-        _logger.LogInformation("KPI recalculation completed — {Count} KPIs updated", kpiList.Count);
-
-        return Ok(new RecalculateResponseDto
-        {
-            RecalculatedAt = recalculatedAt,
-            KPIsUpdated = kpiList.Count,
-            KPIs = kpiList
-        });
+        var results = await _reportRepository.RecalculateKpisAsync(ct);
+        var changedCount = results.Count(r => r.Changed);
+        _logger.LogInformation("KPI recalc: {Changed}/{Total} changed", changedCount, results.Count);
+        return Ok(results);
     }
 
     // ── POST /api/kpis/seed — Seed default KPI definitions (idempotent guard) ──
