@@ -73,11 +73,11 @@ export default function InstructorDashboard() {
     };
 
     const STAT_CARDS = [
-        { key: 'sections',      label: 'My Sections',     sub: () => TERM,                                    icon: 'bi-collection-fill',    accent: '#185FA5', iconBg: '#dbeafe', iconColor: '#185FA5' },
-        { key: 'courses',       label: 'My Courses',      sub: () => 'unique courses',                         icon: 'bi-book-fill',          accent: '#3B6D11', iconBg: '#dcfce7', iconColor: '#3B6D11' },
-        { key: 'students',      label: 'Total Students',  sub: () => 'across my sections',                    icon: 'bi-people-fill',        accent: '#534AB7', iconBg: '#ede9fe', iconColor: '#534AB7' },
-        { key: 'assessments',   label: 'Assessments',     sub: (s) => `${s.published ?? 0} published`,        icon: 'bi-file-earmark-check', accent: '#0F6E56', iconBg: '#d1fae5', iconColor: '#0F6E56' },
-        { key: 'pendingGrading',label: 'Pending Grading', sub: () => 'awaiting grade',                        icon: 'bi-hourglass-split',    accent: '#854F0B', iconBg: '#fef3c7', iconColor: '#854F0B' },
+        { key: 'sections',      label: 'My Sections',     sub: () => TERM,                                    icon: 'bi-collection-fill',    accent: '#185FA5', iconBg: '#dbeafe', iconColor: '#185FA5', path: '/sections'     },
+        { key: 'courses',       label: 'My Courses',      sub: () => 'unique courses',                         icon: 'bi-book-fill',          accent: '#3B6D11', iconBg: '#dcfce7', iconColor: '#3B6D11', path: '/courses'      },
+        { key: 'students',      label: 'Total Students',  sub: () => 'across my sections',                    icon: 'bi-people-fill',        accent: '#534AB7', iconBg: '#ede9fe', iconColor: '#534AB7', path: '/students'     },
+        { key: 'assessments',   label: 'Assessments',     sub: (s) => `${s.published ?? 0} published`,        icon: 'bi-file-earmark-check', accent: '#0F6E56', iconBg: '#d1fae5', iconColor: '#0F6E56', path: '/assessments'  },
+        { key: 'pendingGrading',label: 'Pending Grading', sub: () => 'awaiting grade',                        icon: 'bi-hourglass-split',    accent: '#854F0B', iconBg: '#fef3c7', iconColor: '#854F0B', path: '/submissions'  },
     ];
 
     if (loading) return <Loading message="Loading your dashboard..." />;
@@ -100,7 +100,15 @@ export default function InstructorDashboard() {
             <div className="row g-3 mb-4">
                 {STAT_CARDS.map((card) => (
                     <div key={card.key} className="col">
-                        <div className="rd-stat-card" style={{ '--rd-accent': card.accent }}>
+                        <div
+                            className="rd-stat-card"
+                            style={{ '--rd-accent': card.accent, cursor: 'pointer' }}
+                            role="button"
+                            tabIndex={0}
+                            data-testid="dashboard-card"
+                            onClick={() => navigate(card.path)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(card.path); }}
+                        >
                             <div>
                                 <div className="rd-stat-label">{card.label}</div>
                                 <div className="rd-stat-value" style={{ color: card.accent }}>
