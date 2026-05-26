@@ -141,9 +141,8 @@ public class AssessmentsController : ControllerBase
         if (assessment is null)
             return NotFound(new { error = "Assessment not found", code = "ASSESSMENT_NOT_FOUND" });
 
-        // Only block edits on Closed or Archived assessments
-        if (assessment.Status == AssessmentStatus.Closed || assessment.Status == AssessmentStatus.Archived)
-            return BadRequest(new { error = "Closed or Archived assessments cannot be updated", code = "ASSESSMENT_LOCKED" });
+        if (assessment.Status != AssessmentStatus.Draft)
+            return BadRequest(new { error = "Only Draft assessments can be updated", code = "ASSESSMENT_LOCKED" });
 
         if (dto.SectionID.HasValue)
         {

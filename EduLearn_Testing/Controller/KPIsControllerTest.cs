@@ -98,42 +98,23 @@ public class KPIsControllerTest
     // ════════════════════════════════════════════════════════════════
 
     [Test]
-    public async Task Recalculate_Returns200WithUpdatedKPIs()
+    public async Task Recalculate_ReturnsDeltaList()
     {
-        // Arrange — recalculation updates CurrentValue
-        var recalculated = new List<KPI>
-        {
-            new KPI
-            {
-                KPIID = 1, Name = "Active Student Count",
-                Definition = "Total students with Active status",
-                Target = null, CurrentValue = 380, // updated
-                ReportingPeriod = ReportingPeriod.Semester
-            },
-            new KPI
-            {
-                KPIID = 2, Name = "Section Fill Rate",
-                Definition = "Average EnrolledCount / Capacity (%)",
-                Target = 80.00m, CurrentValue = 75.00m, // updated
-                ReportingPeriod = ReportingPeriod.Semester
-            }
+        var results = new List<KpiRecalcResultDto> {
+            new(1, "Active Student Count", 350m, 380m, true),
+            new(2, "Section Fill Rate",    72.5m, 75.0m, true)
         };
-        _reportRepoMock.Setup(r => r.RecalculateAndSaveAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(recalculated);
+        _reportRepoMock.Setup(r => r.RecalculateKpisAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(results);
 
-        // Act
-        var result = await _controller.Recalculate(CancellationToken.None);
-
-        // Assert
-        var ok = result.Result as OkObjectResult;
+        var actionResult = await _controller.Recalculate(CancellationToken.None);
+        var ok = actionResult.Result as OkObjectResult;
         Assert.That(ok, Is.Not.Null);
-
-        var response = ok!.Value as RecalculateResponseDto;
-        Assert.That(response!.KPIsUpdated, Is.EqualTo(2));
-        Assert.That(response.KPIs[0].CurrentValue, Is.EqualTo(380));
-        Assert.That(response.KPIs[1].CurrentValue, Is.EqualTo(75.00m));
-
-        _reportRepoMock.Verify(r => r.RecalculateAndSaveAsync(It.IsAny<CancellationToken>()), Times.Once);
+        var body = ok!.Value as List<KpiRecalcResultDto>;
+        Assert.That(body, Is.Not.Null);
+        Assert.That(body!.Count, Is.EqualTo(2));
+        Assert.That(body[0].Changed, Is.True);
+        _reportRepoMock.Verify(r => r.RecalculateKpisAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ════════════════════════════════════════════════════════════════

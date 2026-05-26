@@ -363,7 +363,7 @@ public class AuthControllerTest
             PasswordHash = hashedPassword,
             Role = UserRole.ITAdmin, // privileged role
             Status = UserStatus.Active,
-            MFAEnabled = false
+            MFAEnabled = true
         };
         _userRepoMock.Setup(r => r.GetByUsernameAsync("admin")).ReturnsAsync(user);
 

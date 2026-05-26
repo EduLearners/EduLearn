@@ -48,9 +48,6 @@ public class AppDbContext : DbContext
     // ── AGI-04: Academic Integrity ──
     public DbSet<PlagiarismReport> PlagiarismReports => Set<PlagiarismReport>();
 
-    // ── Resilience ──
-    public DbSet<AppError> AppErrors => Set<AppError>();
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -378,16 +375,6 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(p => p.FlaggedByUserID)
                   .OnDelete(DeleteBehavior.NoAction);
-        });
-
-        // ════════════════════════════════════════
-        // Resilience: AppError logging
-        // ════════════════════════════════════════
-
-        modelBuilder.Entity<AppError>(b => {
-            b.HasIndex(e => new { e.Resolved, e.ResolvedAt });
-            b.HasIndex(e => e.OccurredAt);
-            b.Property(e => e.Message).HasMaxLength(2000);
         });
     }
 }

@@ -48,15 +48,22 @@ public class EnrollmentsControllerTest
 
         _auditLogService = new AuditLogService(_auditLogRepoMock.Object);
 
-        // BUG-2 FIX: PrerequisiteEngine requires 4 dependencies, TimetableConflictService requires 2
+        _testCourse = new Course
+        {
+            CourseID = 1,
+            Code = "CS101",
+            Title = "Introduction to Computer Science",
+            Credits = 3,
+            Status = CourseStatus.Active
+        };
+
         var courseRepoMock = new Mock<ICourseRepository>();
-        var sectionRepoForEngine = _sectionRepoMock.Object;
-        var studentRepoForEngine = _studentRepoMock.Object;
+        courseRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(_testCourse);
         _prerequisiteEngine = new PrerequisiteEngine(
             courseRepoMock.Object,
-            sectionRepoForEngine,
+            _sectionRepoMock.Object,
             _enrollRepoMock.Object,
-            studentRepoForEngine);
+            _studentRepoMock.Object);
         _conflictService = new TimetableConflictService(_enrollRepoMock.Object, _sectionRepoMock.Object);
 
         _controller = new EnrollmentsController(
@@ -68,18 +75,8 @@ public class EnrollmentsControllerTest
             _prerequisiteEngine,
             _conflictService);
 
-        // Default: mock transaction for every test
         _enrollRepoMock.Setup(r => r.BeginTransactionAsync())
             .ReturnsAsync(_transactionMock.Object);
-
-        _testCourse = new Course
-        {
-            CourseID = 1,
-            Code = "CS101",
-            Title = "Introduction to Computer Science",
-            Credits = 3,
-            Status = CourseStatus.Active
-        };
 
         _testStudent = new Student
         {

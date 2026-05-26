@@ -136,7 +136,7 @@ public class TranscriptsControllerTest
                 Score = 85, Status = SubmissionStatus.Graded,
                 Assessment = new Assessment
                 {
-                    AssessmentID = 1, CourseID = 1, Title = "Quiz 1",
+                    AssessmentID = 1, CourseID = 1, SectionID = 1, Title = "Quiz 1",
                     MaxScore = 100, Type = AssessmentType.Quiz,
                     Status = AssessmentStatus.Published, CreatedByFK = 2
                 }

@@ -111,7 +111,6 @@ const NAV_ITEMS = [
     { label: 'Audit Log',     to: '/audit-log',     icon: 'journal-text',           roles: ['ITAdmin'] },
     { label: 'Notifications', to: '/notifications', icon: 'bell',                   roles: ['ITAdmin'] },
     { label: 'Tickets',       to: '/tickets',       icon: 'headset',                roles: ['ITAdmin'] },
-    { label: 'Errors',        to: '/admin/errors',  icon: 'bug',                    roles: ['ITAdmin'] },
 ];
 
 export default function Sidebar() {
