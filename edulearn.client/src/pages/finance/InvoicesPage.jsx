@@ -3,6 +3,7 @@ import { invoiceService } from '../../services/invoiceService';
 import { paymentService } from '../../services/paymentService';
 import { programService } from '../../services/programService';
 import { authService } from '../../services/authService';
+import { studentService } from '../../services/studentService';
 import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import Loading from '../../components/Loading';
@@ -66,6 +67,21 @@ export default function InvoicesPage() {
                 .catch(() => {});
         }
     }, []);
+
+    // Auto-load own invoices for Student role
+    useEffect(() => {
+        if (!isStudent) return;
+        setLoading(true);
+        setError(null);
+        studentService.getMe()
+            .then(s => {
+                setStudentId(String(s.studentID));
+                return invoiceService.getByStudent(s.studentID);
+            })
+            .then(data => setInvoices(data || []))
+            .catch(err => setError(err))
+            .finally(() => setLoading(false));
+    }, [isStudent]);
 
     const handleGenerateBulk = async (e) => {
         e.preventDefault();
@@ -181,7 +197,7 @@ export default function InvoicesPage() {
         <div>
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
-                    <i className="bi bi-receipt me-2"></i>Invoices
+                    <i className="bi bi-receipt me-2"></i>{isStudent ? 'Your Invoices' : 'Invoices'}
                 </h2>
                 {canManage && (
                     <div className="d-flex gap-2">
@@ -201,40 +217,44 @@ export default function InvoicesPage() {
                 )}
             </div>
 
-            {/* Search */}
-            <div className="card shadow-sm mb-4">
-                <div className="card-body">
-                    <form onSubmit={handleSearch}>
-                        <div className="row g-3 align-items-end">
-                            <div className="col-md-8">
-                                <label className="form-label fw-bold">
-                                    Student ID <span className="text-danger">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    className="form-control"
-                                    value={studentId}
-                                    onChange={e => setStudentId(e.target.value)}
-                                    placeholder="Enter student ID..."
-                                    required
-                                />
+            {/* Search — hidden for Student role (auto-loaded above) */}
+            {!isStudent && (
+                <div className="card shadow-sm mb-4">
+                    <div className="card-body">
+                        <form onSubmit={handleSearch}>
+                            <div className="row g-3 align-items-end">
+                                <div className="col-md-8">
+                                    <label className="form-label fw-bold">
+                                        Student ID <span className="text-danger">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        value={studentId}
+                                        onChange={e => setStudentId(e.target.value)}
+                                        placeholder="Enter student ID..."
+                                        required
+                                    />
+                                </div>
+                                <div className="col-md-4">
+                                    <button
+                                        type="submit"
+                                        className="btn btn-primary-edulearn w-100"
+                                        disabled={loading}
+                                    >
+                                        {loading
+                                            ? <span className="spinner-border spinner-border-sm"></span>
+                                            : <><i className="bi bi-search me-1"></i>Search</>
+                                        }
+                                    </button>
+                                </div>
                             </div>
-                            <div className="col-md-4">
-                                <button
-                                    type="submit"
-                                    className="btn btn-primary-edulearn w-100"
-                                    disabled={loading}
-                                >
-                                    {loading
-                                        ? <span className="spinner-border spinner-border-sm"></span>
-                                        : <><i className="bi bi-search me-1"></i>Search</>
-                                    }
-                                </button>
-                            </div>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
-            </div>
+            )}
+
+            {isStudent && loading && <Loading message="Loading your invoices..." />}
 
             <ErrorAlert error={error} onDismiss={() => setError(null)} />
 
