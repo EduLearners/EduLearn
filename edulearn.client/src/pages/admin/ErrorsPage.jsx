@@ -25,7 +25,7 @@ export default function ErrorsPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [filters.page]);
+  useEffect(() => { load(); }, [filters.source, filters.severity, filters.resolved, filters.page]);
 
   const handleResolve = async (id) => {
     try {
