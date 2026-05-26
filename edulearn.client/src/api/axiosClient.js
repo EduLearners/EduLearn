@@ -1,9 +1,11 @@
 import axios from 'axios';
 
 // Base axios instance — uses Vite proxy to reach https://localhost:5001/api
+// phase4-fix-13: add 15 s timeout so requests don't hang indefinitely
 const axiosClient = axios.create({
     baseURL: '/api',
     headers: { 'Content-Type': 'application/json' },
+    timeout: 15000,
 });
 
 // Request interceptor: attach JWT from localStorage to every request automatically,
@@ -27,7 +29,7 @@ axiosClient.interceptors.request.use((config) => {
     return config;
 });
 
-// Response interceptor: auto-logout on 401 (expired/invalid token)
+// Response interceptor: auto-logout on 401; timeout + 5xx handling
 axiosClient.interceptors.response.use(
     (response) => response,
     (error) => {
@@ -36,7 +38,19 @@ axiosClient.interceptors.response.use(
         const url = error.config?.url || '';
         const isAuthEndpoint = url.includes('/auth/');
 
-        if (error.response?.status === 401 && !isAuthEndpoint) {
+        // phase4-fix-13: handle request timeout (ECONNABORTED)
+        if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
+            console.warn('[axiosClient] Request timed out — please retry.', { url });
+            return Promise.reject({ ...error, _userMessage: 'Request timed out — please retry.' });
+        }
+
+        // phase4-fix-14: log 5xx server errors (Phase 5 Task 5.11 will extend with errorReporter)
+        const status = error.response?.status;
+        if (status >= 500 && !isAuthEndpoint) {
+            console.error('[axiosClient] Server error', status, url);
+        }
+
+        if (status === 401 && !isAuthEndpoint) {
             localStorage.clear();
             sessionStorage.clear();
             window.location.href = '/login';
