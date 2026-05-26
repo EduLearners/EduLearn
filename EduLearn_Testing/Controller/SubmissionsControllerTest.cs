@@ -497,4 +497,28 @@ public class SubmissionsControllerTest
         Assert.That(notFound, Is.Not.Null);
         Assert.That(notFound!.StatusCode, Is.EqualTo(404));
     }
+
+    // ════════════════════════════════════════════════════════════════
+    // phase4-fix-10: GetByStudent must reject DeptAdmin/Finance/Auditor
+    // ════════════════════════════════════════════════════════════════
+
+    [Test]
+    [TestCase("DeptAdmin")]
+    [TestCase("Finance")]
+    [TestCase("Auditor")]
+    public async Task GetByStudent_ExcludedRole_Returns403(string role)
+    {
+        // Arrange — roles that must not access submission data
+        SetCaller(20, role);
+        _studentRepoMock.Setup(r => r.GetByIdAsync(1))
+            .ReturnsAsync(new Student { StudentID = 1, UserID = 3, MRN = "STU-001", Name = "Test", DOB = new DateTime(2004,1,1), ProgramID = 1, EntryTerm = "Fall 2026" });
+
+        // Act
+        var result = await _controller.GetByStudent(1);
+
+        // Assert
+        var forbidden = result.Result as ObjectResult;
+        Assert.That(forbidden, Is.Not.Null);
+        Assert.That(forbidden!.StatusCode, Is.EqualTo(403));
+    }
 }

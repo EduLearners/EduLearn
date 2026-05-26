@@ -221,13 +221,20 @@ public class SubmissionsController : ControllerBase
     /// Students may only view their own submissions; privileged roles may view any student's submissions.
     /// </summary>
     [HttpGet("student/{studentId}")]
+    [Authorize(Policy = "RosterViewPolicy")]
     public async Task<ActionResult<List<SubmissionResponseDto>>> GetByStudent(int studentId)
     {
+        // phase4-fix-10: Restrict to Instructor/Registrar/ITAdmin + Student-ownership.
+        // DeptAdmin, Finance, and Auditor are explicitly excluded.
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        var allowedRoles = new[] { "Instructor", "Registrar", "ITAdmin", "Student" };
+        if (!allowedRoles.Contains(callerRole))
+            return StatusCode(403, new { error = "Access denied — instructor or admin role required", code = "SUBMISSION_POLICY_DENIED" });
+
         var student = await _studentRepository.GetByIdAsync(studentId);
         if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
-        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         if (callerRole == "Student" && student.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
             return StatusCode(403, new { error = "You may only view your own submissions", code = "SUBMISSION_FORBIDDEN" });
 
