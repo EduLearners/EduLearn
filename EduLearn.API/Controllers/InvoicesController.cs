@@ -244,11 +244,15 @@ public class InvoicesController : ControllerBase
     /// List all invoices for a given student. All authenticated roles; Students may only view their own records.
     /// </summary>
     [HttpGet("student/{studentId}")]
-    [Authorize]
+    [Authorize(Policy = "FinancePolicy")]
     public async Task<ActionResult<IEnumerable<InvoiceResponseDto>>> GetByStudent(int studentId, CancellationToken ct)
     {
-        // HARDENING (C-3): Student role may only read own invoices.
+        // phase4-fix-7: Runtime role guard mirrors FinancePolicy; Student allowed with ownership check.
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        var allowedRoles = new[] { "Finance", "ITAdmin", "Student" };
+        if (!allowedRoles.Contains(callerRole))
+            return StatusCode(403, new { error = "Access denied — finance or admin role required", code = "INVOICE_POLICY_DENIED" });
+
         if (callerRole == "Student")
         {
             var target = await _studentRepository.GetByIdAsync(studentId);
@@ -268,9 +272,15 @@ public class InvoicesController : ControllerBase
     /// </summary>
     [HttpGet("{id}")]
     [ActionName("GetById")]
-    [Authorize]
+    [Authorize(Policy = "FinancePolicy")]
     public async Task<ActionResult<InvoiceResponseDto>> GetById(int id, CancellationToken ct)
     {
+        // phase4-fix-7: Runtime role guard mirrors FinancePolicy; Student allowed with ownership check.
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        var allowedRoles = new[] { "Finance", "ITAdmin", "Student" };
+        if (!allowedRoles.Contains(callerRole))
+            return StatusCode(403, new { error = "Access denied — finance or admin role required", code = "INVOICE_POLICY_DENIED" });
+
         var invoice = await _invoiceRepository.GetByIdAsync(id);
 
         if (invoice is null)
@@ -278,8 +288,6 @@ public class InvoicesController : ControllerBase
 
         var student = await _studentRepository.GetByIdAsync(invoice.StudentID);
 
-        // HARDENING (C-18): Student role may only view their own invoices.
-        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         if (callerRole == "Student" && student?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
             return StatusCode(403, new { error = "You may only view your own invoices", code = "INVOICE_FORBIDDEN" });
 

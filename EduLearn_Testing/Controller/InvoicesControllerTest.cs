@@ -369,4 +369,56 @@ public class InvoicesControllerTest
         var forbidden = result.Result as ObjectResult;
         Assert.That(forbidden!.StatusCode, Is.EqualTo(403));
     }
+
+    // ════════════════════════════════════════════════════════════════
+    // phase4-fix-7: GetByStudent and GetById must reject non-Finance non-Student roles
+    // ════════════════════════════════════════════════════════════════
+
+    [Test]
+    [TestCase("Instructor")]
+    [TestCase("Registrar")]
+    [TestCase("DeptAdmin")]
+    [TestCase("Auditor")]
+    public async Task GetByStudent_NonFinanceRole_Returns403(string role)
+    {
+        // Arrange — non-Finance, non-ITAdmin, non-Student caller
+        SetCaller(20, role);
+        _studentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(_testStudent);
+
+        // Act
+        var result = await _controller.GetByStudent(1, CancellationToken.None);
+
+        // Assert
+        var forbidden = result.Result as ObjectResult;
+        Assert.That(forbidden, Is.Not.Null);
+        Assert.That(forbidden!.StatusCode, Is.EqualTo(403));
+    }
+
+    [Test]
+    [TestCase("Instructor")]
+    [TestCase("Registrar")]
+    [TestCase("DeptAdmin")]
+    [TestCase("Auditor")]
+    public async Task GetById_NonFinanceRole_Returns403(string role)
+    {
+        // Arrange — non-Finance, non-ITAdmin, non-Student caller
+        SetCaller(20, role);
+        var invoice = new Invoice
+        {
+            InvoiceID = 1, StudentID = 1, Term = "Fall 2026",
+            LineItemsJSON = "[]", AmountDue = 55000,
+            DueDate = DateTime.UtcNow.AddDays(30),
+            Status = InvoiceStatus.Pending
+        };
+        _invoiceRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(invoice);
+        _studentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(_testStudent);
+
+        // Act
+        var result = await _controller.GetById(1, CancellationToken.None);
+
+        // Assert
+        var forbidden = result.Result as ObjectResult;
+        Assert.That(forbidden, Is.Not.Null);
+        Assert.That(forbidden!.StatusCode, Is.EqualTo(403));
+    }
 }
