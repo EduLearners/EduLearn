@@ -48,9 +48,6 @@ docs/write_prd_helper.py
 # Git worktrees
 .worktrees/
 
-# KG data — personal workflow, never committed
-data/kg/
-
 # Explicitly track audit docs (overrides global gitignore)
 !docs/audit/
 !docs/audit/**
