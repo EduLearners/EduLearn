@@ -161,15 +161,20 @@ public class TranscriptsController : ControllerBase
     /// Students may only view their own transcripts; Registrar and ITAdmin may view any.
     /// </summary>
     [HttpGet("student/{studentId}")]
+    [Authorize(Policy = "TranscriptViewPolicy")]
     public async Task<ActionResult<IEnumerable<TranscriptResponseDto>>> GetByStudent(
         int studentId, CancellationToken cancellationToken)
     {
+        // phase4-fix-8: Runtime role guard mirrors TranscriptViewPolicy; Student allowed with ownership check.
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        var allowedRoles = new[] { "Registrar", "ITAdmin", "Student" };
+        if (!allowedRoles.Contains(callerRole))
+            return StatusCode(403, new { error = "Access denied — registrar or admin role required", code = "TRANSCRIPT_POLICY_DENIED" });
+
         var student = await _studentRepo.GetByIdAsync(studentId);
         if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
-        // Students can only view their own transcripts
-        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
         if (callerRole == "Student" && student.UserID != callerId)
@@ -187,9 +192,16 @@ public class TranscriptsController : ControllerBase
     /// Students may only view their own transcripts; Registrar and ITAdmin may view any.
     /// </summary>
     [HttpGet("{id}")]
+    [Authorize(Policy = "TranscriptViewPolicy")]
     public async Task<ActionResult<TranscriptResponseDto>> GetTranscript(
         int id, CancellationToken cancellationToken)
     {
+        // phase4-fix-8: Runtime role guard mirrors TranscriptViewPolicy; Student allowed with ownership check.
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        var allowedRoles = new[] { "Registrar", "ITAdmin", "Student" };
+        if (!allowedRoles.Contains(callerRole))
+            return StatusCode(403, new { error = "Access denied — registrar or admin role required", code = "TRANSCRIPT_POLICY_DENIED" });
+
         var transcript = await _transcriptRepo.GetByIdAsync(id);
         if (transcript is null)
             return NotFound(new { error = "Transcript not found", code = "TRANSCRIPT_NOT_FOUND" });
@@ -198,8 +210,6 @@ public class TranscriptsController : ControllerBase
         if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
-        // Students can only view their own transcripts
-        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
         if (callerRole == "Student" && student.UserID != callerId)

@@ -355,4 +355,43 @@ public class TranscriptsControllerTest
         Assert.That(forbidden, Is.Not.Null);
         Assert.That(forbidden!.StatusCode, Is.EqualTo(403));
     }
+
+    // ════════════════════════════════════════════════════════════════
+    // phase4-fix-8: GetByStudent and GetTranscript must reject non-Registrar non-Student
+    // ════════════════════════════════════════════════════════════════
+
+    [Test]
+    [TestCase("Instructor")]
+    [TestCase("Finance")]
+    [TestCase("DeptAdmin")]
+    [TestCase("Auditor")]
+    public async Task GetByStudent_NonRegistrarRole_Returns403(string role)
+    {
+        SetCaller(20, role);
+        _studentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(_testStudent);
+
+        var result = await _controller.GetByStudent(1, CancellationToken.None);
+
+        var forbidden = result.Result as ObjectResult;
+        Assert.That(forbidden, Is.Not.Null);
+        Assert.That(forbidden!.StatusCode, Is.EqualTo(403));
+    }
+
+    [Test]
+    [TestCase("Instructor")]
+    [TestCase("Finance")]
+    [TestCase("DeptAdmin")]
+    [TestCase("Auditor")]
+    public async Task GetTranscript_NonRegistrarRole_Returns403(string role)
+    {
+        SetCaller(20, role);
+        _transcriptRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(_draftTranscript);
+        _studentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(_testStudent);
+
+        var result = await _controller.GetTranscript(1, CancellationToken.None);
+
+        var forbidden = result.Result as ObjectResult;
+        Assert.That(forbidden, Is.Not.Null);
+        Assert.That(forbidden!.StatusCode, Is.EqualTo(403));
+    }
 }

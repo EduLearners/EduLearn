@@ -229,6 +229,9 @@ builder.Services.AddAuthorization(options =>
     // DeptAdmin + ITAdmin — manage programs and rooms
     options.AddPolicy("DeptAdminPolicy", p => p.RequireRole("DeptAdmin", "ITAdmin"));
 
+    // Registrar + ITAdmin — view/issue transcripts (phase4-fix-8)
+    options.AddPolicy("TranscriptViewPolicy", p => p.RequireRole("Registrar", "ITAdmin"));
+
     // FallbackPolicy: bare [Authorize] requires any authenticated user.
     // AuthController.Register/Login must use [AllowAnonymous].
     options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
