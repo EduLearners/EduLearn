@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axiosClient from '../../api/axiosClient';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -13,7 +13,7 @@ export default function ErrorsPage() {
   const [selected, setSelected] = useState(null);
   const [note, setNote] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -23,9 +23,9 @@ export default function ErrorsPage() {
       setTotal(data.total || 0);
     } catch (err) { setError(err); }
     finally { setLoading(false); }
-  };
+  }, [filters]);
 
-  useEffect(() => { load(); }, [filters.source, filters.severity, filters.resolved, filters.page]);
+  useEffect(() => { load(); }, [load]);
 
   const handleResolve = async (id) => {
     try {
@@ -139,11 +139,11 @@ export default function ErrorsPage() {
 
       {/* Resolve Modal */}
       {selected !== null && (
-        <div className="modal d-block" tabIndex="-1" style={{background:'rgba(0,0,0,.5)'}}>
+        <div className="modal d-block" tabIndex="-1" role="dialog" aria-modal="true" aria-labelledby="resolveModalTitle" style={{background:'rgba(0,0,0,.5)'}}>
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Resolve Error #{selected}</h5>
+                <h5 className="modal-title" id="resolveModalTitle">Resolve Error #{selected}</h5>
                 <button type="button" className="btn-close" onClick={() => setSelected(null)}></button>
               </div>
               <div className="modal-body">

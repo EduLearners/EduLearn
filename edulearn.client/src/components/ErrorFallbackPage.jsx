@@ -1,6 +1,6 @@
 export default function ErrorFallbackPage({ error, onReload, onReset }) {
   return (
-    <div className="container py-5" role="alert">
+    <div className="container py-5">
       <h1 className="h3">Something went wrong.</h1>
       <p className="text-muted">The team has been notified. Your in-progress work has been saved locally where possible.</p>
       <details className="mt-3"><summary>Technical details</summary>
