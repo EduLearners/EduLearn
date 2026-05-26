@@ -62,7 +62,8 @@ const NAV_ITEMS = [
     { label: 'Rooms',         to: '/rooms',         icon: 'door-closed',            roles: ['DeptAdmin'] },
     { label: 'Syllabus',      to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['DeptAdmin'] },
     { label: 'Discussions',   to: '/discussions',   icon: 'chat-square-text',       roles: ['DeptAdmin'] },
-    { label: 'Timetable',     to: '/timetable',     icon: 'calendar3',              roles: ['DeptAdmin'] },
+    // phase4-fix-17: Timetable removed for DeptAdmin — EnrollmentViewPolicy excludes DeptAdmin
+    // and the backend returns 403. Backend policy extension deferred to post-sprint.
     { label: 'Notifications', to: '/notifications', icon: 'bell',                   roles: ['DeptAdmin'] },
     { label: 'Tickets',       to: '/tickets',       icon: 'headset',                roles: ['DeptAdmin'] },
 
