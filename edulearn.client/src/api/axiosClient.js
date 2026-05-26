@@ -41,7 +41,8 @@ axiosClient.interceptors.response.use(
         // phase4-fix-13: handle request timeout (ECONNABORTED)
         if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
             console.warn('[axiosClient] Request timed out — please retry.', { url });
-            return Promise.reject({ ...error, _userMessage: 'Request timed out — please retry.' });
+            error._userMessage = 'Request timed out — please retry.';
+            return Promise.reject(error);
         }
 
         // phase4-fix-14: log 5xx server errors (Phase 5 Task 5.11 will extend with errorReporter)

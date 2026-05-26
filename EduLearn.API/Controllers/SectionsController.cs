@@ -116,7 +116,7 @@ public class SectionsController : ControllerBase
 
     // GET /api/sections/{id}
     /// <summary>
-    /// Retrieve a single section by its ID. Any authenticated user may call this endpoint.
+    /// Retrieve a single section by its ID. Requires RosterViewPolicy (Instructor, Registrar, DeptAdmin, or ITAdmin).
     /// Returns 404 if the section does not exist.
     /// </summary>
     [HttpGet("{id}")]
@@ -142,7 +142,7 @@ public class SectionsController : ControllerBase
 
     // GET /api/sections/course/{courseId}/term/{term}
     /// <summary>
-    /// List all sections for a given course and term. Any authenticated user may call this endpoint.
+    /// List all sections for a given course and term. Requires RosterViewPolicy (Instructor, Registrar, DeptAdmin, or ITAdmin).
     /// Returns 404 if the course does not exist or no sections are found for the specified term.
     /// </summary>
     [HttpGet("course/{courseId}/term/{term}")]

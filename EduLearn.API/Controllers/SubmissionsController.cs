@@ -221,7 +221,7 @@ public class SubmissionsController : ControllerBase
     /// Students may only view their own submissions; privileged roles may view any student's submissions.
     /// </summary>
     [HttpGet("student/{studentId}")]
-    [Authorize(Policy = "RosterViewPolicy")]
+    [Authorize(Policy = "SubmissionReadPolicy")]
     public async Task<ActionResult<List<SubmissionResponseDto>>> GetByStudent(int studentId)
     {
         // phase4-fix-10: Restrict to Instructor/Registrar/ITAdmin + Student-ownership.

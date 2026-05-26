@@ -49,7 +49,7 @@ export default function NewStudentPage() {
             if (applicantData?.status === 'fulfilled' && applicantData.value?.dob) {
                 setForm(prev => ({ ...prev, dob: applicantData.value.dob.split('T')[0] }));
             }
-        } catch { }
+        } catch (err) { console.error('loadDropdowns failed:', err); }
         finally { setPageLoading(false); }
     };
 

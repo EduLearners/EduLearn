@@ -161,11 +161,11 @@ public class TranscriptsController : ControllerBase
     /// Students may only view their own transcripts; Registrar and ITAdmin may view any.
     /// </summary>
     [HttpGet("student/{studentId}")]
-    [Authorize(Policy = "TranscriptViewPolicy")]
+    [Authorize(Policy = "TranscriptReadPolicy")]
     public async Task<ActionResult<IEnumerable<TranscriptResponseDto>>> GetByStudent(
         int studentId, CancellationToken cancellationToken)
     {
-        // phase4-fix-8: Runtime role guard mirrors TranscriptViewPolicy; Student allowed with ownership check.
+        // phase4-fix-8: Runtime role guard mirrors TranscriptReadPolicy; Student allowed with ownership check.
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var allowedRoles = new[] { "Registrar", "ITAdmin", "Student" };
         if (!allowedRoles.Contains(callerRole))
@@ -192,11 +192,11 @@ public class TranscriptsController : ControllerBase
     /// Students may only view their own transcripts; Registrar and ITAdmin may view any.
     /// </summary>
     [HttpGet("{id}")]
-    [Authorize(Policy = "TranscriptViewPolicy")]
+    [Authorize(Policy = "TranscriptReadPolicy")]
     public async Task<ActionResult<TranscriptResponseDto>> GetTranscript(
         int id, CancellationToken cancellationToken)
     {
-        // phase4-fix-8: Runtime role guard mirrors TranscriptViewPolicy; Student allowed with ownership check.
+        // phase4-fix-8: Runtime role guard mirrors TranscriptReadPolicy; Student allowed with ownership check.
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var allowedRoles = new[] { "Registrar", "ITAdmin", "Student" };
         if (!allowedRoles.Contains(callerRole))

@@ -232,6 +232,11 @@ builder.Services.AddAuthorization(options =>
     // Registrar + ITAdmin — view/issue transcripts (phase4-fix-8)
     options.AddPolicy("TranscriptViewPolicy", p => p.RequireRole("Registrar", "ITAdmin"));
 
+    // Read-only variants that restore Student access (C-1, C-2)
+    options.AddPolicy("FinanceReadPolicy", p => p.RequireRole("Finance", "ITAdmin", "Student"));
+    options.AddPolicy("SubmissionReadPolicy", p => p.RequireRole("Instructor", "Registrar", "ITAdmin", "Student"));
+    options.AddPolicy("TranscriptReadPolicy", p => p.RequireRole("Registrar", "ITAdmin", "Student"));
+
     // FallbackPolicy: bare [Authorize] requires any authenticated user.
     // AuthController.Register/Login must use [AllowAnonymous].
     options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()

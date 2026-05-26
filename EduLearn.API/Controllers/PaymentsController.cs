@@ -105,10 +105,10 @@ public class PaymentsController : ControllerBase
     /// </summary>
     [HttpGet("invoice/{invoiceId}")]
     [ActionName("GetByInvoice")]
-    [Authorize(Policy = "FinancePolicy")]
+    [Authorize(Policy = "FinanceReadPolicy")]
     public async Task<ActionResult<IEnumerable<PaymentResponseDto>>> GetByInvoice(int invoiceId, CancellationToken ct)
     {
-        // phase4-fix-6: Runtime role guard (mirrors FinancePolicy) so unit tests can exercise this path.
+        // phase4-fix-6: Runtime role guard (mirrors FinanceReadPolicy) so unit tests can exercise this path.
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var allowedRoles = new[] { "Finance", "ITAdmin", "Student" };
         if (!allowedRoles.Contains(callerRole))

@@ -84,11 +84,12 @@ export default function StudentDetailPage() {
         try {
             setSaving(true);
             setError(null);
-            // Build contactInfoJSON from individual fields
+            // Build contactInfoJSON from individual fields; exclude email/phone from top-level (not in DTO)
             const contactInfo = {};
             if (form.email) contactInfo.email = form.email;
             if (form.phone) contactInfo.phone = form.phone;
-            const payload = { ...form, contactInfoJSON: JSON.stringify(contactInfo) };
+            const { email: _e, phone: _p, ...rest } = form;
+            const payload = { ...rest, contactInfoJSON: JSON.stringify(contactInfo) };
             await studentService.update(id, payload);
             await loadStudent();
             setEditMode(false);

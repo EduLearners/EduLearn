@@ -132,9 +132,10 @@ export default function UsersPage() {
         e.preventDefault();
         setEditError(null);
 
-        // FIX: Validate phone format (10 digits) if provided — matches Create modal guard
-        if (editForm.phone && !/^[0-9]{10}$/.test(editForm.phone)) {
-            setEditError({ message: 'Phone number must be exactly 10 digits.' });
+        // FIX: Validate phone format (10 digits) if provided — strip non-digits first (matches Create modal + display guard)
+        const digitsOnly = editForm.phone.replace(/\D/g, '');
+        if (editForm.phone && digitsOnly.length !== 10) {
+            setEditError('Phone must be a 10-digit number.');
             return;
         }
 

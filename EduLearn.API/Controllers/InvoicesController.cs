@@ -244,10 +244,10 @@ public class InvoicesController : ControllerBase
     /// List all invoices for a given student. All authenticated roles; Students may only view their own records.
     /// </summary>
     [HttpGet("student/{studentId}")]
-    [Authorize(Policy = "FinancePolicy")]
+    [Authorize(Policy = "FinanceReadPolicy")]
     public async Task<ActionResult<IEnumerable<InvoiceResponseDto>>> GetByStudent(int studentId, CancellationToken ct)
     {
-        // phase4-fix-7: Runtime role guard mirrors FinancePolicy; Student allowed with ownership check.
+        // phase4-fix-7: Runtime role guard mirrors FinanceReadPolicy; Student allowed with ownership check.
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var allowedRoles = new[] { "Finance", "ITAdmin", "Student" };
         if (!allowedRoles.Contains(callerRole))
@@ -272,10 +272,10 @@ public class InvoicesController : ControllerBase
     /// </summary>
     [HttpGet("{id}")]
     [ActionName("GetById")]
-    [Authorize(Policy = "FinancePolicy")]
+    [Authorize(Policy = "FinanceReadPolicy")]
     public async Task<ActionResult<InvoiceResponseDto>> GetById(int id, CancellationToken ct)
     {
-        // phase4-fix-7: Runtime role guard mirrors FinancePolicy; Student allowed with ownership check.
+        // phase4-fix-7: Runtime role guard mirrors FinanceReadPolicy; Student allowed with ownership check.
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var allowedRoles = new[] { "Finance", "ITAdmin", "Student" };
         if (!allowedRoles.Contains(callerRole))
