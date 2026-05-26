@@ -2,6 +2,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduLearn.API.Controllers;
 
@@ -97,6 +98,20 @@ public class ProgramsController : ControllerBase
         await _programRepository.UpdateAsync(program);
 
         return Ok(MapToDto(program));
+    }
+
+    /// <summary>
+    /// Returns the degree programs that the authenticated student is registered in. Student only.
+    /// </summary>
+    [HttpGet("mine")]
+    [Authorize(Roles = "Student")]
+    public async Task<ActionResult<List<ProgramResponseDto>>> GetMine(CancellationToken ct)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdClaim, out var userId)) return Unauthorized();
+
+        var programs = await _programRepository.GetByEnrolledStudentUserIdAsync(userId, ct);
+        return Ok(programs.Select(p => MapToDto(p)).ToList());
     }
 
     private static ProgramResponseDto MapToDto(EduLearn.API.Models.Program program) => new()

@@ -8,6 +8,12 @@ export const programService = {
         return data;
     },
 
+    // GET /api/programs/mine  (Student only — returns own enrolled programs)
+    getMine: async () => {
+        const { data } = await axiosClient.get('/programs/mine');
+        return data;
+    },
+
     // GET /api/programs/:id
     getById: async (id) => {
         const { data } = await axiosClient.get(`/programs/${id}`);

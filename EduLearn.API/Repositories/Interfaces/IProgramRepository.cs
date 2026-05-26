@@ -21,4 +21,7 @@ public interface IProgramRepository
 
     // Check if a program exists by ID
     Task<bool> ExistsAsync(int programId);
+
+    // Get all programs a student (by UserID) is enrolled in
+    Task<IEnumerable<EduLearn.API.Models.Program>> GetByEnrolledStudentUserIdAsync(int userId, CancellationToken ct);
 }

@@ -147,7 +147,7 @@ export default function EnrollmentPage() {
         try {
             setLoadingLookups(true);
             const [programsData, coursesData] = await Promise.allSettled([
-                programService.getAll(),
+                isStudent ? programService.getMine() : programService.getAll(),
                 courseService.getAll(),
             ]);
             const p = programsData.status === 'fulfilled' ? (programsData.value || []) : [];

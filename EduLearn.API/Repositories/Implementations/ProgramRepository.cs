@@ -45,4 +45,11 @@ public class ProgramRepository : IProgramRepository
     // Check if a program exists by ID
     public async Task<bool> ExistsAsync(int programId)
         => await _context.Programs.AnyAsync(p => p.ProgramID == programId);
+
+    // Get all programs a student (by UserID) is registered in
+    public async Task<IEnumerable<EduLearn.API.Models.Program>> GetByEnrolledStudentUserIdAsync(int userId, CancellationToken ct)
+        => await _context.Programs
+            .Where(p => p.Students.Any(s => s.UserID == userId))
+            .AsNoTracking()
+            .ToListAsync(ct);
 }
