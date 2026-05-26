@@ -6,6 +6,7 @@ import { ContentType } from '../../models/Content';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
+import { safeUri } from '../../services/safeUri';
 
 export default function ContentDetailPage() {
     const { id } = useParams();
@@ -177,12 +178,28 @@ export default function ContentDetailPage() {
                                             Resource URI
                                         </label>
                                         <div className="input-group">
-                                            <input
-                                                type="text"
-                                                className="form-control font-monospace"
-                                                value={content.uri}
-                                                readOnly
-                                            />
+                                            <div className="form-control font-monospace d-flex align-items-center">
+                                                {(() => {
+                                                    const href = safeUri(content?.uri);
+                                                    return href
+                                                        ? (
+                                                            <a
+                                                                href={href}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                data-testid="content-uri"
+                                                                className="text-decoration-none"
+                                                            >
+                                                                {content.uri} <i className="bi bi-box-arrow-up-right ms-1" />
+                                                            </a>
+                                                        )
+                                                        : (
+                                                            <span className="text-muted" data-testid="content-uri-invalid">
+                                                                {content?.uri || '—'} (invalid URL)
+                                                            </span>
+                                                        );
+                                                })()}
+                                            </div>
                                             <button
                                                 type="button"
                                                 className="btn btn-outline-secondary"
