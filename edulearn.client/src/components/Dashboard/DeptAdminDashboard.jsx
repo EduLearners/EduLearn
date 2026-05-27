@@ -9,7 +9,12 @@ import { sectionService } from '../../services/sectionService';
 import Loading from '../Loading';
 import './RoleDashboard.css';
 
-const TERM = '2026-Spring';
+const getCurrentTerm = () => {
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    return month >= 7 ? `${year}-Fall` : `${year}-Spring`;
+};
+const TERM = getCurrentTerm();
 
 const QUICK_ACTIONS = [
     { label: 'New Program',    icon: 'bi-plus-circle',        path: '/programs/new'  },

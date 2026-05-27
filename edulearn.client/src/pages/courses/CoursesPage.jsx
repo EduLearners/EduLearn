@@ -163,9 +163,22 @@ export default function CoursesPage() {
                                                 </button>
                                                 {canManage && (
                                                     <button
-                                                        className="btn btn-sm btn-outline-secondary"
-                                                        onClick={() => navigate(`/courses/${course.courseID}/edit`)}
-                                                        title="Edit"
+                                                        className={`btn btn-sm ${
+                                                            course.status === 'Archived' || course.status === 'Deprecated'
+                                                                ? 'btn-outline-warning'
+                                                                : 'btn-outline-secondary'
+                                                        }`}
+                                                        onClick={() => {
+                                                            if (course.status === 'Archived' || course.status === 'Deprecated') {
+                                                                if (!window.confirm(`This course is ${course.status}. Are you sure you want to edit it?`)) return;
+                                                            }
+                                                            navigate(`/courses/${course.courseID}/edit`);
+                                                        }}
+                                                        title={`Edit${
+                                                            course.status === 'Archived' || course.status === 'Deprecated'
+                                                                ? ` (${course.status} — editing not recommended)`
+                                                                : ''
+                                                        }`}
                                                     >
                                                         <i className="bi bi-pencil"></i>
                                                     </button>

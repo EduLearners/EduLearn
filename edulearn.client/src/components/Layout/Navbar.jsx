@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
+import { notificationService } from '../../services/notificationService';
 
 export default function Navbar() {
     const navigate = useNavigate();
     const { username, role } = authService.getCurrentUser();
     const [open, setOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     // Close the dropdown when clicking outside of it
     useEffect(() => {
@@ -18,6 +20,21 @@ export default function Navbar() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Load unread notification count — re-runs when the logged-in user changes
+    useEffect(() => {
+        setUnreadCount(0); // reset immediately on user change
+        notificationService.getUnreadCount()
+            .then(d => setUnreadCount(d.unreadCount || 0))
+            .catch(() => {});
+        // Poll every 60 seconds
+        const interval = setInterval(() => {
+            notificationService.getUnreadCount()
+                .then(d => setUnreadCount(d.unreadCount || 0))
+                .catch(() => {});
+        }, 60000);
+        return () => clearInterval(interval);
+    }, [username]); // username changes on login/logout
 
     const handleLogout = () => {
         authService.logout();
@@ -42,8 +59,27 @@ export default function Navbar() {
                 <i className="bi bi-mortarboard-fill me-2"></i>EduLearn
             </span>
 
-            <div className="ms-auto position-relative" ref={dropdownRef}>
-                {/* The clickable avatar pill */}
+            <div className="ms-auto d-flex align-items-center gap-2">
+                {/* Notification bell */}
+                <button
+                    className="btn text-white position-relative"
+                    onClick={() => navigate('/notifications')}
+                    title="Notifications"
+                    style={{ border: 'none', background: 'transparent' }}
+                >
+                    <i className="bi bi-bell fs-5"></i>
+                    {unreadCount > 0 && (
+                        <span
+                            className="position-absolute translate-middle badge rounded-pill bg-danger"
+                            style={{ top: 4, left: '100%', fontSize: 9, minWidth: 16 }}
+                        >
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                    )}
+                </button>
+
+                {/* User avatar dropdown */}
+                <div className="position-relative" ref={dropdownRef}>
                 <button
                     onClick={() => setOpen(!open)}
                     className="btn d-flex align-items-center gap-2 text-white"
@@ -108,7 +144,7 @@ export default function Navbar() {
                                         <i className="bi bi-shield-check me-1"></i>{role}
                                     </small>
                                 </div>
-                            </div>
+                                </div>
                         </div>
 
                         {/* Actions */}

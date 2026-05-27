@@ -112,6 +112,13 @@ export default function ProgramFormPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+
+        // Validate program name minimum length
+        if (form.name.trim().length < 3) {
+            setError({ message: 'Program name must be at least 3 characters.' });
+            return;
+        }
+
         setLoading(true);
 
         const payload = {

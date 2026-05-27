@@ -118,6 +118,29 @@ export default function SubmitPage() {
 
     if (pageLoading) return <Loading message="Loading assessment..." />;
 
+    // If assessment is not Published, show a clear message instead of the submit form
+    if (assessment && assessment.status !== 'Published') {
+        return (
+            <div>
+                <div className="d-flex align-items-center justify-content-between mb-4">
+                    <h2 className="text-primary-edulearn mb-0">
+                        <i className="bi bi-cloud-upload me-2"></i>Submit Assessment
+                    </h2>
+                    <button className="btn btn-outline-secondary" onClick={() => navigate(`/assessments/${id}`)}>
+                        <i className="bi bi-arrow-left me-1"></i>Back
+                    </button>
+                </div>
+                <div className="alert alert-warning">
+                    <i className="bi bi-lock me-2"></i>
+                    <strong>This assessment is {assessment.status}.</strong> It is not currently accepting submissions.
+                    {assessment.status === 'Closed' && ' The submission window has closed.'}
+                    {assessment.status === 'Draft' && ' The instructor has not published this assessment yet.'}
+                    {assessment.status === 'Archived' && ' This assessment has been archived.'}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div>
             <div className="d-flex align-items-center justify-content-between mb-4">

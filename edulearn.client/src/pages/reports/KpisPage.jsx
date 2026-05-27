@@ -3,6 +3,7 @@ import { kpiService } from '../../services/kpiService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 export default function KpisPage() {
     const { role } = authService.getCurrentUser();
@@ -11,6 +12,7 @@ export default function KpisPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [recalculating, setRecalculating] = useState(false);
+    const [showRecalcConfirm, setShowRecalcConfirm] = useState(false);
     const [seeding, setSeeding] = useState(false);
     const [success, setSuccess] = useState('');
     const [lastRecalculated, setLastRecalculated] = useState(null);
@@ -36,6 +38,7 @@ export default function KpisPage() {
     };
 
     const handleRecalculate = async () => {
+        setShowRecalcConfirm(false);
         try {
             setRecalculating(true);
             setError(null);
@@ -99,7 +102,7 @@ export default function KpisPage() {
                             </button>
                             <button
                                 className="btn btn-primary-edulearn btn-sm"
-                                onClick={handleRecalculate}
+                                onClick={() => setShowRecalcConfirm(true)}
                                 disabled={recalculating}
                             >
                                 {recalculating
@@ -226,6 +229,19 @@ export default function KpisPage() {
                     })}
                 </div>
             )}
+        </div>
+
+            {/* Recalculate confirmation */}
+            <ConfirmDialog
+                show={showRecalcConfirm}
+                title="Recalculate All KPIs?"
+                message="This will recompute all KPI values across the system. It may take a moment. Are you sure you want to proceed?"
+                confirmText="Yes, Recalculate"
+                confirmVariant="primary"
+                onConfirm={handleRecalculate}
+                onCancel={() => setShowRecalcConfirm(false)}
+                loading={recalculating}
+            />
         </div>
     );
 }

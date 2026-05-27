@@ -54,6 +54,16 @@ export default function CourseFormPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+
+        // Validate prerequisites JSON before saving
+        if (form.prerequisitesJSON && form.prerequisitesJSON.trim()) {
+            try { JSON.parse(form.prerequisitesJSON); }
+            catch {
+                setError({ message: 'Prerequisites must be valid JSON, e.g. [1, 2]' });
+                return;
+            }
+        }
+
         setLoading(true);
 
         try {

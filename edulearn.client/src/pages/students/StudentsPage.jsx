@@ -265,7 +265,7 @@ export default function StudentsPage() {
                     <i className="bi bi-people me-2"></i>Students
                 </h2>
                 {canCreate && (
-                    <button className="btn btn-primary-edulearn" onClick={() => navigate('/students/new')}>
+                    <button className="btn btn-primary-edulearn" onClick={() => navigate('/registrar/students/new')}>
                         <i className="bi bi-plus-lg me-2"></i>Add Student
                     </button>
                 )}

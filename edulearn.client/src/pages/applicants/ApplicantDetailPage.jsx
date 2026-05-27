@@ -14,6 +14,7 @@ const emptyUserForm = {
     email: '',
     phone: '',
     password: '',
+    confirmPassword: '',
     sendInvite: true,
 };
 
@@ -100,6 +101,13 @@ export default function ApplicantDetailPage() {
             }
         }
         setCreating(true);
+
+        // Validate passwords match
+        if (userForm.password !== userForm.confirmPassword) {
+            setCreateError({ message: 'Passwords do not match. Please re-enter.' });
+            setCreating(false);
+            return;
+        }
 
         try {
             const result = await authService.register({
@@ -517,14 +525,27 @@ export default function ApplicantDetailPage() {
                                                 </div>
 
                                                 <div className="col-md-6">
-                                                    <label className="form-label fw-bold">Role</label>
-                                                    <div className="form-control bg-light text-muted">
-                                                        Student {/* //(enforced by backend) */}
-                                                    </div>
-                                                    <small className="text-muted">
-                                                        <i className="bi bi-lock me-1"></i>
-                                                        Role is always Student via this endpoint.
-                                                    </small>
+                                                    <label className="form-label fw-bold">
+                                                        Confirm Password <span className="text-danger">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="password"
+                                                        className={`form-control ${userForm.confirmPassword && userForm.password !== userForm.confirmPassword ? 'is-invalid' : ''}`}
+                                                        value={userForm.confirmPassword}
+                                                        onChange={e => setUserForm({ ...userForm, confirmPassword: e.target.value })}
+                                                        placeholder="Re-enter password"
+                                                        minLength={8}
+                                                        required
+                                                        autoComplete="new-password"
+                                                    />
+                                                    {userForm.confirmPassword && userForm.password !== userForm.confirmPassword && (
+                                                        <div className="invalid-feedback">Passwords do not match.</div>
+                                                    )}
+                                                    {userForm.confirmPassword && userForm.password === userForm.confirmPassword && (
+                                                        <div className="form-text text-success">
+                                                            <i className="bi bi-check-circle me-1"></i>Passwords match
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <div className="col-12">
@@ -615,6 +636,7 @@ export default function ApplicantDetailPage() {
                 onCancel={() => setConfirmAction(null)}
                 confirmText={confirmConfig.confirmText}
                 confirmVariant={confirmConfig.confirmVariant}
+                loading={updating}
             />
         </div>
     );

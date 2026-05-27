@@ -137,6 +137,22 @@ export default function GradeChangesPage() {
         if (!selectedSubmission) return;
         setError(null);
         setSuccess('');
+
+        const numScore = Math.round(Number(form.newScore) * 100) / 100;
+        const maxAllowed = selectedSubmission.maxScore ?? 9999;
+
+        // Bounds check
+        if (isNaN(numScore) || numScore < 0 || numScore > maxAllowed + 0.001) {
+            setError({ message: `Score must be between 0 and ${maxAllowed}.` });
+            return;
+        }
+
+        // Prevent no-op grade changes
+        if (numScore === (selectedSubmission.score ?? 0)) {
+            setError({ message: 'New score is the same as the current score. No change recorded.' });
+            return;
+        }
+
         setSaving(true);
         try {
             await gradeChangeService.create({
@@ -196,6 +212,17 @@ export default function GradeChangesPage() {
         e.preventDefault();
         setSearchError(null);
         setGcSuccess('');
+
+        // Validate required fields
+        if (!gcForm.reason || !gcForm.reason.trim()) {
+            setSearchError({ message: 'Reason is required for audit compliance.' });
+            return;
+        }
+        if (Number(gcForm.newScore) < 0) {
+            setSearchError({ message: 'New Score cannot be negative.' });
+            return;
+        }
+
         setGcSaving(true);
         try {
             await gradeChangeService.create({
@@ -592,8 +619,8 @@ export default function GradeChangesPage() {
                                             <input type="number" className="form-control" value={gcForm.newScore} onChange={e => setGcForm({ ...gcForm, newScore: e.target.value })} step="0.1" required />
                                         </div>
                                         <div className="col-12">
-                                            <label className="form-label fw-bold">Reason</label>
-                                            <textarea className="form-control" value={gcForm.reason} onChange={e => setGcForm({ ...gcForm, reason: e.target.value })} rows={2} placeholder="Reason..." />
+                                            <label className="form-label fw-bold">Reason <span className="text-danger">*</span></label>
+                                            <textarea className="form-control" value={gcForm.reason} onChange={e => setGcForm({ ...gcForm, reason: e.target.value })} rows={2} placeholder="Reason..." required />
                                         </div>
                                         <div className="col-12">
                                             <label className="form-label fw-bold">Audit Note</label>

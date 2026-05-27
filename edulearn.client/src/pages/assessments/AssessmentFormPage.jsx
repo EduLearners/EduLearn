@@ -111,6 +111,22 @@ export default function AssessmentFormPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+
+        // Validate grading rubric JSON
+        if (form.gradingRubricJSON && form.gradingRubricJSON.trim()) {
+            try { JSON.parse(form.gradingRubricJSON); }
+            catch {
+                setError({ message: 'Grading Rubric must be valid JSON.' });
+                return;
+            }
+        }
+
+        // Validate MaxScore is at least 1
+        if (Number(form.maxScore) < 1) {
+            setError({ message: 'Max Score must be at least 1.' });
+            return;
+        }
+
         setLoading(true);
 
         const payload = {
@@ -329,7 +345,7 @@ export default function AssessmentFormPage() {
                                     name="maxScore"
                                     value={form.maxScore}
                                     onChange={handleChange}
-                                    min={0.1}
+                                    min={1}
                                     max={9999.9}
                                     step={0.1}
                                     required

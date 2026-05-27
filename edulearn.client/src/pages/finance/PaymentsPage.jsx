@@ -91,6 +91,13 @@ export default function PaymentsPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+
+        // Validate amount does not exceed remaining balance
+        if (balance > 0 && Number(payForm.amount) > balance + 0.01) {
+            setError({ message: `Payment amount (₹${Number(payForm.amount).toFixed(2)}) exceeds remaining balance (₹${balance.toFixed(2)}).` });
+            return;
+        }
+
         setSaving(true);
         try {
             await paymentService.create({

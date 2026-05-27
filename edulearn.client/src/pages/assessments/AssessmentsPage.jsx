@@ -202,7 +202,7 @@ export default function AssessmentsPage() {
                                                 <button className="btn btn-sm btn-outline-primary" onClick={() => navigate(`/assessments/${a.assessmentID}`)} title="View">
                                                     <i className="bi bi-eye"></i>
                                                 </button>
-                                                {isStudent && (
+                                                {isStudent && a.status === 'Published' && (
                                                     <button className="btn btn-sm btn-outline-success" onClick={() => navigate(`/submissions/${a.assessmentID}/submit`)} title="Submit">
                                                         <i className="bi bi-cloud-upload"></i>
                                                     </button>

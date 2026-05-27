@@ -261,14 +261,18 @@ export default function TimetablePage() {
     const isInstructor = role === 'Instructor';
     const isAdmin = ['Registrar', 'ITAdmin'].includes(role);
 
-    const [term, setTerm] = useState('2026-Spring');
+    const [term, setTerm] = useState(() => {
+        const month = new Date().getMonth() + 1;
+        const year = new Date().getFullYear();
+        return month >= 7 ? `${year}-Fall` : `${year}-Spring`;
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [selectedEntry, setSelectedEntry] = useState(null);
 
     // Student state
     const [studentTimetable, setStudentTimetable] = useState(null);
-    const [studentId, setStudentId] = useState(() => localStorage.getItem('lastStudentId') || '');
+    const [studentId, setStudentId] = useState(() => localStorage.getItem('timetable_lastStudentId') || '');
 
     // Instructor state
     const [instructorEntries, setInstructorEntries] = useState([]);
@@ -301,13 +305,14 @@ export default function TimetablePage() {
             if (studentRecord?.studentID) {
                 const sid = String(studentRecord.studentID);
                 setStudentId(sid);
-                localStorage.setItem('lastStudentId', sid);
+                localStorage.setItem('timetable_lastStudentId', sid);
                 const data = await timetableService.getStudentTimetable(sid, term);
                 setStudentTimetable(data);
             } else {
                 // Fallback: try stored studentId
-                if (studentId) {
-                    const data = await timetableService.getStudentTimetable(studentId, term);
+                const storedId = localStorage.getItem('timetable_lastStudentId');
+                if (storedId) {
+                    const data = await timetableService.getStudentTimetable(storedId, term);
                     setStudentTimetable(data);
                 }
             }
@@ -325,7 +330,7 @@ export default function TimetablePage() {
             setError(null);
             const data = await timetableService.getStudentTimetable(studentId, term);
             setStudentTimetable(data);
-            localStorage.setItem('lastStudentId', studentId);
+            localStorage.setItem('timetable_lastStudentId', studentId);
         } catch (err) {
             setError(err);
         } finally {
@@ -374,7 +379,7 @@ export default function TimetablePage() {
             setError(null);
             const data = await timetableService.getStudentTimetable(adminStudentId, term);
             setAdminTimetable(data);
-            localStorage.setItem('lastStudentId', adminStudentId);
+            localStorage.setItem('timetable_lastStudentId', adminStudentId);
         } catch (err) {
             setError(err);
             setAdminTimetable(null);

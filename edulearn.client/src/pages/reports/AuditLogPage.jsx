@@ -167,6 +167,10 @@ export default function AuditLogPage() {
 
     const handleFilter = (e) => {
         e.preventDefault();
+        if (filters.from && filters.to && new Date(filters.from) > new Date(filters.to)) {
+            setError({ message: '"From" date must be before "To" date.' });
+            return;
+        }
         loadLogs(filters);
     };
 

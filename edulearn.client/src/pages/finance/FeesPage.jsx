@@ -30,7 +30,11 @@ export default function FeesPage() {
     const { role } = authService.getCurrentUser();
 
     const [programId, setProgramId] = useState('');
-    const [term, setTerm] = useState('');
+    const [term, setTerm] = useState(() => {
+        const month = new Date().getMonth() + 1;
+        const year = new Date().getFullYear();
+        return month >= 7 ? `${year}-Fall` : `${year}-Spring`;
+    });
     const [fee, setFee] = useState(null);
     const [programs, setPrograms] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -227,6 +231,7 @@ export default function FeesPage() {
                                     title="Format: YYYY-Season (e.g. 2026-Spring)"
                                     required
                                 />
+                                <div className="form-text">Format: YYYY-Spring / YYYY-Fall / YYYY-Summer / YYYY-Winter</div>
                             </div>
                             <div className="col-md-3">
                                 <button

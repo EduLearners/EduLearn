@@ -35,6 +35,11 @@ export default function ResetPasswordPage() {
             return;
         }
 
+        if (!/[0-9]/.test(newPassword)) {
+            setError('Password must contain at least one number.');
+            return;
+        }
+
         setLoading(true);
         try {
             await authService.resetPassword(token, newPassword, confirmPassword);

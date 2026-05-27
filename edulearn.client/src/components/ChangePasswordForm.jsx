@@ -19,11 +19,10 @@ export default function ChangePasswordForm({ userId, onClose }) {
     const rules = {
         minLength: newPassword.length >= 8,
         hasLetter: /[a-zA-Z]/.test(newPassword),
-        // FIX: isDifferent was true when newPassword is empty (misleading green checkmark).
-        // Now it is only true when the user has actually typed something AND it differs.
+        hasNumber: /[0-9]/.test(newPassword),
         isDifferent: newPassword.length > 0 && newPassword !== currentPassword,
     };
-    const allRulesPassed = rules.minLength && rules.hasLetter && rules.isDifferent;
+    const allRulesPassed = rules.minLength && rules.hasLetter && rules.hasNumber && rules.isDifferent;
     const passwordsMatch = newPassword === confirmPassword && confirmPassword !== '';
 
     const handleSubmit = async (e) => {
@@ -98,21 +97,10 @@ export default function ChangePasswordForm({ userId, onClose }) {
                         Password Requirements
                     </p>
                     <div className="d-flex flex-column gap-1">
-                        <RuleItem
-                            passed={rules.minLength}
-                            active={newPassword.length > 0}
-                            text="At least 8 characters"
-                        />
-                        <RuleItem
-                            passed={rules.hasLetter}
-                            active={newPassword.length > 0}
-                            text="At least one letter"
-                        />
-                        <RuleItem
-                            passed={rules.isDifferent}
-                            active={newPassword.length > 0}
-                            text="Must differ from current password"
-                        />
+                        <RuleItem passed={rules.minLength} active={newPassword.length > 0} text="At least 8 characters" />
+                        <RuleItem passed={rules.hasLetter} active={newPassword.length > 0} text="At least one letter" />
+                        <RuleItem passed={rules.hasNumber} active={newPassword.length > 0} text="At least one number" />
+                        <RuleItem passed={rules.isDifferent} active={newPassword.length > 0} text="Must differ from current password" />
                     </div>
                 </div>
 
@@ -179,6 +167,7 @@ export default function ChangePasswordForm({ userId, onClose }) {
                                     onChange={e => setNewPassword(e.target.value)}
                                     placeholder="Min 8 characters"
                                     minLength={8}
+                                    maxLength={72}
                                     required
                                     disabled={loading}
                                 />
@@ -208,6 +197,7 @@ export default function ChangePasswordForm({ userId, onClose }) {
                                     onChange={e => setConfirmPassword(e.target.value)}
                                     placeholder="Re-enter new password"
                                     minLength={8}
+                                    maxLength={72}
                                     required
                                     disabled={loading}
                                 />

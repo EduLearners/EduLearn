@@ -371,8 +371,13 @@ export default function NotificationsPage() {
                                                     value={testForm.message}
                                                     onChange={e => setTestForm({ ...testForm, message: e.target.value })}
                                                     rows={3}
+                                                    minLength={3}
+                                                    maxLength={500}
                                                     required
                                                 />
+                                                <div className="form-text text-end">
+                                                    {testForm.message.length}/500
+                                                </div>
                                             </div>
                                             <div className="col-12">
                                                 <label className="form-label fw-bold">

@@ -92,6 +92,13 @@ export default function NewStudentPage() {
         e.preventDefault();
         setError(null);
 
+        // Validate entry term format
+        const termPattern = /^\d{4}-(Spring|Fall|Summer|Winter)$/i;
+        if (form.entryTerm && !termPattern.test(form.entryTerm.trim())) {
+            setError({ message: 'Entry Term must be in format YYYY-Spring, YYYY-Fall, YYYY-Summer, or YYYY-Winter.' });
+            return;
+        }
+
         // FIX: Block submission if DOB fails age requirement
         if (dobInvalid) {
             setError({ message: 'Student must be at least 15 years old.' });

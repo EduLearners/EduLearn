@@ -36,7 +36,7 @@ axiosClient.interceptors.response.use(
         // Don't redirect on auth endpoint failures — those are legitimate 401s
         // (bad password, wrong MFA code, etc.) and should be shown to the user.
         const url = error.config?.url || '';
-        const isAuthEndpoint = url.includes('/auth/');
+        const isAuthEndpoint = url.startsWith('/auth/');
 
         // phase4-fix-13: handle request timeout (ECONNABORTED)
         if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {

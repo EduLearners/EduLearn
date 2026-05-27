@@ -8,7 +8,12 @@ import Loading from '../Loading';
 import StatusBadge from '../StatusBadge';
 import './RoleDashboard.css';
 
-const TERM = '2026-Spring';
+const getCurrentTerm = () => {
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    return month >= 7 ? `${year}-Fall` : `${year}-Spring`;
+};
+const TERM = getCurrentTerm();
 
 export default function InstructorDashboard() {
     const navigate = useNavigate();

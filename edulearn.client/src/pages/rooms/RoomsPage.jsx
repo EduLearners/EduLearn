@@ -74,6 +74,23 @@ export default function RoomsPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFormError(null);
+
+        // Validate building minimum length
+        if (form.building.trim().length < 2) {
+            setFormError({ message: 'Building name must be at least 2 characters.' });
+            return;
+        }
+
+        // Check for duplicate room (same building + room number)
+        const duplicate = rooms.find(
+            r => r.building?.toLowerCase() === form.building.trim().toLowerCase() &&
+                 r.roomNumber?.toLowerCase() === form.roomNumber.trim().toLowerCase()
+        );
+        if (duplicate) {
+            setFormError({ message: `Room ${form.roomNumber} in ${form.building} already exists (Room ID: ${duplicate.roomID}).` });
+            return;
+        }
+
         setSaving(true);
 
         try {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { assessmentService } from '../../services/assessmentService';
 import { authService } from '../../services/authService';
+import axiosClient from '../../api/axiosClient';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
@@ -15,6 +16,7 @@ export default function AssessmentDetailPage() {
     const [submissions, setSubmissions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [myStudentId, setMyStudentId] = useState(null);
 
     const canManage = ['Instructor', 'ITAdmin'].includes(role);
     const isStudent = role === 'Student';
@@ -39,6 +41,14 @@ export default function AssessmentDetailPage() {
                 throw assessmentData.reason;
             }
 
+            // Resolve real StudentID for the logged-in student (UserID !== StudentID)
+            if (isStudent) {
+                try {
+                    const rec = await axiosClient.get('/students/me').then(r => r.data);
+                    if (rec?.studentID) setMyStudentId(String(rec.studentID));
+                } catch { /* non-blocking */ }
+            }
+
             if (submissionsData.status === 'fulfilled') {
                 const allSubmissions = submissionsData.value;
                 if (isStudent) {
@@ -58,8 +68,8 @@ export default function AssessmentDetailPage() {
         }
     };
 
-    const alreadySubmitted = isStudent &&
-        submissions.some(s => String(s.studentID) === String(userId));
+    const alreadySubmitted = isStudent && myStudentId != null &&
+        submissions.some(s => String(s.studentID) === myStudentId);
 
     return (
         <div>

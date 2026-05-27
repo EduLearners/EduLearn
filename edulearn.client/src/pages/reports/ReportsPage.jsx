@@ -44,6 +44,16 @@ export default function ReportsPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+
+        // Validate JSON parameters if provided
+        if (form.parametersJSON && form.parametersJSON.trim()) {
+            try { JSON.parse(form.parametersJSON); }
+            catch {
+                setError({ message: 'Parameters must be valid JSON, e.g. {"courseId": 1}' });
+                return;
+            }
+        }
+
         setGenerating(true);
         try {
             const payload = {

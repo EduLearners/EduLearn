@@ -8,7 +8,7 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import ModalPortal from '../../components/ModalPortal';
 
 export default function TranscriptsPage() {
-    const [studentId, setStudentId] = useState(() => localStorage.getItem('lastStudentId') || '');
+    const [studentId, setStudentId] = useState(() => localStorage.getItem('transcripts_lastStudentId') || '');
     const [transcripts, setTranscripts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -40,7 +40,7 @@ export default function TranscriptsPage() {
             setError(null);
             const data = await transcriptService.getByStudent(studentId);
             setTranscripts(data || []);
-            localStorage.setItem('lastStudentId', studentId);
+            localStorage.setItem('transcripts_lastStudentId', studentId);
         } catch (err) {
             setError(err);
             setTranscripts([]);
@@ -322,6 +322,7 @@ export default function TranscriptsPage() {
                 onCancel={() => setGenerateConfirm(false)}
                 confirmText="Generate Draft"
                 confirmVariant="primary"
+                loading={actionInProgress === 'generate'}
             />
 
             {/* Issue confirmation */}
@@ -338,6 +339,7 @@ export default function TranscriptsPage() {
                 onCancel={() => setPublishConfirm(null)}
                 confirmText="Issue"
                 confirmVariant="success"
+                loading={!!actionInProgress}
             />
 
             {/* Detail Modal */}

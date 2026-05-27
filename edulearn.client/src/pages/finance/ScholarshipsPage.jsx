@@ -4,8 +4,10 @@ import { authService } from '../../services/authService';
 import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import StatusBadge from '../../components/StatusBadge';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
-const SCHOLARSHIP_STATUSES = ['Active', 'Suspended', 'Revoked', 'Expired'];
+// Expired is system-set (auto when ValidTo passes) — not user-selectable
+const SCHOLARSHIP_STATUSES = ['Active', 'Suspended', 'Revoked'];
 
 export default function ScholarshipsPage() {
     const { role } = authService.getCurrentUser();
@@ -27,10 +29,9 @@ export default function ScholarshipsPage() {
         validTo: '',
     });
 
-    const [statusUpdate, setStatusUpdate] = useState({
-        id: null,
-        status: '',
-    });
+    // Confirmation state for status change
+    const [statusConfirm, setStatusConfirm] = useState(null); // { id, newStatus, currentScholar }
+    const [statusSaving, setStatusSaving] = useState(false);
 
     const canManage = ['Finance', 'ITAdmin'].includes(role);
 
@@ -56,6 +57,11 @@ export default function ScholarshipsPage() {
             setError({ message: 'Valid From date must be before Valid To date.' });
             return;
         }
+        // Warn if ValidTo is already in the past
+        if (form.validTo && new Date(form.validTo) < new Date()) {
+            setError({ message: '"Valid To" date is already in the past. The scholarship will be expired immediately upon creation.' });
+            return;
+        }
         setSaving(true);
         try {
             await scholarshipService.create({
@@ -79,16 +85,30 @@ export default function ScholarshipsPage() {
         }
     };
 
-    const handleStatusUpdate = async (id, newStatus) => {
+    const handleStatusUpdate = async () => {
+        if (!statusConfirm) return;
+        const { id, newStatus, currentScholar } = statusConfirm;
+        setStatusConfirm(null);
+        setStatusSaving(true);
         setError(null);
         try {
-            const updated = await scholarshipService.update(id, { status: newStatus });
+            // Send full object to avoid partial-update wiping fields
+            const updated = await scholarshipService.update(id, {
+                studentID: currentScholar.studentID,
+                awardType: currentScholar.awardType,
+                amount: currentScholar.amount,
+                validFrom: currentScholar.validFrom,
+                validTo: currentScholar.validTo,
+                status: newStatus,
+            });
             setScholarships(prev =>
                 prev.map(s => s.scholarID === updated.scholarID ? updated : s)
             );
             setSuccess(`Scholarship status updated to ${newStatus}.`);
         } catch (err) {
             setError(err);
+        } finally {
+            setStatusSaving(false);
         }
     };
 
@@ -206,11 +226,15 @@ export default function ScholarshipsPage() {
                                         <td><StatusBadge status={s.status} /></td>
                                         {canManage && (
                                             <td>
-                                                {s.status !== 'Revoked' && (
+                                                {s.status !== 'Revoked' && s.status !== 'Expired' && (
                                                     <select
                                                         className="form-select form-select-sm"
                                                         value={s.status}
-                                                        onChange={e => handleStatusUpdate(s.scholarID, e.target.value)}
+                                                        onChange={e => {
+                                                            const newStatus = e.target.value;
+                                                            if (newStatus === s.status) return;
+                                                            setStatusConfirm({ id: s.scholarID, newStatus, currentScholar: s });
+                                                        }}
                                                         style={{ width: 130 }}
                                                     >
                                                         {SCHOLARSHIP_STATUSES.map(st => (
@@ -218,8 +242,10 @@ export default function ScholarshipsPage() {
                                                         ))}
                                                     </select>
                                                 )}
-                                                {s.status === 'Revoked' && (
-                                                    <span className="text-muted small">Terminal</span>
+                                                {(s.status === 'Revoked' || s.status === 'Expired') && (
+                                                    <span className="text-muted small fst-italic">
+                                                        {s.status === 'Revoked' ? 'Revoked (terminal)' : 'Expired (system)'}
+                                                    </span>
                                                 )}
                                             </td>
                                         )}
@@ -355,6 +381,27 @@ export default function ScholarshipsPage() {
                     </div>
                 </ModalPortal>
             )}
+        </div>
+
+            {/* Status change confirmation */}
+            <ConfirmDialog
+                show={!!statusConfirm}
+                title={
+                    statusConfirm?.newStatus === 'Revoked'
+                        ? 'Revoke Scholarship?'
+                        : `Change Status to ${statusConfirm?.newStatus}?`
+                }
+                message={
+                    statusConfirm?.newStatus === 'Revoked'
+                        ? 'Revoking a scholarship is permanent and cannot be undone. The student will lose this award immediately. Are you sure?'
+                        : `Change this scholarship status from ${statusConfirm?.currentScholar?.status} to ${statusConfirm?.newStatus}?`
+                }
+                confirmText={statusConfirm?.newStatus === 'Revoked' ? 'Yes, Revoke' : 'Confirm'}
+                confirmVariant={statusConfirm?.newStatus === 'Revoked' ? 'danger' : 'primary'}
+                onConfirm={handleStatusUpdate}
+                onCancel={() => setStatusConfirm(null)}
+                loading={statusSaving}
+            />
         </div>
     );
 }

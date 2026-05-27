@@ -12,6 +12,7 @@ export default function CourseDetailPage() {
     const { role } = authService.getCurrentUser();
 
     const [course, setCourse] = useState(null);
+    const [prereqCourses, setPrereqCourses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -28,6 +29,24 @@ export default function CourseDetailPage() {
             setError(null);
             const data = await courseService.getById(id);
             setCourse(data);
+            // Resolve prerequisite IDs to course names
+            if (data.prerequisitesJSON) {
+                try {
+                    const parsed = JSON.parse(data.prerequisitesJSON);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        const ids = parsed.map(item =>
+                            typeof item === 'number' ? item
+                            : typeof item === 'object' ? (item.courseId ?? item.courseID ?? null)
+                            : null
+                        ).filter(Boolean);
+                        const results = await Promise.allSettled(ids.map(cid => courseService.getById(cid).catch(() => null)));
+                        const resolved = results
+                            .filter(r => r.status === 'fulfilled' && r.value)
+                            .map(r => r.value);
+                        setPrereqCourses(resolved);
+                    }
+                } catch { /* malformed JSON — show nothing */ }
+            }
         } catch (err) {
             setError(err);
         } finally {
@@ -111,10 +130,22 @@ export default function CourseDetailPage() {
                                 {course.prerequisitesJSON && (
                                     <div className="col-12">
                                         <dt className="text-muted small text-uppercase mb-1">Prerequisites</dt>
-                                        <div className="p-3 bg-light rounded">
-                                            <pre className="mb-0" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                                {course.prerequisitesJSON}
-                                            </pre>
+                                        <div className="d-flex gap-2 flex-wrap mt-1">
+                                            {prereqCourses.length > 0
+                                                ? prereqCourses.map(c => (
+                                                    <span
+                                                        key={c.courseID}
+                                                        className="badge bg-light text-dark border"
+                                                        style={{ cursor: 'pointer', fontSize: 13, padding: '6px 10px' }}
+                                                        onClick={() => navigate(`/courses/${c.courseID}`)}
+                                                        title="Click to view course"
+                                                    >
+                                                        <i className="bi bi-book me-1"></i>
+                                                        {c.code} — {c.title}
+                                                    </span>
+                                                ))
+                                                : <span className="text-muted small">None assigned</span>
+                                            }
                                         </div>
                                     </div>
                                 )}
@@ -130,15 +161,21 @@ export default function CourseDetailPage() {
                             <div className="d-flex gap-2 flex-wrap">
                                 <button
                                     className="btn btn-outline-primary"
-                                    onClick={() => navigate('/assessments')}
+                                    onClick={() => navigate(`/assessments?courseId=${id}`)}
                                 >
                                     <i className="bi bi-file-earmark-text me-2"></i>View Assessments
                                 </button>
                                 <button
                                     className="btn btn-outline-primary"
-                                    onClick={() => navigate('/contents')}
+                                    onClick={() => navigate(`/contents?courseId=${id}`)}
                                 >
                                     <i className="bi bi-collection-play me-2"></i>View Contents
+                                </button>
+                                <button
+                                    className="btn btn-outline-primary"
+                                    onClick={() => navigate(`/discussions?courseId=${id}`)}
+                                >
+                                    <i className="bi bi-chat-square-text me-2"></i>Discussions
                                 </button>
                                 {canManage && (
                                     <button

@@ -58,10 +58,10 @@ export default function GradePage() {
         setError(null);
         setSuccess('');
 
-        // AC-3: JS bounds check (browser min/max can be bypassed)
-        const numScore = Number(score);
+        // Robust bounds check — guards against floating point edge cases
+        const numScore = Math.round(Number(score) * 100) / 100;
         const maxAllowed = submission.maxScore ?? assessment?.maxScore ?? 9999;
-        if (numScore < 0 || numScore > maxAllowed) {
+        if (isNaN(numScore) || numScore < 0 || numScore > maxAllowed + 0.001) {
             setError({ message: `Score must be between 0 and ${maxAllowed}.` });
             return;
         }

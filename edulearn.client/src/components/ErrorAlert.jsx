@@ -5,10 +5,10 @@ export default function ErrorAlert({ error, onDismiss }) {
         ? error
         : error.response?.data?.error || error.message || 'An error occurred';
 
-    // In Development mode the API also returns `detail` (the real exception message)
-    // and `exceptionType`. Show them so issues are visible directly in the UI.
-    const detail = typeof error !== 'string' ? error.response?.data?.detail : null;
-    const exceptionType = typeof error !== 'string' ? error.response?.data?.exceptionType : null;
+    // Only show raw exception detail in development — never in production
+    const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
+    const detail = isDev && typeof error !== 'string' ? error.response?.data?.detail : null;
+    const exceptionType = isDev && typeof error !== 'string' ? error.response?.data?.exceptionType : null;
 
     return (
         <div className="alert alert-danger" role="alert">

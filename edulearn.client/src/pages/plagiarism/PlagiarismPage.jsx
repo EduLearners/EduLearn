@@ -13,7 +13,7 @@ const emptyFlagForm = {
 };
 
 export default function PlagiarismPage() {
-    const [studentId, setStudentId] = useState(() => localStorage.getItem('lastStudentId') || '');
+    const [studentId, setStudentId] = useState(() => localStorage.getItem('plagiarism_lastStudentId') || '');
     const [integrity, setIntegrity] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -50,7 +50,7 @@ export default function PlagiarismPage() {
             setError(null);
             const data = await plagiarismService.getStudentIntegrity(studentId);
             setIntegrity(data);
-            localStorage.setItem('lastStudentId', studentId);
+            localStorage.setItem('plagiarism_lastStudentId', studentId);
         } catch (err) {
             setError(err);
             setIntegrity(null);
@@ -395,6 +395,7 @@ export default function PlagiarismPage() {
                 onCancel={() => setStatusConfirm(null)}
                 confirmText={statusConfirm?.newStatus === 'Confirmed' ? 'Confirm Violation' : 'Dismiss'}
                 confirmVariant={statusConfirm?.newStatus === 'Confirmed' ? 'danger' : 'secondary'}
+                loading={!!updatingReportId}
             />
 
             {/* Flag Submission Modal */}

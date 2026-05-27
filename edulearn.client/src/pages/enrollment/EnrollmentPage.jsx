@@ -30,7 +30,11 @@ export default function EnrollmentPage() {
 
     // Search filters
     const [courseId, setCourseId] = useState('');
-    const [term, setTerm] = useState('2026-Spring');
+    const [term, setTerm] = useState(() => {
+        const month = new Date().getMonth() + 1;
+        const year = new Date().getFullYear();
+        return month >= 7 ? `${year}-Fall` : `${year}-Spring`;
+    });
     const [studentId, setStudentId] = useState('');
 
     // Sections list
@@ -74,9 +78,9 @@ export default function EnrollmentPage() {
 
         if (urlStudentId) {
             setStudentId(urlStudentId);
-            localStorage.setItem('lastStudentId', urlStudentId);
+            localStorage.setItem('enrollment_lastStudentId', urlStudentId);
         } else {
-            const stored = localStorage.getItem('lastStudentId');
+            const stored = localStorage.getItem('enrollment_lastStudentId');
             if (stored) setStudentId(stored);
         }
 
@@ -212,7 +216,7 @@ export default function EnrollmentPage() {
             setEnrollmentsError(null);
             const data = await enrollmentService.getByStudent(studentId);
             setEnrollments(data || []);
-            localStorage.setItem('lastStudentId', studentId);
+            localStorage.setItem('enrollment_lastStudentId', studentId);
         } catch (err) {
             setEnrollmentsError(err);
             setEnrollments([]);
@@ -658,6 +662,7 @@ export default function EnrollmentPage() {
                 onCancel={() => setDropConfirm(null)}
                 confirmText="Drop Enrollment"
                 confirmVariant="danger"
+                loading={actionInProgress === 'drop-' + dropConfirm?.enrollID}
             />
 
             {/* Roster modal */}

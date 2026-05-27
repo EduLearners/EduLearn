@@ -73,6 +73,11 @@ export default function ContentsPage() {
                 all = all.filter(c => String(c.uploadedByFK) === String(userId));
             }
 
+            // Student: only show Published/Active content (hide Draft and Archived)
+            if (isStudent) {
+                all = all.filter(c => c.status === 'Published' || c.status === 'Active');
+            }
+
             setContents(all);
         } catch (err) {
             setError(err);

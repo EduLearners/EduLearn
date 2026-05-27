@@ -11,7 +11,12 @@ import StatusBadge from '../StatusBadge';
 import axiosClient from '../../api/axiosClient';
 import './ITAdminDashboard.css';
 
-const TERM = '2026-Spring';
+const getCurrentTerm = () => {
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    return month >= 7 ? `${year}-Fall` : `${year}-Spring`;
+};
+const TERM = getCurrentTerm();
 
 const ALL_ROLES = ['Student', 'Instructor', 'Registrar', 'DeptAdmin', 'Finance', 'ITAdmin', 'Auditor'];
 

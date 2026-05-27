@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ticketService } from '../../services/ticketService';
+import { userService } from '../../services/userService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -16,6 +17,7 @@ const PRIORITY_VARIANT = {
 };
 
 // Role-specific issue categories
+// ITAdmin and Auditor get a generic fallback set so they always have a category to pick
 const ROLE_CATEGORIES = {
     Student: [
         'Enrollment not reflecting',
@@ -59,6 +61,13 @@ const ROLE_CATEGORIES = {
         'Grade change not in audit',
         'User activity not logged',
     ],
+    ITAdmin: [
+        'System configuration issue',
+        'User access problem',
+        'Integration failure',
+        'Performance issue',
+        'Data inconsistency',
+    ],
 };
 
 // Parse category from subject string: "[Category] Subject"
@@ -90,10 +99,29 @@ export default function TicketsPage() {
     const categories = ROLE_CATEGORIES[role] || [];
 
     const [assignForm, setAssignForm] = useState({ assignedToUserId: '' });
+    const [itAdminUsers, setItAdminUsers] = useState([]);
+    const [loadingAdmins, setLoadingAdmins] = useState(false);
     const [resolveForm, setResolveForm] = useState({
         resolutionURI: '',
         resolutionNote: '',
     });
+
+    const openAssignModal = async () => {
+        setAssignForm({ assignedToUserId: '' });
+        setShowAssign(true);
+        // Load ITAdmin users for the dropdown
+        if (itAdminUsers.length === 0) {
+            setLoadingAdmins(true);
+            try {
+                const admins = await userService.getByRole('ITAdmin');
+                setItAdminUsers(admins || []);
+            } catch {
+                setItAdminUsers([]);
+            } finally {
+                setLoadingAdmins(false);
+            }
+        }
+    };
 
     const isITAdmin = role === 'ITAdmin';
 
@@ -162,6 +190,14 @@ export default function TicketsPage() {
     const handleResolve = async (e) => {
         e.preventDefault();
         setError(null);
+
+        // Validate resolution URI if provided
+        if (resolveForm.resolutionURI && resolveForm.resolutionURI.trim() &&
+            !/^https?:\/\/.+/.test(resolveForm.resolutionURI.trim())) {
+            setError({ message: 'Resolution URI must be a valid URL starting with https://' });
+            return;
+        }
+
         setSaving(true);
         try {
             const updated = await ticketService.resolve(selected.ticketID, resolveForm);
@@ -276,10 +312,7 @@ export default function TicketsPage() {
                                         {isITAdmin && selected.status === 'Open' && (
                                             <button
                                                 className="btn btn-light btn-sm"
-                                                onClick={() => {
-                                                    setAssignForm({ assignedToUserId: '' });
-                                                    setShowAssign(true);
-                                                }}
+                                                onClick={openAssignModal}
                                             >
                                                 <i className="bi bi-person-check me-1"></i>Assign
                                             </button>
@@ -516,19 +549,34 @@ export default function TicketsPage() {
                                         <div className="row g-3">
                                             <div className="col-12">
                                                 <label className="form-label fw-bold">
-                                                    Assign To (ITAdmin User ID) <span className="text-danger">*</span>
+                                                    Assign To (ITAdmin) <span className="text-danger">*</span>
                                                 </label>
-                                                <input
-                                                    type="number"
-                                                    className="form-control"
-                                                    value={assignForm.assignedToUserId}
-                                                    onChange={e => setAssignForm({ assignedToUserId: e.target.value })}
-                                                    placeholder="Enter ITAdmin UserID..."
-                                                    required
-                                                />
-                                                <div className="form-text">
-                                                    Must be a user with ITAdmin role.
-                                                </div>
+                                                {loadingAdmins ? (
+                                                    <div className="d-flex align-items-center gap-2 text-muted">
+                                                        <span className="spinner-border spinner-border-sm"></span>
+                                                        <small>Loading ITAdmin users...</small>
+                                                    </div>
+                                                ) : (
+                                                    <select
+                                                        className="form-select"
+                                                        value={assignForm.assignedToUserId}
+                                                        onChange={e => setAssignForm({ assignedToUserId: e.target.value })}
+                                                        required
+                                                    >
+                                                        <option value="">— Select an ITAdmin —</option>
+                                                        {itAdminUsers.map(u => (
+                                                            <option key={u.userID} value={u.userID}>
+                                                                {u.fullName} ({u.username})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                )}
+                                                {!loadingAdmins && itAdminUsers.length === 0 && (
+                                                    <small className="text-warning mt-1 d-block">
+                                                        <i className="bi bi-exclamation-triangle me-1"></i>
+                                                        No ITAdmin users found.
+                                                    </small>
+                                                )}
                                             </div>
                                         </div>
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
@@ -599,11 +647,11 @@ export default function TicketsPage() {
                                                         <i className="bi bi-link-45deg"></i>
                                                     </span>
                                                     <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        value={resolveForm.resolutionURI}
-                                                        onChange={e => setResolveForm({ ...resolveForm, resolutionURI: e.target.value })}
-                                                        placeholder="https://..."
+                                                    type="url"
+                                                    className="form-control"
+                                                    value={resolveForm.resolutionURI}
+                                                    onChange={e => setResolveForm({ ...resolveForm, resolutionURI: e.target.value })}
+                                                    placeholder="https://..."
                                                     />
                                                 </div>
                                             </div>

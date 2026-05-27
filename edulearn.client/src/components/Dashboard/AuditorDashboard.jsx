@@ -8,7 +8,12 @@ import { ticketService } from '../../services/ticketService';
 import Loading from '../Loading';
 import './RoleDashboard.css';
 
-const TERM = '2026-Spring';
+const getCurrentTerm = () => {
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    return month >= 7 ? `${year}-Fall` : `${year}-Spring`;
+};
+const TERM = getCurrentTerm();
 
 const QUICK_ACTIONS = [
     { label: 'Audit Log',      icon: 'bi-journal-text',           path: '/audit-log'     },

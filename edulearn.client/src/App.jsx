@@ -75,6 +75,9 @@ import PaymentsPage from './pages/finance/PaymentsPage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import TicketsPage from './pages/notifications/TicketsPage';
 
+// AGI-04 — Plagiarism
+import PlagiarismPage from './pages/plagiarism/PlagiarismPage';
+
 // IAM — User Management (ITAdmin)
 import UsersPage from './pages/users/UsersPage';
 import UserDetailPage from './pages/users/UserDetailPage';
@@ -171,6 +174,18 @@ export default function App() {
                     {/* IAM — User Management (ITAdmin) */}
                     <Route path="/users" element={<UsersPage />} />
                     <Route path="/users/:id" element={<UserDetailPage />} />
+
+                    {/* Plagiarism */}
+                    <Route path="/plagiarism" element={<PlagiarismPage />} />
+
+                    {/* Registrar alias routes — sidebar and buttons use /registrar/* */}
+                    <Route path="/registrar/students" element={<StudentsPage />} />
+                    <Route path="/registrar/students/new" element={<NewStudentPage />} />
+                    <Route path="/registrar/students/:id" element={<StudentDetailPage />} />
+
+                    {/* Admin alias routes */}
+                    <Route path="/admin/users" element={<UsersPage />} />
+                    <Route path="/admin/users/:id" element={<UserDetailPage />} />
 
                 </Route>
 

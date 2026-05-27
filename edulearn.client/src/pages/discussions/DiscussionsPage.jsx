@@ -231,6 +231,8 @@ export default function DiscussionsPage() {
                                                 value={newThread.title}
                                                 onChange={e => setNewThread({ ...newThread, title: e.target.value })}
                                                 placeholder="Thread title..."
+                                                minLength={3}
+                                                maxLength={200}
                                                 required
                                             />
                                         </div>
@@ -370,13 +372,14 @@ export default function DiscussionsPage() {
                                         <form onSubmit={handleReply}>
                                             <div className="input-group">
                                                 <textarea
-                                                    className="form-control"
-                                                    value={replyText}
-                                                    onChange={e => setReplyText(e.target.value)}
-                                                    rows={2}
-                                                    placeholder="Write a reply..."
+                                                className="form-control"
+                                                value={replyText}
+                                                onChange={e => setReplyText(e.target.value)}
+                                                rows={2}
+                                                placeholder="Write a reply..."
+                                                maxLength={2000}
                                                     required
-                                                />
+                                            />
                                                 <button
                                                     type="submit"
                                                     className="btn btn-primary-edulearn"

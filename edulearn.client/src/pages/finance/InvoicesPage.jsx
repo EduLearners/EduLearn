@@ -164,6 +164,18 @@ export default function InvoicesPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+
+        // Validate payment amount does not exceed remaining balance
+        if (selected) {
+            const allPay = await paymentService.getByInvoice(selected.invoiceID).catch(() => []);
+            const paid = allPay.filter(p => p.status === 'Completed').reduce((s, p) => s + Number(p.amount), 0);
+            const remaining = Math.max(0, Number(selected.amountDue) - paid);
+            if (Number(payForm.amount) > remaining + 0.01) {
+                setError({ message: `Payment amount (₹${Number(payForm.amount).toFixed(2)}) exceeds remaining balance (₹${remaining.toFixed(2)}).` });
+                return;
+            }
+        }
+
         setSaving(true);
         try {
             await paymentService.create({

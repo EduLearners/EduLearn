@@ -33,6 +33,12 @@ const emptyForm = {
     scheduleTime: '10:00-11:00',
 };
 
+const getCurrentTerm = () => {
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    return month >= 7 ? `${year}-Fall` : `${year}-Spring`;
+};
+
 export default function SectionsPage() {
     const navigate = useNavigate();
 
@@ -41,7 +47,7 @@ export default function SectionsPage() {
     const [rooms, setRooms] = useState([]);
 
     const [filterCourseId, setFilterCourseId] = useState('');
-    const [filterTerm, setFilterTerm] = useState('2026-Spring');
+    const [filterTerm, setFilterTerm] = useState(getCurrentTerm());
 
     const [sections, setSections] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -168,6 +174,13 @@ export default function SectionsPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFormError(null);
+
+        // Validate term format (e.g. 2026-Spring or 2026-Fall)
+        const termPattern = /^\d{4}-(Spring|Fall|Summer|Winter)$/i;
+        if (!termPattern.test(form.term.trim())) {
+            setFormError({ message: 'Term must be in format YYYY-Spring, YYYY-Fall, YYYY-Summer, or YYYY-Winter (e.g. 2026-Spring).' });
+            return;
+        }
 
         // FIX: Validate time range before saving
         if (form.scheduleTime && !validateTimeRange(form.scheduleTime)) {

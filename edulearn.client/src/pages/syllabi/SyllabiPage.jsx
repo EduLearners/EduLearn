@@ -135,6 +135,31 @@ export default function SyllabiPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+
+        // Validate syllabus URI
+        if (form.syllabusURI && form.syllabusURI.trim() && !/^https?:\/\/.+/.test(form.syllabusURI.trim())) {
+            setError({ message: 'Syllabus URI must be a valid URL starting with https://' });
+            return;
+        }
+        // Validate learning outcomes JSON
+        if (form.learningOutcomesJSON && form.learningOutcomesJSON.trim()) {
+            try { JSON.parse(form.learningOutcomesJSON); }
+            catch { setError({ message: 'Learning Outcomes must be valid JSON.' }); return; }
+        }
+        // Validate assessment plan JSON
+        if (form.assessmentPlanJSON && form.assessmentPlanJSON.trim()) {
+            try { JSON.parse(form.assessmentPlanJSON); }
+            catch { setError({ message: 'Assessment Plan must be valid JSON.' }); return; }
+        }
+        // Validate version uniqueness
+        if (!editingId) {
+            const duplicate = syllabi.find(s => s.version?.trim().toLowerCase() === form.version?.trim().toLowerCase());
+            if (duplicate) {
+                setError({ message: `Version '${form.version}' already exists for this course. Please use a different version.` });
+                return;
+            }
+        }
+
         setSaving(true);
         try {
             const payload = {
@@ -333,14 +358,27 @@ export default function SyllabiPage() {
                                             <label className="form-label text-muted small text-uppercase">
                                                 Learning Outcomes
                                             </label>
-                                            <div className="p-3 bg-light rounded">
-                                                <pre
-                                                    className="mb-0 small"
-                                                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                                                >
-                                                    {selected.learningOutcomesJSON}
-                                                </pre>
-                                            </div>
+                                            {(() => {
+                                                try {
+                                                    const items = JSON.parse(selected.learningOutcomesJSON);
+                                                    if (Array.isArray(items) && items.length > 0) {
+                                                        return (
+                                                            <ul className="mb-0 ps-3">
+                                                                {items.map((item, idx) => (
+                                                                    <li key={idx} className="mb-1">{String(item)}</li>
+                                                                ))}
+                                                            </ul>
+                                                        );
+                                                    }
+                                                } catch { /* fallthrough */ }
+                                                return (
+                                                    <div className="p-3 bg-light rounded">
+                                                        <pre className="mb-0 small" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                            {selected.learningOutcomesJSON}
+                                                        </pre>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     )}
 
@@ -349,14 +387,31 @@ export default function SyllabiPage() {
                                             <label className="form-label text-muted small text-uppercase">
                                                 Assessment Plan
                                             </label>
-                                            <div className="p-3 bg-light rounded">
-                                                <pre
-                                                    className="mb-0 small"
-                                                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                                                >
-                                                    {selected.assessmentPlanJSON}
-                                                </pre>
-                                            </div>
+                                            {(() => {
+                                                try {
+                                                    const items = JSON.parse(selected.assessmentPlanJSON);
+                                                    if (Array.isArray(items) && items.length > 0) {
+                                                        return (
+                                                            <ul className="mb-0 ps-3">
+                                                                {items.map((item, idx) => (
+                                                                    <li key={idx} className="mb-1">
+                                                                        {typeof item === 'object'
+                                                                            ? Object.entries(item).map(([k, v]) => `${k}: ${v}`).join(' • ')
+                                                                            : String(item)}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        );
+                                                    }
+                                                } catch { /* fallthrough */ }
+                                                return (
+                                                    <div className="p-3 bg-light rounded">
+                                                        <pre className="mb-0 small" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                            {selected.assessmentPlanJSON}
+                                                        </pre>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     )}
                                 </div>
@@ -421,8 +476,11 @@ export default function SyllabiPage() {
                                                     value={form.version}
                                                     onChange={e => setForm({ ...form, version: e.target.value })}
                                                     placeholder="e.g. v1.0"
+                                                    minLength={2}
+                                                    maxLength={20}
                                                     required
                                                 />
+                                                <div className="form-text">Minimum 2 characters, e.g. v1, v1.0</div>
                                             </div>
 
                                             {/* Syllabus URI */}
@@ -438,11 +496,11 @@ export default function SyllabiPage() {
                                                         <i className="bi bi-link-45deg"></i>
                                                     </span>
                                                     <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        value={form.syllabusURI}
-                                                        onChange={e => setForm({ ...form, syllabusURI: e.target.value })}
-                                                        placeholder="https://..."
+                                                    type="url"
+                                                    className="form-control"
+                                                    value={form.syllabusURI}
+                                                    onChange={e => setForm({ ...form, syllabusURI: e.target.value })}
+                                                    placeholder="https://..."
                                                     />
                                                 </div>
                                             </div>

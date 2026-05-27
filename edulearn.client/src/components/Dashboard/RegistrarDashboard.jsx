@@ -14,7 +14,12 @@ import ModalPortal from '../ModalPortal';
 import axiosClient from '../../api/axiosClient';
 import './RoleDashboard.css';
 
-const TERM = '2026-Spring';
+const getCurrentTerm = () => {
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    return month >= 7 ? `${year}-Fall` : `${year}-Spring`;
+};
+const TERM = getCurrentTerm();
 
 const QUICK_ACTIONS = [
     { label: 'New Applicant',  icon: 'bi-person-plus',        path: '/applicants/new' },
@@ -35,7 +40,7 @@ const STAT_CARDS = [
     { key: 'transcripts', label: 'Transcripts',      sub: (s) => `${s.publishedTranscripts ?? 0} issued`,     icon: 'bi-file-earmark-text', accent: '#854F0B', iconBg: '#fef3c7', iconColor: '#854F0B', path: '/transcripts' },
 ];
 
-const EMPTY_USER_FORM = { username: '', fullName: '', email: '', phone: '', password: '', sendInvite: true };
+const EMPTY_USER_FORM = { username: '', fullName: '', email: '', phone: '', password: '', confirmPassword: '', sendInvite: true };
 
 export default function RegistrarDashboard() {
     const navigate = useNavigate();
@@ -125,6 +130,13 @@ export default function RegistrarDashboard() {
         setCreateError(null);
         setCreateSuccess('');
         setCreatedUser(null);
+
+        // Validate passwords match
+        if (userForm.password !== userForm.confirmPassword) {
+            setCreateError({ message: 'Passwords do not match. Please re-enter.' });
+            return;
+        }
+
         setCreating(true);
         try {
             const { data } = await axiosClient.post('/auth/register', {
@@ -250,7 +262,7 @@ export default function RegistrarDashboard() {
                             <button className="rd-qa-btn" style={{ gridColumn: '1 / -1', background: '#e8f0fc', borderColor: '#185FA5', color: '#185FA5' }} onClick={openCreateUser}>
                                 <i className="bi bi-person-plus"></i>Step 1 — Create Student User
                             </button>
-                            <button className="rd-qa-btn" style={{ gridColumn: '1 / -1' }} onClick={() => navigate('/students/new')}>
+                            <button className="rd-qa-btn" style={{ gridColumn: '1 / -1' }} onClick={() => navigate('/registrar/students/new')}>
                                 <i className="bi bi-person-check"></i>Step 2 — Create Student Record
                             </button>
                             {QUICK_ACTIONS.map((a) => (
@@ -309,8 +321,23 @@ export default function RegistrarDashboard() {
                                                 <input type="password" className="form-control" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} placeholder="Min 8 characters" minLength={8} required disabled={creating} />
                                             </div>
                                             <div className="col-md-6">
-                                                <label className="form-label fw-bold">Role</label>
-                                                <input type="text" className="form-control bg-light" value="Student (enforced by backend)" readOnly />
+                                                <label className="form-label fw-bold">Confirm Password <span className="text-danger">*</span></label>
+                                                <input
+                                                    type="password"
+                                                    className={`form-control ${userForm.confirmPassword && userForm.password !== userForm.confirmPassword ? 'is-invalid' : ''}`}
+                                                    value={userForm.confirmPassword}
+                                                    onChange={e => setUserForm({ ...userForm, confirmPassword: e.target.value })}
+                                                    placeholder="Re-enter password"
+                                                    minLength={8}
+                                                    required
+                                                    disabled={creating}
+                                                />
+                                                {userForm.confirmPassword && userForm.password !== userForm.confirmPassword && (
+                                                    <div className="invalid-feedback">Passwords do not match.</div>
+                                                )}
+                                                {userForm.confirmPassword && userForm.password === userForm.confirmPassword && (
+                                                    <div className="form-text text-success"><i className="bi bi-check-circle me-1"></i>Passwords match</div>
+                                                )}
                                             </div>
                                             <div className="col-12">
                                                 <div className="p-3 bg-light rounded d-flex align-items-start gap-3">
@@ -329,11 +356,11 @@ export default function RegistrarDashboard() {
                                             {createdUser ? 'Close' : 'Cancel'}
                                         </button>
                                         {createdUser ? (
-                                            <button type="button" className="btn btn-success" onClick={() => { setShowCreateUser(false); navigate('/students/new'); }}>
+                                            <button type="button" className="btn btn-success" onClick={() => { setShowCreateUser(false); navigate('/registrar/students/new'); }}>
                                                 <i className="bi bi-arrow-right me-2"></i>Go to Create Student Record
                                             </button>
                                         ) : (
-                                            <button type="submit" className="btn btn-primary-edulearn" disabled={creating}>
+                                            <button type="submit" className="btn btn-primary-edulearn" disabled={creating || (userForm.password !== userForm.confirmPassword)}>
                                                 {creating ? <><span className="spinner-border spinner-border-sm me-2"></span>Creating...</> : <><i className="bi bi-check-lg me-2"></i>Create Student User</>}
                                             </button>
                                         )}

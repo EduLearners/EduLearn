@@ -355,11 +355,11 @@ export default function ProfilePage() {
                         <div className="card-body">
                             <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
                                 <div>
-                                    <h6 className="mb-1 fw-bold">Reset Password</h6>
-                                    <p className="text-muted small mb-0">Receive a password reset link on your registered email address.</p>
+                                    <h6 className="mb-1 fw-bold">Change Password</h6>
+                                    <p className="text-muted small mb-0">Change your current account password directly.</p>
                                 </div>
                                 <button className="btn btn-outline-primary btn-sm" onClick={() => setShowChangePassword(true)}>
-                                    <i className="bi bi-key me-2"></i>Reset Password
+                                    <i className="bi bi-key me-2"></i>Change Password
                                 </button>
                             </div>
 
@@ -417,6 +417,7 @@ export default function ProfilePage() {
                 confirmVariant={profile?.mfaEnabled ? 'danger' : 'success'}
                 onConfirm={handleMfaToggle}
                 onCancel={() => setMfaConfirm(false)}
+                loading={mfaLoading}
             />
 
             {/* MFA Re-enable Setup Modal */}
