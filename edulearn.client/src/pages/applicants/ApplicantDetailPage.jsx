@@ -92,6 +92,13 @@ export default function ApplicantDetailPage() {
     const handleCreateUser = async (e) => {
         e.preventDefault();
         setCreateError(null);
+        if (userForm.phone.length > 0) {
+            const digits = userForm.phone.replace(/\D/g, '');
+            if (digits.length !== 10) {
+                setCreateError({ message: 'Phone number must be exactly 10 digits.' });
+                return;
+            }
+        }
         setCreating(true);
 
         try {
@@ -477,13 +484,19 @@ export default function ApplicantDetailPage() {
                                                     <label className="form-label fw-bold">Phone</label>
                                                     <input
                                                         type="text"
-                                                        className="form-control"
+                                                        className={`form-control ${userForm.phone.length > 0 && userForm.phone.replace(/\D/g, '').length !== 10 ? 'is-invalid' : ''}`}
                                                         value={userForm.phone}
                                                         onChange={e => setUserForm({ ...userForm, phone: e.target.value })}
-                                                        placeholder="e.g. +91-9876543210"
-                                                        maxLength={20}
+                                                        placeholder="9876543210"
+                                                        maxLength={15}
                                                         autoComplete="off"
                                                     />
+                                                    {userForm.phone.length > 0 && userForm.phone.replace(/\D/g, '').length !== 10 && (
+                                                        <div className="invalid-feedback">
+                                                            <i className="bi bi-exclamation-circle me-1"></i>
+                                                            Phone must be exactly 10 digits.
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <div className="col-md-6">

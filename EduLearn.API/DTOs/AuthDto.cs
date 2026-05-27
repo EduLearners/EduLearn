@@ -42,10 +42,12 @@ public class LoginDto
     //[Required]
     //public string Password { get; set; } = string.Empty;
     [Required]
+    [MaxLength(256)]
     public string UsernameOrEmail { get; set; } = string.Empty;
 
     // AUTH CHANGE: Plain text password — BCrypt.Verify compares with stored hash
     [Required]
+    [MaxLength(256)]
     public string Password { get; set; } = string.Empty;
 }
 
@@ -82,6 +84,7 @@ public class MfaSetupResponseDto
 public class MfaVerifyDto
 {
     [Required]
+    [MaxLength(6)]
     public string Code { get; set; } = string.Empty;
 }
 

@@ -57,11 +57,25 @@ export default function GradePage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+
+        // AC-3: JS bounds check (browser min/max can be bypassed)
+        const numScore = Number(score);
+        const maxAllowed = submission.maxScore ?? assessment?.maxScore ?? 9999;
+        if (numScore < 0 || numScore > maxAllowed) {
+            setError({ message: `Score must be between 0 and ${maxAllowed}.` });
+            return;
+        }
+
+        // AC-5: Confirm before posting grade
+        if (!window.confirm(`Post a grade of ${numScore} / ${maxAllowed} for this submission?`)) {
+            return;
+        }
+
         setLoading(true);
 
         // Payload matches GradeSubmissionDto exactly
         const payload = {
-            score: Number(score),
+            score: numScore,
             reason: reason || null,
         };
 

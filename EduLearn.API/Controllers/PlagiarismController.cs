@@ -101,6 +101,7 @@ public class PlagiarismController : ControllerBase
     /// Students may check their own; Instructor/Registrar/ITAdmin may check any.
     /// </summary>
     [HttpGet("student/{studentId}/integrity")]
+    [Authorize(Roles = "Student,Instructor,Registrar,ITAdmin")]
     public async Task<ActionResult<IntegrityStatusDto>> GetIntegrityStatus(
         int studentId, CancellationToken ct)
     {

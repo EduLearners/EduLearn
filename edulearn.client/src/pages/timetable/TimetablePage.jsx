@@ -259,7 +259,7 @@ export default function TimetablePage() {
     const { role, userId, username } = authService.getCurrentUser();
     const isStudent = role === 'Student';
     const isInstructor = role === 'Instructor';
-    const isAdmin = ['Registrar', 'ITAdmin', 'DeptAdmin', 'Auditor', 'Finance'].includes(role);
+    const isAdmin = ['Registrar', 'ITAdmin'].includes(role);
 
     const [term, setTerm] = useState('2026-Spring');
     const [loading, setLoading] = useState(false);

@@ -172,7 +172,7 @@ export default function SectionDetailPage() {
                                 <div className="col-md-4">
                                     <div className="p-3 bg-light rounded">
                                         <div className="fs-3 fw-bold text-success">
-                                            {section.capacity - section.enrolledCount}
+                                            {Math.max(0, section.capacity - section.enrolledCount)}
                                         </div>
                                         <div className="text-muted small">Available Seats</div>
                                     </div>

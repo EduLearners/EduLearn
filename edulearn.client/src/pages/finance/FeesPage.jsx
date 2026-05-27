@@ -223,6 +223,8 @@ export default function FeesPage() {
                                     value={term}
                                     onChange={e => setTerm(e.target.value)}
                                     placeholder="e.g. 2026-Spring"
+                                    pattern="\d{4}-(Spring|Summer|Fall|Winter)"
+                                    title="Format: YYYY-Season (e.g. 2026-Spring)"
                                     required
                                 />
                             </div>
@@ -382,6 +384,8 @@ export default function FeesPage() {
                                                     value={form.term}
                                                     onChange={e => setForm({ ...form, term: e.target.value })}
                                                     placeholder="e.g. 2026-Spring"
+                                                    pattern="\d{4}-(Spring|Summer|Fall|Winter)"
+                                                    title="Format: YYYY-Season (e.g. 2026-Spring)"
                                                     required
                                                     disabled={isEdit}
                                                 />

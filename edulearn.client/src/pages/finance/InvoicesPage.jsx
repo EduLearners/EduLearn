@@ -469,6 +469,8 @@ export default function InvoicesPage() {
                                                     value={bulkForm.term}
                                                     onChange={e => setBulkForm({ ...bulkForm, term: e.target.value })}
                                                     placeholder="e.g. 2026-Spring"
+                                                    pattern="\d{4}-(Spring|Summer|Fall|Winter)"
+                                                    title="Format: YYYY-Season (e.g. 2026-Spring)"
                                                     required
                                                 />
                                             </div>
@@ -545,6 +547,8 @@ export default function InvoicesPage() {
                                                     value={genForm.term}
                                                     onChange={e => setGenForm({ ...genForm, term: e.target.value })}
                                                     placeholder="e.g. 2026-Spring"
+                                                    pattern="\d{4}-(Spring|Summer|Fall|Winter)"
+                                                    title="Format: YYYY-Season (e.g. 2026-Spring)"
                                                     required
                                                 />
                                             </div>

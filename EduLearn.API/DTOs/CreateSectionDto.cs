@@ -20,5 +20,6 @@ public class CreateSectionDto
     [Range(1, 500)]
     public int Capacity { get; set; } = 60;
 
+    [MaxLength(2000)]
     public string? ScheduleJSON { get; set; }
 }

@@ -9,7 +9,7 @@ namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/kpis")]
-[Authorize]
+[Authorize(Roles = "Auditor,ITAdmin")]
 public class KPIsController : ControllerBase
 {
     private readonly IReportRepository _reportRepository;

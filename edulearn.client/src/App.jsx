@@ -147,9 +147,9 @@ export default function App() {
                     <Route path="/contents/:id/edit" element={<ContentFormPage />} />
 
                     {/* RKA — Reports */}
-                    <Route path="/reports" element={<ReportsPage />} />
-                    <Route path="/kpis" element={<KpisPage />} />
-                    <Route path="/audit-log" element={<AuditLogPage />} />
+                    <Route path="/reports" element={<ProtectedRoute allowedRoles={['Auditor', 'ITAdmin']}><ReportsPage /></ProtectedRoute>} />
+                    <Route path="/kpis" element={<ProtectedRoute allowedRoles={['Auditor', 'ITAdmin']}><KpisPage /></ProtectedRoute>} />
+                    <Route path="/audit-log" element={<ProtectedRoute allowedRoles={['Auditor', 'ITAdmin']}><AuditLogPage /></ProtectedRoute>} />
 
                     {/* Grade Changes */}
                     <Route path="/grade-changes" element={<GradeChangesPage />} />

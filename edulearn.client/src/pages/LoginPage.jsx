@@ -69,6 +69,7 @@ export default function LoginPage() {
                                     value={usernameOrEmail}
                                     onChange={(e) => setUsernameOrEmail(e.target.value)}
                                     placeholder="Enter Username or email"
+                                    maxLength={256}
                                     required
                                     autoFocus
                                     autoComplete="off"
@@ -88,6 +89,7 @@ export default function LoginPage() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Enter password"
+                                    maxLength={256}
                                     required
                                     autoComplete="new-password"
                                 />

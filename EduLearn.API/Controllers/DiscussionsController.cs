@@ -35,6 +35,7 @@ public class DiscussionsController : ControllerBase
     /// </summary>
     // ── POST /api/discussions — Any authenticated user creates a discussion thread ──
     [HttpPost]
+    [Authorize(Roles = "Student,Instructor,Registrar,ITAdmin")]
     public async Task<ActionResult<DiscussionResponseDto>> CreateDiscussion(CreateDiscussionDto dto)
     {
         // Validate that the course exists
@@ -103,6 +104,7 @@ public class DiscussionsController : ControllerBase
     /// </summary>
     // ── GET /api/discussions/course/{courseId} — List all discussions for a course ──
     [HttpGet("course/{courseId}")]
+    [Authorize(Roles = "Student,Instructor,Registrar,ITAdmin")]
     public async Task<ActionResult<List<DiscussionResponseDto>>> GetByCourse(int courseId)
     {
         // Validate that the course exists
@@ -125,6 +127,7 @@ public class DiscussionsController : ControllerBase
     // ── POST /api/discussions/{id}/reply — Any authenticated user replies to a discussion ──
     // KEY LOGIC: reads PostsJSON, deserializes, appends new reply, re-serializes, saves back
     [HttpPost("{id}/reply")]
+    [Authorize(Roles = "Student,Instructor,Registrar,ITAdmin")]
     public async Task<ActionResult<DiscussionResponseDto>> AddReply(int id, CreateReplyDto dto)
     {
         // Fetch discussion with Course and ThreadStarter navigation loaded

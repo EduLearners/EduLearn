@@ -11,7 +11,7 @@ namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/reports")]
-[Authorize]
+[Authorize(Roles = "Auditor,ITAdmin")]
 public class ReportsController : ControllerBase
 {
     private readonly IReportRepository _reportRepository;

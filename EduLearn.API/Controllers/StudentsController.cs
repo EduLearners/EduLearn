@@ -75,6 +75,14 @@ public class StudentsController : ControllerBase
                 code = "PROGRAM_NOT_FOUND"
             });
 
+        // S-1 FIX: Student must be at least 15 years old
+        if (dto.DOB > DateTime.UtcNow.AddYears(-15))
+            return BadRequest(new
+            {
+                error = "Student must be at least 15 years old",
+                code = "STUDENT_TOO_YOUNG"
+            });
+
         // BUG-2 FIX: Guid-based MRN to avoid race condition under concurrent requests
         var mrn = $"STU-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
 
@@ -166,13 +174,19 @@ public class StudentsController : ControllerBase
                 code = "STUDENT_NOT_FOUND"
             });
 
-   
-        if ((User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty) == "Student" && student.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
-            return StatusCode(403, new
-            {
-                error = "You may only view your own student record",
-                code = "STUDENT_FORBIDDEN"
-            });
+
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        if (callerRole == "Student")
+        {
+            if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerUserId))
+                return Unauthorized();
+            if (student.UserID != callerUserId)
+                return StatusCode(403, new
+                {
+                    error = "You may only view your own student record",
+                    code = "STUDENT_FORBIDDEN"
+                });
+        }
 
         return Ok(MapToDto(student));
     }

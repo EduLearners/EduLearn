@@ -81,6 +81,13 @@ export default function SubmitPage() {
             return;
         }
 
+        // AC-2: Late submission warning
+        if (assessment?.dueAt && new Date() > new Date(assessment.dueAt)) {
+            if (!window.confirm('This assessment deadline has passed. Submit anyway?')) {
+                return;
+            }
+        }
+
         setLoading(true);
 
         const payload = {

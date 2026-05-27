@@ -18,6 +18,7 @@ namespace EduLearn.API.DTOs
 
         [Required]
         [MaxLength(500)]
+        [Url]
         public string URI { get; set; } = null!;
 
         public string? MetadataJSON { get; set; }

@@ -6,6 +6,7 @@ namespace EduLearn.API.DTOs
     {
         [Required]
         [MaxLength(500)]
+        [Url]
         public string URI { get; set; } = null!;
 
         // Updated metadata for the new version (fileSize, mimeType, sha256 of new file)

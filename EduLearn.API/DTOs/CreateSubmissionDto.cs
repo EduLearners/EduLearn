@@ -12,6 +12,7 @@ namespace EduLearn.API.DTOs
 
         // URI to the uploaded file in blob storage (optional — some assessments may be in-person)
         [MaxLength(500)]
+        [Url]
         public string? FileURI { get; set; }
     }
 }

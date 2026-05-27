@@ -14,5 +14,6 @@ public class UpdateUserDto
     public string Email { get; set; } = null!;
 
     [MaxLength(20)]
+    [RegularExpression(@"^\d{10}$", ErrorMessage = "Phone must be exactly 10 digits.")]
     public string? Phone { get; set; }
 }

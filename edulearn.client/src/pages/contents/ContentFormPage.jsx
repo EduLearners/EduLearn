@@ -78,10 +78,23 @@ export default function ContentFormPage() {
         setForm(prev => ({ ...prev, [name]: value }));
     };
 
+    const uriInvalid = form.uri.trim().length > 0 && !/^https?:\/\/.+/.test(form.uri.trim());
+    const metadataInvalid = form.metadataJSON.trim().length > 0 && (() => {
+        try { JSON.parse(form.metadataJSON); return false; } catch { return true; }
+    })();
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
         setSuccess('');
+        if (uriInvalid) {
+            setError({ message: 'Content URI must be a valid URL starting with https://' });
+            return;
+        }
+        if (metadataInvalid) {
+            setError({ message: 'Metadata must be valid JSON.' });
+            return;
+        }
         setLoading(true);
         const payload = { ...form, courseID: Number(form.courseID) };
         try {
@@ -213,8 +226,8 @@ export default function ContentFormPage() {
                                 <div className="input-group">
                                     <span className="input-group-text"><i className="bi bi-link-45deg"></i></span>
                                     <input
-                                        type="text"
-                                        className="form-control"
+                                        type="url"
+                                        className={`form-control ${uriInvalid ? 'is-invalid' : ''}`}
                                         name="uri"
                                         value={form.uri}
                                         onChange={handleChange}
@@ -222,6 +235,12 @@ export default function ContentFormPage() {
                                         maxLength={500}
                                         required
                                     />
+                                    {uriInvalid && (
+                                        <div className="invalid-feedback">
+                                            <i className="bi bi-exclamation-circle me-1"></i>
+                                            Must be a valid URL starting with https://
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -231,18 +250,24 @@ export default function ContentFormPage() {
                                     Metadata <small className="text-muted fw-normal ms-2">(optional JSON)</small>
                                 </label>
                                 <textarea
-                                    className="form-control font-monospace"
+                                    className={`form-control font-monospace ${metadataInvalid ? 'is-invalid' : ''}`}
                                     name="metadataJSON"
                                     value={form.metadataJSON}
                                     onChange={handleChange}
                                     rows={4}
                                     placeholder='e.g. {"duration": "45 mins", "language": "English"}'
                                 />
+                                {metadataInvalid && (
+                                    <div className="invalid-feedback">
+                                        <i className="bi bi-exclamation-circle me-1"></i>
+                                        Metadata must be valid JSON.
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         <div className="d-flex gap-2 mt-4">
-                            <button type="submit" className="btn btn-primary-edulearn" disabled={loading}>
+                            <button type="submit" className="btn btn-primary-edulearn" disabled={loading || uriInvalid || metadataInvalid}>
                                 {loading
                                     ? <><span className="spinner-border spinner-border-sm me-2"></span>{isEditMode ? 'Saving...' : 'Creating...'}</>
                                     : <><i className="bi bi-check-lg me-2"></i>{isEditMode ? 'Save Changes' : 'Create Content'}</>

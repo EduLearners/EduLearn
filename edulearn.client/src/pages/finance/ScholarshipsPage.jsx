@@ -52,6 +52,10 @@ export default function ScholarshipsPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+        if (form.validFrom && form.validTo && new Date(form.validFrom) >= new Date(form.validTo)) {
+            setError({ message: 'Valid From date must be before Valid To date.' });
+            return;
+        }
         setSaving(true);
         try {
             await scholarshipService.create({
@@ -124,6 +128,7 @@ export default function ScholarshipsPage() {
                                     value={studentId}
                                     onChange={e => setStudentId(e.target.value)}
                                     placeholder="Enter student ID..."
+                                    min="1"
                                     required
                                 />
                             </div>
@@ -269,6 +274,7 @@ export default function ScholarshipsPage() {
                                                     value={form.awardType}
                                                     onChange={e => setForm({ ...form, awardType: e.target.value })}
                                                     placeholder="e.g. Merit, Need-based"
+                                                    maxLength={100}
                                                     required
                                                 />
                                             </div>

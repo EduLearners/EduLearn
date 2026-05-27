@@ -25,7 +25,7 @@ namespace EduLearn.API.Controllers;
 
 [ApiController]
 [Route("api/audit-log")]
-[Authorize] // AUDIT: Requires valid JWT token
+[Authorize(Roles = "Auditor,ITAdmin")] // AUDIT: Requires Auditor or ITAdmin
 public class AuditLogController : ControllerBase
 {
     private readonly AuditLogService _auditLogService;

@@ -83,6 +83,13 @@ export default function UserDetailPage() {
     const handleEdit = async (e) => {
         e.preventDefault();
         setEditError(null);
+        if (editForm.phone.length > 0) {
+            const digits = editForm.phone.replace(/\D/g, '');
+            if (digits.length !== 10) {
+                setEditError({ message: 'Phone number must be exactly 10 digits.' });
+                return;
+            }
+        }
         setEditing(true);
         try {
             await userService.update(id, editForm);
@@ -248,11 +255,17 @@ export default function UserDetailPage() {
                                         <label className="form-label fw-bold">Phone</label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className={`form-control ${editForm.phone.length > 0 && editForm.phone.replace(/\D/g, '').length !== 10 ? 'is-invalid' : ''}`}
                                             value={editForm.phone}
                                             onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
                                             maxLength={20}
                                         />
+                                        {editForm.phone.length > 0 && editForm.phone.replace(/\D/g, '').length !== 10 && (
+                                            <div className="invalid-feedback">
+                                                <i className="bi bi-exclamation-circle me-1"></i>
+                                                Phone number must be exactly 10 digits.
+                                            </div>
+                                        )}
                                     </div>
                                     <ErrorAlert error={editError} onDismiss={() => setEditError(null)} />
                                     <div className="d-flex gap-2">
