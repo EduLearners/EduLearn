@@ -10,6 +10,7 @@ namespace EduLearn.API.DTOs
 
         [Required]
         [MaxLength(200)]
+        [RegularExpression(@"^[\w\s\-:()&,\.'\""\/]+$", ErrorMessage = "Title contains invalid characters")]
         public string Title { get; set; } = null!;
 
         // Document | Video | Quiz | Link — what kind of learning material

@@ -7,10 +7,12 @@ public class CreateUserDto
 {
     [Required]
     [MaxLength(100)]
+    [RegularExpression(@"^[a-zA-Z0-9][a-zA-Z0-9_]*$", ErrorMessage = "Username must start with a letter or digit and contain only letters, digits, and underscores")]
     public string Username { get; set; } = null!;
 
     [Required]
     [MaxLength(200)]
+    [RegularExpression(@"^[\p{L}\s'\-\.]+$", ErrorMessage = "Full name can only contain letters, spaces, hyphens, apostrophes, and dots")]
     public string FullName { get; set; } = null!;
 
     [Required]
@@ -19,6 +21,7 @@ public class CreateUserDto
     public string Email { get; set; } = null!;
 
     [MaxLength(20)]
+    [RegularExpression(@"^\d{10}$", ErrorMessage = "Phone must be exactly 10 digits")]
     public string? Phone { get; set; }
 
     [Required]

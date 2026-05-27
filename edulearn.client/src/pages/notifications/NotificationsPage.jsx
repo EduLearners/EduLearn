@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { notificationService } from '../../services/notificationService';
 import { authService } from '../../services/authService';
+import { validatePositiveId, validateNotWhitespace } from '../../utils/validators';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
@@ -22,6 +23,7 @@ export default function NotificationsPage() {
     const [markingAll, setMarkingAll] = useState(false);
     const [showTestForm, setShowTestForm] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [errors, setErrors] = useState({});
 
     const [testForm, setTestForm] = useState({
         userID: '',
@@ -98,6 +100,11 @@ export default function NotificationsPage() {
 
     const handleTestNotification = async (e) => {
         e.preventDefault();
+        const next = {
+            userId: validatePositiveId(testForm.userID),
+            message: validateNotWhitespace(testForm.message, 'Message'),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setError(null);
         setSaving(true);
         try {
@@ -332,11 +339,13 @@ export default function NotificationsPage() {
                                                 </label>
                                                 <input
                                                     type="number"
-                                                    className="form-control"
+                                                    className={`form-control${errors.userId ? ' is-invalid' : ''}`}
                                                     value={testForm.userID}
                                                     onChange={e => setTestForm({ ...testForm, userID: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, userId: validatePositiveId(e.target.value) }))}
                                                     required
                                                 />
+                                                {errors.userId && <div className="invalid-feedback">{errors.userId}</div>}
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">Category</label>
@@ -367,12 +376,15 @@ export default function NotificationsPage() {
                                                     Message <span className="text-danger">*</span>
                                                 </label>
                                                 <textarea
-                                                    className="form-control"
+                                                    className={`form-control${errors.message ? ' is-invalid' : ''}`}
                                                     value={testForm.message}
                                                     onChange={e => setTestForm({ ...testForm, message: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, message: validateNotWhitespace(e.target.value, 'Message') }))}
                                                     rows={3}
+                                                    maxLength={500}
                                                     required
                                                 />
+                                                {errors.message && <div className="invalid-feedback">{errors.message}</div>}
                                             </div>
                                             <div className="col-12">
                                                 <label className="form-label fw-bold">

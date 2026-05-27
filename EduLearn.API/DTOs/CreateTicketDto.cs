@@ -7,6 +7,7 @@ public class CreateTicketDto
 {
     [Required]
     [MaxLength(200)]
+    [RegularExpression(@"^[\w\s\-:()&,\.'\""\/\[\]]+$", ErrorMessage = "Subject contains invalid characters")]
     public string Subject { get; set; } = null!;
 
     [Required]

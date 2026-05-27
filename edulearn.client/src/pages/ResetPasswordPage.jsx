@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authService } from '../services/authService';
+import { validatePassword } from '../utils/validators';
 
 export default function ResetPasswordPage() {
     const [searchParams] = useSearchParams();
@@ -14,6 +15,7 @@ export default function ResetPasswordPage() {
     const [error, setError] = useState('');
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+    const [errors, setErrors] = useState({});
 
     useEffect(() => {
         if (!token) {
@@ -23,6 +25,11 @@ export default function ResetPasswordPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const next = {
+            newPassword: validatePassword(newPassword),
+            confirmPassword: newPassword !== confirmPassword ? 'Passwords do not match' : null,
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setError('');
 
         if (newPassword !== confirmPassword) {
@@ -99,15 +106,16 @@ export default function ResetPasswordPage() {
                                     New Password
                                     <small className="text-muted fw-normal ms-2">(min 8 chars)</small>
                                 </label>
-                                <div className="input-group">
+                                <div className="input-group has-validation">
                                     <span className="input-group-text">
                                         <i className="bi bi-lock"></i>
                                     </span>
                                     <input
                                         type={showNew ? 'text' : 'password'}
-                                        className="form-control"
+                                        className={`form-control${errors.newPassword ? ' is-invalid' : ''}`}
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
+                                        onBlur={e => setErrors(prev => ({ ...prev, newPassword: validatePassword(e.target.value) }))}
                                         placeholder="Enter new password"
                                         minLength={8}
                                         required
@@ -121,20 +129,22 @@ export default function ResetPasswordPage() {
                                     >
                                         <i className={`bi ${showNew ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                                     </button>
+                                    {errors.newPassword && <div className="invalid-feedback">{errors.newPassword}</div>}
                                 </div>
                             </div>
 
                             <div className="mb-3">
                                 <label className="form-label fw-bold">Confirm Password</label>
-                                <div className="input-group">
+                                <div className="input-group has-validation">
                                     <span className="input-group-text">
                                         <i className="bi bi-lock-fill"></i>
                                     </span>
                                     <input
                                         type={showConfirm ? 'text' : 'password'}
-                                        className="form-control"
+                                        className={`form-control${errors.confirmPassword ? ' is-invalid' : ''}`}
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
+                                        onBlur={e => setErrors(prev => ({ ...prev, confirmPassword: newPassword !== e.target.value ? 'Passwords do not match' : null }))}
                                         placeholder="Confirm new password"
                                         minLength={8}
                                         required
@@ -147,6 +157,7 @@ export default function ResetPasswordPage() {
                                     >
                                         <i className={`bi ${showConfirm ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                                     </button>
+                                    {errors.confirmPassword && <div className="invalid-feedback">{errors.confirmPassword}</div>}
                                 </div>
                                 {/* Password match indicator */}
                                 {confirmPassword && (

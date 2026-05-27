@@ -15,6 +15,7 @@ namespace EduLearn.API.DTOs
         // Assessment title like "Coding Assignment 1" or "Midterm Exam"
         [Required]
         [MaxLength(200)]
+        [RegularExpression(@"^[\w\s\-:()&,\.'\""\/]+$", ErrorMessage = "Title contains invalid characters")]
         public string Title { get; set; } = null!;
 
         // Assignment | Quiz | Exam — uses the AssessmentType enum

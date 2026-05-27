@@ -7,6 +7,7 @@ import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
+import { validateScore, validateMinLength, validatePositiveId } from '../../utils/validators';
 
 export default function GradeChangesPage() {
     const { role, userId } = authService.getCurrentUser();
@@ -26,6 +27,8 @@ export default function GradeChangesPage() {
     const [submissions, setSubmissions] = useState([]);
     const [selectedSubmission, setSelectedSubmission] = useState(null);
     const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+
+    const [errors, setErrors] = useState({});
 
     // Grade change form
     const [form, setForm] = useState({ newScore: '', reason: '', auditNote: '' });
@@ -137,6 +140,14 @@ export default function GradeChangesPage() {
         if (!selectedSubmission) return;
         setError(null);
         setSuccess('');
+
+        const next = {
+            instructorNewScore: validateScore(form.newScore, selectedSubmission?.maxScore),
+            instructorReason: validateMinLength(form.reason, 3, 'Reason'),
+            ...(form.auditNote.trim() ? { instructorAuditNote: validateMinLength(form.auditNote, 3, 'Audit note') } : {}),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
+
         setSaving(true);
         try {
             await gradeChangeService.create({
@@ -196,6 +207,16 @@ export default function GradeChangesPage() {
         e.preventDefault();
         setSearchError(null);
         setGcSuccess('');
+
+        const next = {
+            adminSubmissionID: validatePositiveId(gcForm.submissionID),
+            adminOldScore: validateScore(gcForm.oldScore),
+            adminNewScore: validateScore(gcForm.newScore, undefined),
+            adminReason: validateMinLength(gcForm.reason, 3, 'Reason'),
+            ...(gcForm.auditNote.trim() ? { adminAuditNote: validateMinLength(gcForm.auditNote, 3, 'Audit note') } : {}),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
+
         setGcSaving(true);
         try {
             await gradeChangeService.create({
@@ -399,36 +420,42 @@ export default function GradeChangesPage() {
                                                 <label className="form-label fw-bold">New Score <span className="text-danger">*</span></label>
                                                 <input
                                                     type="number"
-                                                    className="form-control"
+                                                    className={`form-control${errors.instructorNewScore ? ' is-invalid' : ''}`}
                                                     value={form.newScore}
                                                     onChange={e => setForm({ ...form, newScore: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, instructorNewScore: validateScore(e.target.value, selectedSubmission?.maxScore) }))}
                                                     min={0}
                                                     max={selectedSubmission.maxScore}
                                                     step={0.1}
                                                     required
                                                 />
+                                                {errors.instructorNewScore && <div className="invalid-feedback">{errors.instructorNewScore}</div>}
                                                 <small className="text-muted">Max: {selectedSubmission.maxScore}</small>
                                             </div>
                                             <div className="col-12">
                                                 <label className="form-label fw-bold">Reason <span className="text-danger">*</span></label>
                                                 <textarea
-                                                    className="form-control"
+                                                    className={`form-control${errors.instructorReason ? ' is-invalid' : ''}`}
                                                     value={form.reason}
                                                     onChange={e => setForm({ ...form, reason: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, instructorReason: validateMinLength(e.target.value, 3, 'Reason') }))}
                                                     rows={2}
                                                     placeholder="Reason for grade change (e.g. marking error, re-evaluation)..."
                                                     required
                                                 />
+                                                {errors.instructorReason && <div className="invalid-feedback">{errors.instructorReason}</div>}
                                             </div>
                                             <div className="col-12">
                                                 <label className="form-label fw-bold">Audit Note</label>
                                                 <textarea
-                                                    className="form-control"
+                                                    className={`form-control${errors.instructorAuditNote ? ' is-invalid' : ''}`}
                                                     value={form.auditNote}
                                                     onChange={e => setForm({ ...form, auditNote: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, instructorAuditNote: e.target.value.trim() ? validateMinLength(e.target.value, 3, 'Audit note') : null }))}
                                                     rows={2}
                                                     placeholder="Internal audit note (optional)..."
                                                 />
+                                                {errors.instructorAuditNote && <div className="invalid-feedback">{errors.instructorAuditNote}</div>}
                                             </div>
                                         </div>
                                         <div className="mt-3">
@@ -581,23 +608,28 @@ export default function GradeChangesPage() {
                                     <div className="row g-3">
                                         <div className="col-12">
                                             <label className="form-label fw-bold">Submission ID <span className="text-danger">*</span></label>
-                                            <input type="number" className="form-control" value={gcForm.submissionID} onChange={e => setGcForm({ ...gcForm, submissionID: e.target.value })} placeholder="e.g. 5" required />
+                                            <input type="number" className={`form-control${errors.adminSubmissionID ? ' is-invalid' : ''}`} value={gcForm.submissionID} onChange={e => setGcForm({ ...gcForm, submissionID: e.target.value })} onBlur={e => setErrors(prev => ({ ...prev, adminSubmissionID: validatePositiveId(e.target.value) }))} placeholder="e.g. 5" required />
+                                            {errors.adminSubmissionID && <div className="invalid-feedback">{errors.adminSubmissionID}</div>}
                                         </div>
                                         <div className="col-6">
                                             <label className="form-label fw-bold">Old Score <span className="text-danger">*</span></label>
-                                            <input type="number" className="form-control" value={gcForm.oldScore} onChange={e => setGcForm({ ...gcForm, oldScore: e.target.value })} step="0.1" required />
+                                            <input type="number" className={`form-control${errors.adminOldScore ? ' is-invalid' : ''}`} value={gcForm.oldScore} onChange={e => setGcForm({ ...gcForm, oldScore: e.target.value })} onBlur={e => setErrors(prev => ({ ...prev, adminOldScore: validateScore(e.target.value) }))} step="0.1" required />
+                                            {errors.adminOldScore && <div className="invalid-feedback">{errors.adminOldScore}</div>}
                                         </div>
                                         <div className="col-6">
                                             <label className="form-label fw-bold">New Score <span className="text-danger">*</span></label>
-                                            <input type="number" className="form-control" value={gcForm.newScore} onChange={e => setGcForm({ ...gcForm, newScore: e.target.value })} step="0.1" required />
+                                            <input type="number" className={`form-control${errors.adminNewScore ? ' is-invalid' : ''}`} value={gcForm.newScore} onChange={e => setGcForm({ ...gcForm, newScore: e.target.value })} onBlur={e => setErrors(prev => ({ ...prev, adminNewScore: validateScore(e.target.value, undefined) }))} step="0.1" required />
+                                            {errors.adminNewScore && <div className="invalid-feedback">{errors.adminNewScore}</div>}
                                         </div>
                                         <div className="col-12">
-                                            <label className="form-label fw-bold">Reason</label>
-                                            <textarea className="form-control" value={gcForm.reason} onChange={e => setGcForm({ ...gcForm, reason: e.target.value })} rows={2} placeholder="Reason..." />
+                                            <label className="form-label fw-bold">Reason <span className="text-danger">*</span></label>
+                                            <textarea className={`form-control${errors.adminReason ? ' is-invalid' : ''}`} value={gcForm.reason} onChange={e => setGcForm({ ...gcForm, reason: e.target.value })} onBlur={e => setErrors(prev => ({ ...prev, adminReason: validateMinLength(e.target.value, 3, 'Reason') }))} rows={2} placeholder="Reason..." required />
+                                            {errors.adminReason && <div className="invalid-feedback">{errors.adminReason}</div>}
                                         </div>
                                         <div className="col-12">
                                             <label className="form-label fw-bold">Audit Note</label>
-                                            <textarea className="form-control" value={gcForm.auditNote} onChange={e => setGcForm({ ...gcForm, auditNote: e.target.value })} rows={2} placeholder="Audit note..." />
+                                            <textarea className={`form-control${errors.adminAuditNote ? ' is-invalid' : ''}`} value={gcForm.auditNote} onChange={e => setGcForm({ ...gcForm, auditNote: e.target.value })} onBlur={e => setErrors(prev => ({ ...prev, adminAuditNote: e.target.value.trim() ? validateMinLength(e.target.value, 3, 'Audit note') : null }))} rows={2} placeholder="Audit note..." />
+                                            {errors.adminAuditNote && <div className="invalid-feedback">{errors.adminAuditNote}</div>}
                                         </div>
                                     </div>
                                     <div className="mt-3">

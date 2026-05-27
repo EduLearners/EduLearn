@@ -7,6 +7,7 @@ public class UpdateSyllabusDto
     // Version can be updated — e.g. fix a typo or bump "v1.0" to "v1.1"
     [Required]
     [MaxLength(20)]
+    [RegularExpression(@"^v?\d+\.\d+(\.\d+)?$", ErrorMessage = "Version must be in format like 1.0, v2.1, or v2.1.3")]
     public string Version { get; set; } = null!;
 
     // Updated learning outcomes
@@ -17,6 +18,7 @@ public class UpdateSyllabusDto
 
     // Updated URI if the document was re-uploaded
     [MaxLength(500)]
+    [Url]
     public string? SyllabusURI { get; set; }
 
     // NOTE: CourseID and CreatedByFK are NOT here

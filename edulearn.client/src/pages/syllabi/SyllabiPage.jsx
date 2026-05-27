@@ -8,6 +8,7 @@ import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import axiosClient from '../../api/axiosClient';
+import { validateVersion, validateOptionalUrl, validateJson } from '../../utils/validators';
 
 export default function SyllabiPage() {
     const { role, userId } = authService.getCurrentUser();
@@ -33,6 +34,7 @@ export default function SyllabiPage() {
         assessmentPlanJSON: '',
         syllabusURI: '',
     });
+    const [errors, setErrors] = useState({});
 
     const canManage = ['Instructor', 'ITAdmin'].includes(role);
 
@@ -114,6 +116,7 @@ export default function SyllabiPage() {
             assessmentPlanJSON: '',
             syllabusURI: '',
         });
+        setErrors({});
         setSuccess('');
         setShowForm(true);
     };
@@ -127,12 +130,20 @@ export default function SyllabiPage() {
             assessmentPlanJSON: s.assessmentPlanJSON || '',
             syllabusURI: s.syllabusURI || '',
         });
+        setErrors({});
         setSuccess('');
         setShowForm(true);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const next = {
+            version: validateVersion(form.version),
+            syllabusURI: validateOptionalUrl(form.syllabusURI),
+            learningOutcomesJSON: validateJson(form.learningOutcomesJSON),
+            assessmentPlanJSON: validateJson(form.assessmentPlanJSON),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setError(null);
         setSuccess('');
         setSaving(true);
@@ -417,12 +428,14 @@ export default function SyllabiPage() {
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${errors.version ? ' is-invalid' : ''}`}
                                                     value={form.version}
                                                     onChange={e => setForm({ ...form, version: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, version: validateVersion(e.target.value) }))}
                                                     placeholder="e.g. v1.0"
                                                     required
                                                 />
+                                                {errors.version && <div className="invalid-feedback">{errors.version}</div>}
                                             </div>
 
                                             {/* Syllabus URI */}
@@ -438,12 +451,14 @@ export default function SyllabiPage() {
                                                         <i className="bi bi-link-45deg"></i>
                                                     </span>
                                                     <input
-                                                        type="text"
-                                                        className="form-control"
+                                                        type="url"
+                                                        className={`form-control${errors.syllabusURI ? ' is-invalid' : ''}`}
                                                         value={form.syllabusURI}
                                                         onChange={e => setForm({ ...form, syllabusURI: e.target.value })}
+                                                        onBlur={e => setErrors(prev => ({ ...prev, syllabusURI: validateOptionalUrl(e.target.value) }))}
                                                         placeholder="https://..."
                                                     />
+                                                    {errors.syllabusURI && <div className="invalid-feedback">{errors.syllabusURI}</div>}
                                                 </div>
                                             </div>
 
@@ -456,12 +471,14 @@ export default function SyllabiPage() {
                                                     </small>
                                                 </label>
                                                 <textarea
-                                                    className="form-control font-monospace"
+                                                    className={`form-control font-monospace${errors.learningOutcomesJSON ? ' is-invalid' : ''}`}
                                                     value={form.learningOutcomesJSON}
                                                     onChange={e => setForm({ ...form, learningOutcomesJSON: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, learningOutcomesJSON: validateJson(e.target.value) }))}
                                                     rows={3}
                                                     placeholder='e.g. ["Understand X", "Apply Y"]'
                                                 />
+                                                {errors.learningOutcomesJSON && <div className="invalid-feedback">{errors.learningOutcomesJSON}</div>}
                                             </div>
 
                                             {/* Assessment Plan */}
@@ -473,12 +490,14 @@ export default function SyllabiPage() {
                                                     </small>
                                                 </label>
                                                 <textarea
-                                                    className="form-control font-monospace"
+                                                    className={`form-control font-monospace${errors.assessmentPlanJSON ? ' is-invalid' : ''}`}
                                                     value={form.assessmentPlanJSON}
                                                     onChange={e => setForm({ ...form, assessmentPlanJSON: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, assessmentPlanJSON: validateJson(e.target.value) }))}
                                                     rows={3}
                                                     placeholder='e.g. [{"type": "Quiz", "weight": 20}]'
                                                 />
+                                                {errors.assessmentPlanJSON && <div className="invalid-feedback">{errors.assessmentPlanJSON}</div>}
                                             </div>
 
                                         </div>

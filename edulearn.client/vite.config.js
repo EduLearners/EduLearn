@@ -7,7 +7,7 @@ export default defineConfig({
         port: 5173,
         proxy: {
             '/api': {
-                target: 'http://localhost:5000',
+                target: 'https://localhost:5001',
                 changeOrigin: true,
                 secure: false,  // accept self-signed HTTPS cert from dev backend
             }

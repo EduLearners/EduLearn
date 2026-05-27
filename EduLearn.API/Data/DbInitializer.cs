@@ -38,15 +38,15 @@ public static class DbInitializer
             Role         = UserRole.ITAdmin,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(DefaultAdminPassword),
             // MFA CHANGE (IAM-03): pre-enroll with the fixed test secret so smoke
-            // suite can derive valid TOTPs at runtime; flip MFAEnabled=true so the
-            // login flow goes straight to the challenge path (no /setup needed).
+            // suite can derive valid TOTPs at runtime. MFAEnabled defaults to false
+            // so the admin can log in directly; enable MFA from profile if needed.
             MFASecret    = DefaultAdminMfaSecret,
-            MFAEnabled   = true,
+            MFAEnabled   = false,
             Status       = UserStatus.Active,
             CreatedAt    = DateTime.UtcNow
         });
 
         await db.SaveChangesAsync();
-        Console.WriteLine($"[Seed] Default ITAdmin '{DefaultAdminUsername}' created (MFA pre-enrolled with test secret).");
+        Console.WriteLine($"[Seed] Default ITAdmin '{DefaultAdminUsername}' created (MFA secret pre-loaded, MFA disabled — enable from profile if needed).");
     }
 }

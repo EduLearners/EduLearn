@@ -11,6 +11,7 @@ public class CreateDiscussionDto
     // Discussion title
     [Required]
     [MaxLength(200)]
+    [RegularExpression(@"^[\w\s\-:()&,\.'\""\/]+$", ErrorMessage = "Title contains invalid characters")]
     public string Title { get; set; } = null!;
 
     // Optional first post when creating the thread

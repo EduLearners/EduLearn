@@ -9,6 +9,7 @@ import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
 import ModalPortal from '../../components/ModalPortal';
+import { validateCourseCode, validateMinLength, validateJson, validatePositiveInteger, validateOptionalPositiveId, validateTerm, validatePositiveId } from '../../utils/validators';
 
 const DAYS_OPTIONS = [
     'Mon-Wed-Fri',
@@ -52,6 +53,7 @@ export default function SectionsPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState(emptyForm);
+    const [errors, setErrors] = useState({});
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState(null);
 
@@ -122,6 +124,7 @@ export default function SectionsPage() {
         setEditingId(null);
         setForm({ ...emptyForm, courseID: filterCourseId || '', term: filterTerm || '' });
         setFormError(null);
+        setErrors({});
         setShowModal(true);
     };
 
@@ -146,6 +149,7 @@ export default function SectionsPage() {
             scheduleTime: time,
         });
         setFormError(null);
+        setErrors({});
         setShowModal(true);
     };
 
@@ -168,6 +172,12 @@ export default function SectionsPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFormError(null);
+
+        const next = {
+            term: validateTerm(form.term),
+            capacity: validatePositiveInteger(form.capacity, 1, 500, 'Capacity'),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
 
         // FIX: Validate time range before saving
         if (form.scheduleTime && !validateTimeRange(form.scheduleTime)) {
@@ -391,13 +401,15 @@ export default function SectionsPage() {
                                                 <label className="form-label fw-bold">Term *</label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${errors.term ? ' is-invalid' : ''}`}
                                                     value={form.term}
                                                     onChange={(e) => setForm({ ...form, term: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, term: validateTerm(e.target.value) }))}
                                                     required
                                                     placeholder="e.g. 2026-Spring"
                                                     maxLength={20}
                                                 />
+                                                {errors.term && <div className="invalid-feedback">{errors.term}</div>}
                                             </div>
                                             <div className="col-md-8">
                                                 <label className="form-label fw-bold">Instructor *</label>
@@ -425,13 +437,15 @@ export default function SectionsPage() {
                                                 <label className="form-label fw-bold">Capacity *</label>
                                                 <input
                                                     type="number"
-                                                    className="form-control"
+                                                    className={`form-control${errors.capacity ? ' is-invalid' : ''}`}
                                                     value={form.capacity}
                                                     onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, capacity: validatePositiveInteger(e.target.value, 1, 500, 'Capacity') }))}
                                                     required
                                                     min={1}
                                                     max={500}
                                                 />
+                                                {errors.capacity && <div className="invalid-feedback">{errors.capacity}</div>}
                                             </div>
                                             <div className="col-md-12">
                                                 <label className="form-label fw-bold">Room</label>

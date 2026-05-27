@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import ErrorAlert from '../components/ErrorAlert';
 import { QRCodeSVG } from 'qrcode.react';
+import { validateTotpCode } from '../utils/validators';
 
 export default function MfaSetupPage() {
     const [secret, setSecret] = useState('');
@@ -11,6 +12,7 @@ export default function MfaSetupPage() {
     const [step, setStep] = useState('setup'); // 'setup' | 'confirm'
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({});
     const navigate = useNavigate();
 
     // Capture mfaToken on initial mount only (same fix as MfaVerifyPage).
@@ -46,6 +48,8 @@ export default function MfaSetupPage() {
 
     const handleConfirm = async (e) => {
         e.preventDefault();
+        const next = { code: validateTotpCode(code) };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setError('');
         setLoading(true);
         try {
@@ -136,9 +140,10 @@ export default function MfaSetupPage() {
                                 <div className="mb-3">
                                     <label className="form-label">6-digit code</label>
                                     <input
-                                        className="form-control form-control-lg text-center"
+                                        className={`form-control form-control-lg text-center${errors.code ? ' is-invalid' : ''}`}
                                         value={code}
                                         onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                        onBlur={e => setErrors(prev => ({ ...prev, code: validateTotpCode(e.target.value) }))}
                                         maxLength={6}
                                         pattern="\d{6}"
                                         required
@@ -146,6 +151,7 @@ export default function MfaSetupPage() {
                                         style={{ letterSpacing: '0.5rem', fontFamily: 'monospace' }}
                                         placeholder="000000"
                                     />
+                                    {errors.code && <div className="invalid-feedback">{errors.code}</div>}
                                     <div className="form-text text-muted">
                                         <i className="bi bi-clock me-1"></i>
                                         Wait for your app to show a fresh code (codes refresh every 30 seconds).

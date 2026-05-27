@@ -5,6 +5,7 @@ namespace EduLearn.API.DTOs;
 public class ResolveTicketDto
 {
     [MaxLength(500)]
+    [Url(ErrorMessage = "Resolution URI must be a valid URL")]
     public string? ResolutionURI { get; set; }
 
     // Free-text resolution note. Not persisted on the Ticket entity; passed into the audit log

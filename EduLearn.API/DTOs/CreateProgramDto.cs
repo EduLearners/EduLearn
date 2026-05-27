@@ -6,12 +6,14 @@ public class CreateProgramDto
 {
     [Required]
     [MaxLength(200)]
-    public string Name { get; set; } = null!;// The name of the program like B.Tech 
+    [RegularExpression(@"^[\p{L}\d\s\-()\.&,]+$", ErrorMessage = "Program name contains invalid characters")]
+    public string Name { get; set; } = null!;// The name of the program like B.Tech
 
     public int? DepartmentID { get; set; }
 
     [Required]
     [MaxLength(50)]
+    [RegularExpression(@"^[a-zA-Z\.\s]+$", ErrorMessage = "Degree type can only contain letters, dots, and spaces")]
     public string DegreeType { get; set; } = null!;
 
     public string? RequiredCoursesJSON { get; set; }//Nullable because a program might be created before courses are assigned.

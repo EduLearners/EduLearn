@@ -7,6 +7,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import ModalPortal from '../../components/ModalPortal';
+import { validatePhone, validateUsername, validateName, validateEmail, validatePassword } from '../../utils/validators';
 
 const emptyUserForm = {
     username: '',
@@ -31,6 +32,7 @@ export default function ApplicantDetailPage() {
     const [userForm, setUserForm] = useState(emptyUserForm);
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState(null);
+    const [createErrors, setCreateErrors] = useState({});
     const [createSuccess, setCreateSuccess] = useState(null); // { userID, username }
 
     const { role } = authService.getCurrentUser();
@@ -85,6 +87,7 @@ export default function ApplicantDetailPage() {
             sendInvite: true,
         });
         setCreateError(null);
+        setCreateErrors({});
         setCreateSuccess(null);
         setShowUserModal(true);
     };
@@ -92,16 +95,14 @@ export default function ApplicantDetailPage() {
     const handleCreateUser = async (e) => {
         e.preventDefault();
         setCreateError(null);
-        if (userForm.phone.length > 0) {
-            if (!/^\d{10}$/.test(userForm.phone)) {
-                setCreateError({ message: 'Phone number must be exactly 10 digits.' });
-                return;
-            }
-        }
-        if (!userForm.username.trim()) {
-            setCreateError({ message: 'Username cannot be blank.' });
-            return;
-        }
+        const next = {
+            username: validateUsername(userForm.username),
+            fullName: validateName(userForm.fullName, 'Full name'),
+            email: validateEmail(userForm.email),
+            phone: validatePhone(userForm.phone),
+            password: validatePassword(userForm.password),
+        };
+        if (Object.values(next).some(Boolean)) { setCreateErrors(next); return; }
         setCreating(true);
 
         try {
@@ -441,14 +442,16 @@ export default function ApplicantDetailPage() {
                                                     </label>
                                                     <input
                                                         type="text"
-                                                        className="form-control"
+                                                        className={`form-control${createErrors.username ? ' is-invalid' : ''}`}
                                                         value={userForm.username}
                                                         onChange={e => setUserForm({ ...userForm, username: e.target.value })}
+                                                        onBlur={e => setCreateErrors(prev => ({ ...prev, username: validateUsername(e.target.value) }))}
                                                         placeholder="e.g. vikash.kumar"
                                                         maxLength={100}
                                                         required
                                                         autoComplete="off"
                                                     />
+                                                    {createErrors.username && <div className="invalid-feedback">{createErrors.username}</div>}
                                                 </div>
 
                                                 <div className="col-md-6">
@@ -457,14 +460,16 @@ export default function ApplicantDetailPage() {
                                                     </label>
                                                     <input
                                                         type="text"
-                                                        className="form-control"
+                                                        className={`form-control${createErrors.fullName ? ' is-invalid' : ''}`}
                                                         value={userForm.fullName}
                                                         onChange={e => setUserForm({ ...userForm, fullName: e.target.value })}
+                                                        onBlur={e => setCreateErrors(prev => ({ ...prev, fullName: validateName(e.target.value, 'Full name') }))}
                                                         placeholder="e.g. Vikash Kumar"
                                                         maxLength={200}
                                                         required
                                                         autoComplete="off"
                                                     />
+                                                    {createErrors.fullName && <div className="invalid-feedback">{createErrors.fullName}</div>}
                                                 </div>
 
                                                 <div className="col-md-6">
@@ -473,31 +478,33 @@ export default function ApplicantDetailPage() {
                                                     </label>
                                                     <input
                                                         type="email"
-                                                        className="form-control"
+                                                        className={`form-control${createErrors.email ? ' is-invalid' : ''}`}
                                                         value={userForm.email}
                                                         onChange={e => setUserForm({ ...userForm, email: e.target.value.toLowerCase() })}
+                                                        onBlur={e => setCreateErrors(prev => ({ ...prev, email: validateEmail(e.target.value) }))}
                                                         placeholder="e.g. vikash@example.com"
                                                         maxLength={255}
                                                         required
                                                         autoComplete="off"
                                                     />
+                                                    {createErrors.email && <div className="invalid-feedback">{createErrors.email}</div>}
                                                 </div>
 
                                                 <div className="col-md-6">
                                                     <label className="form-label fw-bold">Phone</label>
                                                     <input
                                                         type="text"
-                                                        className={`form-control ${userForm.phone.length > 0 && !/^\d{10}$/.test(userForm.phone) ? 'is-invalid' : ''}`}
+                                                        className={`form-control ${validatePhone(userForm.phone) ? 'is-invalid' : ''}`}
                                                         value={userForm.phone}
                                                         onChange={e => setUserForm({ ...userForm, phone: e.target.value })}
                                                         placeholder="9876543210"
                                                         maxLength={15}
                                                         autoComplete="off"
                                                     />
-                                                    {userForm.phone.length > 0 && !/^\d{10}$/.test(userForm.phone) && (
+                                                    {validatePhone(userForm.phone) && (
                                                         <div className="invalid-feedback">
                                                             <i className="bi bi-exclamation-circle me-1"></i>
-                                                            Phone must be exactly 10 digits.
+                                                            {validatePhone(userForm.phone)}
                                                         </div>
                                                     )}
                                                 </div>
@@ -509,14 +516,16 @@ export default function ApplicantDetailPage() {
                                                     </label>
                                                     <input
                                                         type="password"
-                                                        className="form-control"
+                                                        className={`form-control${createErrors.password ? ' is-invalid' : ''}`}
                                                         value={userForm.password}
                                                         onChange={e => setUserForm({ ...userForm, password: e.target.value })}
+                                                        onBlur={e => setCreateErrors(prev => ({ ...prev, password: validatePassword(e.target.value) }))}
                                                         placeholder="Min 8 characters"
                                                         minLength={8}
                                                         required
                                                         autoComplete="new-password"
                                                     />
+                                                    {createErrors.password && <div className="invalid-feedback">{createErrors.password}</div>}
                                                 </div>
 
                                                 <div className="col-md-6">

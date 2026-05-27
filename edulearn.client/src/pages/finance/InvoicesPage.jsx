@@ -8,6 +8,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import Loading from '../../components/Loading';
 import StatusBadge from '../../components/StatusBadge';
+import { validateTerm, validateAmount, validatePositiveId, validateReference } from '../../utils/validators';
 
 const PAYMENT_METHODS = ['BankTransfer', 'Cash', 'Card', 'UPI', 'Cheque'];
 
@@ -28,6 +29,8 @@ export default function InvoicesPage() {
     const [showPayment, setShowPayment] = useState(false);
     const [programs, setPrograms] = useState([]);
     const [bulkResult, setBulkResult] = useState(null);
+
+    const [errors, setErrors] = useState({});
 
     const [bulkForm, setBulkForm] = useState({
         programID: '',
@@ -88,6 +91,8 @@ export default function InvoicesPage() {
         setError(null);
         setSuccess('');
         setBulkResult(null);
+        const next = { bulkTerm: validateTerm(bulkForm.term) };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setSaving(true);
         try {
             const result = await invoiceService.generateBulk({
@@ -139,6 +144,11 @@ export default function InvoicesPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+        const next = {
+            genStudentID: validatePositiveId(genForm.studentID),
+            genTerm: validateTerm(genForm.term),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setSaving(true);
         try {
             await invoiceService.generate({
@@ -164,6 +174,11 @@ export default function InvoicesPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+        const next = {
+            payAmount: validateAmount(payForm.amount, 0.01, 9_999_999),
+            payReference: validateReference(payForm.reference),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setSaving(true);
         try {
             await paymentService.create({
@@ -203,13 +218,13 @@ export default function InvoicesPage() {
                     <div className="d-flex gap-2">
                         <button
                             className="btn btn-outline-primary"
-                            onClick={() => { setBulkForm({ programID: '', term: '', dueDate: '' }); setBulkResult(null); setShowBulk(true); }}
+                            onClick={() => { setErrors({}); setBulkForm({ programID: '', term: '', dueDate: '' }); setBulkResult(null); setShowBulk(true); }}
                         >
                             <i className="bi bi-people me-2"></i>Generate for All
                         </button>
                         <button
                             className="btn btn-primary-edulearn"
-                            onClick={() => setShowGenerate(true)}
+                            onClick={() => { setErrors({}); setShowGenerate(true); }}
                         >
                             <i className="bi bi-plus-lg me-2"></i>Generate Invoice
                         </button>
@@ -322,6 +337,7 @@ export default function InvoicesPage() {
                                                 <button
                                                     className="btn btn-light btn-sm"
                                                     onClick={() => {
+                                                        setErrors({});
                                                         setPayForm({ invoiceID: selected.invoiceID, amount: '', method: 'BankTransfer', reference: '' });
                                                         setShowPayment(true);
                                                     }}
@@ -466,14 +482,16 @@ export default function InvoicesPage() {
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${errors.bulkTerm ? ' is-invalid' : ''}`}
                                                     value={bulkForm.term}
                                                     onChange={e => setBulkForm({ ...bulkForm, term: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, bulkTerm: validateTerm(e.target.value) }))}
                                                     placeholder="e.g. 2026-Spring"
                                                     pattern="\d{4}-(Spring|Summer|Fall|Winter)"
                                                     title="Format: YYYY-Season (e.g. 2026-Spring)"
                                                     required
                                                 />
+                                                {errors.bulkTerm && <div className="invalid-feedback">{errors.bulkTerm}</div>}
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">
@@ -531,12 +549,14 @@ export default function InvoicesPage() {
                                                 </label>
                                                 <input
                                                     type="number"
-                                                    className="form-control"
+                                                    className={`form-control${errors.genStudentID ? ' is-invalid' : ''}`}
                                                     value={genForm.studentID}
                                                     onChange={e => setGenForm({ ...genForm, studentID: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, genStudentID: validatePositiveId(e.target.value) }))}
                                                     min={1}
                                                     required
                                                 />
+                                                {errors.genStudentID && <div className="invalid-feedback">{errors.genStudentID}</div>}
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">
@@ -544,14 +564,16 @@ export default function InvoicesPage() {
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${errors.genTerm ? ' is-invalid' : ''}`}
                                                     value={genForm.term}
                                                     onChange={e => setGenForm({ ...genForm, term: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, genTerm: validateTerm(e.target.value) }))}
                                                     placeholder="e.g. 2026-Spring"
                                                     pattern="\d{4}-(Spring|Summer|Fall|Winter)"
                                                     title="Format: YYYY-Season (e.g. 2026-Spring)"
                                                     required
                                                 />
+                                                {errors.genTerm && <div className="invalid-feedback">{errors.genTerm}</div>}
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">
@@ -607,19 +629,21 @@ export default function InvoicesPage() {
                                                 <label className="form-label fw-bold">
                                                     Amount <span className="text-danger">*</span>
                                                 </label>
-                                                <div className="input-group">
+                                                <div className={`input-group${errors.payAmount ? ' has-validation' : ''}`}>
                                                     <span className="input-group-text">₹</span>
                                                     {/* FIX: max enforces outstanding balance cap, consistent with PaymentsPage */}
                                                     <input
                                                         type="number"
-                                                        className="form-control"
+                                                        className={`form-control${errors.payAmount ? ' is-invalid' : ''}`}
                                                         value={payForm.amount}
                                                         onChange={e => setPayForm({ ...payForm, amount: e.target.value })}
+                                                        onBlur={e => setErrors(prev => ({ ...prev, payAmount: validateAmount(e.target.value, 0.01, 9_999_999) }))}
                                                         step="0.01"
                                                         min="0.01"
                                                         max={balance > 0 ? balance.toFixed(2) : undefined}
                                                         required
                                                     />
+                                                    {errors.payAmount && <div className="invalid-feedback">{errors.payAmount}</div>}
                                                 </div>
                                                 {balance > 0 && (
                                                     <div className="form-text">
@@ -649,11 +673,13 @@ export default function InvoicesPage() {
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${errors.payReference ? ' is-invalid' : ''}`}
                                                     value={payForm.reference}
                                                     onChange={e => setPayForm({ ...payForm, reference: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, payReference: validateReference(e.target.value) }))}
                                                     placeholder="Transaction ref / cheque number..."
                                                 />
+                                                {errors.payReference && <div className="invalid-feedback">{errors.payReference}</div>}
                                             </div>
                                         </div>
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />

@@ -7,6 +7,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { authService } from '../../services/authService';
+import { validateName, validateEmail, validatePhone } from '../../utils/validators';
 
 const ROLE_BADGE_STYLE = {
     Student:    { bg: '#E6F1FB', color: '#0C447C' },
@@ -33,6 +34,7 @@ export default function UserDetailPage() {
     const [editForm, setEditForm] = useState({ fullName: '', email: '', phone: '' });
     const [editing, setEditing] = useState(false);
     const [editError, setEditError] = useState(null);
+    const [errors, setErrors] = useState({});
 
     // Status change
     const [showStatus, setShowStatus] = useState(false);
@@ -83,16 +85,17 @@ export default function UserDetailPage() {
     const handleEdit = async (e) => {
         e.preventDefault();
         setEditError(null);
-        if (editForm.phone.length > 0) {
-            if (!/^\d{10}$/.test(editForm.phone)) {
-                setEditError({ message: 'Phone number must be exactly 10 digits.' });
-                return;
-            }
-        }
+        const next = {
+            fullName: validateName(editForm.fullName, 'Full name'),
+            email: validateEmail(editForm.email),
+            phone: validatePhone(editForm.phone),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setEditing(true);
         try {
             await userService.update(id, editForm);
             setSuccess('User profile updated successfully.');
+            setErrors({});
             setEditMode(false);
             loadUser();
         } catch (err) {
@@ -232,39 +235,39 @@ export default function UserDetailPage() {
                                         <label className="form-label fw-bold">Full Name <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className={`form-control${errors.fullName ? ' is-invalid' : ''}`}
                                             value={editForm.fullName}
                                             onChange={e => setEditForm({ ...editForm, fullName: e.target.value })}
+                                            onBlur={e => setErrors(prev => ({ ...prev, fullName: validateName(e.target.value, 'Full name') }))}
                                             maxLength={200}
                                             required
                                         />
+                                        {errors.fullName && <div className="invalid-feedback">{errors.fullName}</div>}
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Email <span className="text-danger">*</span></label>
                                         <input
                                             type="email"
-                                            className="form-control"
+                                            className={`form-control${errors.email ? ' is-invalid' : ''}`}
                                             value={editForm.email}
                                             onChange={e => setEditForm({ ...editForm, email: e.target.value.toLowerCase() })}
+                                            onBlur={e => setErrors(prev => ({ ...prev, email: validateEmail(e.target.value) }))}
                                             maxLength={255}
                                             required
                                         />
+                                        {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Phone</label>
                                         <input
                                             type="text"
-                                            className={`form-control ${editForm.phone.length > 0 && !/^\d{10}$/.test(editForm.phone) ? 'is-invalid' : ''}`}
+                                            className={`form-control${errors.phone ? ' is-invalid' : ''}`}
                                             value={editForm.phone}
                                             onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                            onBlur={e => setErrors(prev => ({ ...prev, phone: validatePhone(e.target.value) }))}
                                             maxLength={20}
                                         />
-                                        {editForm.phone.length > 0 && !/^\d{10}$/.test(editForm.phone) && (
-                                            <div className="invalid-feedback">
-                                                <i className="bi bi-exclamation-circle me-1"></i>
-                                                Phone number must be exactly 10 digits.
-                                            </div>
-                                        )}
+                                        {errors.phone && <div className="invalid-feedback">{errors.phone}</div>}
                                     </div>
                                     <ErrorAlert error={editError} onDismiss={() => setEditError(null)} />
                                     <div className="d-flex gap-2">
@@ -277,7 +280,7 @@ export default function UserDetailPage() {
                                         <button
                                             type="button"
                                             className="btn btn-outline-secondary"
-                                            onClick={() => { setEditMode(false); loadUser(); }}
+                                            onClick={() => { setErrors({}); setEditMode(false); loadUser(); }}
                                             disabled={editing}
                                         >
                                             Cancel

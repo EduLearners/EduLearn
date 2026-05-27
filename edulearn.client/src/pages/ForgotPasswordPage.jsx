@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
+import { validateEmail } from '../utils/validators';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState('');
+    const [errors, setErrors] = useState({});
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const next = { email: validateEmail(email) };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setError('');
         setLoading(true);
         try {
@@ -63,19 +67,21 @@ export default function ForgotPasswordPage() {
                         <form onSubmit={handleSubmit}>
                             <div className="mb-3">
                                 <label className="form-label fw-bold">Email Address</label>
-                                <div className="input-group">
+                                <div className="input-group has-validation">
                                     <span className="input-group-text">
                                         <i className="bi bi-envelope"></i>
                                     </span>
                                     <input
                                         type="email"
-                                        className="form-control"
+                                        className={`form-control${errors.email ? ' is-invalid' : ''}`}
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
+                                        onBlur={e => setErrors(prev => ({ ...prev, email: validateEmail(e.target.value) }))}
                                         placeholder="Enter your registered email"
                                         required
                                         autoFocus
                                     />
+                                    {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                                 </div>
                             </div>
 

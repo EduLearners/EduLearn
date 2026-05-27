@@ -9,6 +9,7 @@ public class CreateScholarshipDto
 
     [Required]
     [MaxLength(100)]
+    [RegularExpression(@"^[a-zA-Z0-9\s\-]+$", ErrorMessage = "Award type can only contain letters, digits, spaces, and hyphens")]
     public string AwardType { get; set; } = null!;
 
     [Required]

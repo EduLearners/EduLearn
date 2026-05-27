@@ -7,6 +7,7 @@ import { emptySubmission } from '../../models/Assessment';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
 import axiosClient from '../../api/axiosClient';
+import { validateOptionalUrl } from '../../utils/validators';
 
 export default function SubmitPage() {
     const { id } = useParams();
@@ -18,6 +19,7 @@ export default function SubmitPage() {
     const [form, setForm] = useState(emptySubmission());
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
+    const [errors, setErrors] = useState({});
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState('');
 
@@ -67,8 +69,7 @@ export default function SubmitPage() {
     };
 
     // FIX: Validate that fileURI looks like a proper URL when provided
-    const fileURIInvalid = form.fileURI.trim().length > 0 &&
-        !/^https?:\/\/.+/.test(form.fileURI.trim());
+    const fileURIInvalid = !!validateOptionalUrl(form.fileURI);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -76,10 +77,8 @@ export default function SubmitPage() {
         setSuccess('');
 
         // FIX: Block if fileURI is provided but doesn't look like a URL
-        if (fileURIInvalid) {
-            setError({ message: 'Please enter a valid URL starting with https:// (e.g. a Google Drive or GitHub link).' });
-            return;
-        }
+        const nextErrors = { fileURI: validateOptionalUrl(form.fileURI) };
+        if (Object.values(nextErrors).some(Boolean)) { setErrors(nextErrors); return; }
 
         // AC-2: Late submission warning
         if (assessment?.dueAt && new Date() > new Date(assessment.dueAt)) {
@@ -195,17 +194,18 @@ export default function SubmitPage() {
                                     </span>
                                     <input
                                         type="url"
-                                        className={`form-control ${fileURIInvalid ? 'is-invalid' : ''}`}
+                                        className={`form-control ${errors.fileURI ? 'is-invalid' : ''}`}
                                         name="fileURI"
                                         value={form.fileURI}
                                         onChange={handleChange}
+                                        onBlur={e => setErrors(prev => ({ ...prev, fileURI: validateOptionalUrl(e.target.value) }))}
                                         placeholder="https://drive.google.com/..."
                                         maxLength={500}
                                     />
-                                    {fileURIInvalid && (
+                                    {errors.fileURI && (
                                         <div className="invalid-feedback">
                                             <i className="bi bi-exclamation-circle me-1"></i>
-                                            Must be a valid URL starting with https://
+                                            {errors.fileURI}
                                         </div>
                                     )}
                                 </div>

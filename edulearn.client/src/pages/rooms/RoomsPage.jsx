@@ -6,6 +6,7 @@ import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import StatusBadge from '../../components/StatusBadge';
+import { validateCourseCode, validateBuildingName, validateRoomNumber, validateJson, validatePositiveInteger, validateOptionalPositiveId, validateTerm, validatePositiveId } from '../../utils/validators';
 
 const emptyForm = {
     building: '',
@@ -27,6 +28,7 @@ export default function RoomsPage() {
     // Modal state
     const [showModal, setShowModal] = useState(false);
     const [form, setForm] = useState(emptyForm);
+    const [errors, setErrors] = useState({});
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState(null);
 
@@ -62,6 +64,7 @@ export default function RoomsPage() {
     const openCreateModal = () => {
         setForm(emptyForm);
         setFormError(null);
+        setErrors({});
         setShowModal(true);
     };
 
@@ -74,6 +77,15 @@ export default function RoomsPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFormError(null);
+
+        const next = {
+            building: validateBuildingName(form.building),
+            roomNumber: validateRoomNumber(form.roomNumber),
+            capacity: validatePositiveInteger(form.capacity, 1, 1000, 'Capacity'),
+            computers: validatePositiveInteger(form.computers, 0, 500, 'Computers'),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
+
         setSaving(true);
 
         try {
@@ -268,40 +280,46 @@ export default function RoomsPage() {
                                                 <label className="form-label fw-bold">Building *</label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${errors.building ? ' is-invalid' : ''}`}
                                                     value={form.building}
                                                     onChange={(e) => setForm({ ...form, building: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, building: validateBuildingName(e.target.value) }))}
                                                     required
                                                     placeholder="e.g. Block A"
                                                     maxLength={100}
                                                     autoFocus
                                                 />
+                                                {errors.building && <div className="invalid-feedback">{errors.building}</div>}
                                             </div>
 
                                             <div className="col-md-3">
                                                 <label className="form-label fw-bold">Room Number *</label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${errors.roomNumber ? ' is-invalid' : ''}`}
                                                     value={form.roomNumber}
                                                     onChange={(e) => setForm({ ...form, roomNumber: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, roomNumber: validateRoomNumber(e.target.value) }))}
                                                     required
                                                     placeholder="A101"
                                                     maxLength={20}
                                                 />
+                                                {errors.roomNumber && <div className="invalid-feedback">{errors.roomNumber}</div>}
                                             </div>
 
                                             <div className="col-md-3">
                                                 <label className="form-label fw-bold">Capacity *</label>
                                                 <input
                                                     type="number"
-                                                    className="form-control"
+                                                    className={`form-control${errors.capacity ? ' is-invalid' : ''}`}
                                                     value={form.capacity}
                                                     onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, capacity: validatePositiveInteger(e.target.value, 1, 1000, 'Capacity') }))}
                                                     required
                                                     min={1}
                                                     max={1000}
                                                 />
+                                                {errors.capacity && <div className="invalid-feedback">{errors.capacity}</div>}
                                             </div>
                                         </div>
 
@@ -361,13 +379,15 @@ export default function RoomsPage() {
                                                 </label>
                                                 <input
                                                     type="number"
-                                                    className="form-control form-control-sm"
+                                                    className={`form-control form-control-sm${errors.computers ? ' is-invalid' : ''}`}
                                                     value={form.computers}
                                                     onChange={(e) => setForm({ ...form, computers: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, computers: validatePositiveInteger(e.target.value, 0, 500, 'Computers') }))}
                                                     min={0}
                                                     max={500}
                                                     placeholder="0"
                                                 />
+                                                {errors.computers && <div className="invalid-feedback">{errors.computers}</div>}
                                             </div>
                                         </div>
 

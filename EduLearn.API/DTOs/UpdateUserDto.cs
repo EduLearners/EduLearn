@@ -6,6 +6,7 @@ public class UpdateUserDto
 {
     [Required]
     [MaxLength(200)]
+    [RegularExpression(@"^[\p{L}\s'\-\.]+$", ErrorMessage = "Full name can only contain letters, spaces, hyphens, apostrophes, and dots")]
     public string FullName { get; set; } = null!;
 
     [Required]

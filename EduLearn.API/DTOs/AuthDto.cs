@@ -13,6 +13,7 @@ namespace EduLearn.API.DTOs;
 public class RegisterDto
 {
     [Required]
+    [RegularExpression(@"^[a-zA-Z0-9][a-zA-Z0-9_]*$", ErrorMessage = "Username must start with a letter or digit and contain only letters, digits, and underscores")]
     public string Username { get; set; } = string.Empty;
 
     [Required]
@@ -25,8 +26,10 @@ public class RegisterDto
     public string Password { get; set; } = string.Empty;
 
     [Required]
+    [RegularExpression(@"^[\p{L}\s'\-\.]+$", ErrorMessage = "Full name can only contain letters, spaces, hyphens, apostrophes, and dots")]
     public string FullName { get; set; } = string.Empty;
 
+    [RegularExpression(@"^\d{10}$", ErrorMessage = "Phone must be exactly 10 digits")]
     public string? Phone { get; set; }
     // INVITE: If true, backend sends a welcome email with login details
     public bool SendInvite { get; set; } = false;
@@ -85,6 +88,7 @@ public class MfaVerifyDto
 {
     [Required]
     [MaxLength(6)]
+    [RegularExpression(@"^\d{6}$", ErrorMessage = "Code must be exactly 6 digits")]
     public string Code { get; set; } = string.Empty;
 }
 

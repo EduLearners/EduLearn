@@ -11,6 +11,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import axiosClient from '../../api/axiosClient';
+import { validateCourseCode, validateMinLength, validateJson, validatePositiveInteger, validateOptionalPositiveId, validateTerm, validatePositiveId } from '../../utils/validators';
 
 export default function EnrollmentPage() {
     const [searchParams] = useSearchParams();
@@ -32,6 +33,7 @@ export default function EnrollmentPage() {
     const [courseId, setCourseId] = useState('');
     const [term, setTerm] = useState('2026-Spring');
     const [studentId, setStudentId] = useState('');
+    const [errors, setErrors] = useState({});
 
     // Sections list
     const [sections, setSections] = useState([]);
@@ -185,6 +187,13 @@ export default function EnrollmentPage() {
     const handleSearchSections = async () => {
         setActionMessage(null);
         setConflictResults({});
+
+        const next = {
+            term: validateTerm(term),
+            ...((!isStudent) && { studentId: validatePositiveId(studentId) }),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
+
         if (!courseId || !term.trim()) {
             setSearchError({ message: 'Please select a course and term.' });
             return;
@@ -360,12 +369,14 @@ export default function EnrollmentPage() {
                                 </label>
                                 <input
                                     type="number"
-                                    className="form-control"
+                                    className={`form-control${errors.studentId ? ' is-invalid' : ''}`}
                                     value={studentId}
                                     onChange={e => setStudentId(e.target.value)}
+                                    onBlur={e => setErrors(prev => ({ ...prev, studentId: validatePositiveId(e.target.value) }))}
                                     placeholder="Who you are enrolling/viewing"
                                     min="1"
                                 />
+                                {errors.studentId && <div className="invalid-feedback">{errors.studentId}</div>}
                             </div>
                         )}
                         {isStudent && studentId && (
@@ -433,11 +444,13 @@ export default function EnrollmentPage() {
                             </label>
                             <input
                                 type="text"
-                                className="form-control"
+                                className={`form-control${errors.term ? ' is-invalid' : ''}`}
                                 value={term}
                                 onChange={e => setTerm(e.target.value)}
+                                onBlur={e => setErrors(prev => ({ ...prev, term: validateTerm(e.target.value) }))}
                                 placeholder="e.g. 2026-Spring"
                             />
+                            {errors.term && <div className="invalid-feedback">{errors.term}</div>}
                         </div>
 
                         <div className="col-md-2">

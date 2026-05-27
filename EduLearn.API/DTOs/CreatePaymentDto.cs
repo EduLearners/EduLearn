@@ -15,5 +15,6 @@ public class CreatePaymentDto
     [Required]
     public PaymentMethod Method { get; set; }
 
+    [RegularExpression(@"^[a-zA-Z0-9\-\/]*$", ErrorMessage = "Reference can only contain letters, digits, hyphens, and slashes")]
     public string? Reference { get; set; }
 }

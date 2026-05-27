@@ -5,6 +5,7 @@ import { courseService } from '../../services/courseService';
 import { authService } from '../../services/authService';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
+import { validateCourseCode, validateProgramName, validateJson, validatePositiveInteger, validateOptionalPositiveId, validateTerm, validatePositiveId } from '../../utils/validators';
 
 export default function ProgramFormPage() {
     const { id } = useParams();
@@ -19,6 +20,7 @@ export default function ProgramFormPage() {
         durationTerms: 8,
     });
 
+    const [errors, setErrors] = useState({});
     const [allCourses, setAllCourses] = useState([]);
     const [requiredSelected, setRequiredSelected] = useState([]);
     const [electivesSelected, setElectivesSelected] = useState([]);
@@ -51,6 +53,7 @@ export default function ProgramFormPage() {
         try {
             setPageLoading(true);
             setError(null);
+            setErrors({});
             const data = await programService.getById(id);
             setForm({
                 name: data.name || '',
@@ -112,6 +115,14 @@ export default function ProgramFormPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+
+        const next = {
+            name: validateProgramName(form.name),
+            durationTerms: validatePositiveInteger(form.durationTerms, 1, 20, 'Duration (terms)'),
+            departmentID: validateOptionalPositiveId(form.departmentID),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
+
         setLoading(true);
 
         const payload = {
@@ -174,8 +185,10 @@ export default function ProgramFormPage() {
                         <div className="row g-3">
                             <div className="col-md-8">
                                 <label className="form-label fw-bold">Program Name <span className="text-danger">*</span></label>
-                                <input type="text" className="form-control" name="name" value={form.name} onChange={handleChange}
+                                <input type="text" className={`form-control${errors.name ? ' is-invalid' : ''}`} name="name" value={form.name} onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, name: validateProgramName(e.target.value) }))}
                                     placeholder="e.g. Bachelor of Technology - Computer Science" maxLength={200} required />
+                                {errors.name && <div className="invalid-feedback">{errors.name}</div>}
                             </div>
 
                             <div className="col-md-4">
@@ -192,15 +205,21 @@ export default function ProgramFormPage() {
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">Duration (Terms) <span className="text-danger">*</span></label>
                                 {/* FIX: Added step={1} to prevent decimal term values */}
-                                <input type="number" className="form-control" name="durationTerms" value={form.durationTerms}
-                                    onChange={handleChange} min={1} max={20} step={1} required />
+                                <input type="number" className={`form-control${errors.durationTerms ? ' is-invalid' : ''}`} name="durationTerms" value={form.durationTerms}
+                                    onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, durationTerms: validatePositiveInteger(e.target.value, 1, 20, 'Duration (terms)') }))}
+                                    min={1} max={20} step={1} required />
+                                {errors.durationTerms && <div className="invalid-feedback">{errors.durationTerms}</div>}
                                 <div className="form-text">e.g. 8 terms = 4 years</div>
                             </div>
 
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">Department ID <small className="text-muted fw-normal ms-2">(optional)</small></label>
-                                <input type="number" className="form-control" name="departmentID" value={form.departmentID}
-                                    onChange={handleChange} placeholder="Optional" min={1} />
+                                <input type="number" className={`form-control${errors.departmentID ? ' is-invalid' : ''}`} name="departmentID" value={form.departmentID}
+                                    onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, departmentID: validateOptionalPositiveId(e.target.value) }))}
+                                    placeholder="Optional" min={1} />
+                                {errors.departmentID && <div className="invalid-feedback">{errors.departmentID}</div>}
                             </div>
                         </div>
                     </div>

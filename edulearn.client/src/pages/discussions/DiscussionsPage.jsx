@@ -9,6 +9,7 @@ import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
 import axiosClient from '../../api/axiosClient';
+import { validateMinLength, validateTitle } from '../../utils/validators';
 
 const DISCUSSION_STATUSES = ['Open', 'Closed', 'Pinned', 'Archived'];
 
@@ -29,6 +30,7 @@ export default function DiscussionsPage() {
     const [newThread, setNewThread] = useState({ title: '', initialMessage: '' });
     const [replyText, setReplyText] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [errors, setErrors] = useState({});
 
     const canModerate = ['Instructor', 'ITAdmin'].includes(role);
     const isStudent = role === 'Student';
@@ -103,9 +105,8 @@ export default function DiscussionsPage() {
 
     const handleCreateThread = async (e) => {
         e.preventDefault();
-        if (!newThread.title.trim()) {
-            return;
-        }
+        const next = { title: validateTitle(newThread.title) };
+        if (Object.values(next).some(Boolean)) { setErrors(prev => ({ ...prev, ...next })); return; }
         setError(null);
         setSuccess('');
         setSubmitting(true);
@@ -127,7 +128,9 @@ export default function DiscussionsPage() {
 
     const handleReply = async (e) => {
         e.preventDefault();
-        if (!selected || !replyText.trim()) return;
+        if (!selected) return;
+        const next = { replyText: validateMinLength(replyText, 1, 'Reply') };
+        if (Object.values(next).some(Boolean)) { setErrors(prev => ({ ...prev, ...next })); return; }
         setError(null);
         setSubmitting(true);
         try {
@@ -230,13 +233,15 @@ export default function DiscussionsPage() {
                                         <div className="col-12">
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className={`form-control${errors.title ? ' is-invalid' : ''}`}
                                                 value={newThread.title}
                                                 onChange={e => setNewThread({ ...newThread, title: e.target.value })}
+                                                onBlur={e => setErrors(prev => ({ ...prev, title: validateTitle(e.target.value) }))}
                                                 placeholder="Thread title..."
                                                 required
                                                 maxLength={200}
                                             />
+                                            {errors.title && <div className="invalid-feedback">{errors.title}</div>}
                                         </div>
                                         <div className="col-12">
                                             <textarea
@@ -374,9 +379,10 @@ export default function DiscussionsPage() {
                                         <form onSubmit={handleReply}>
                                             <div className="input-group">
                                                 <textarea
-                                                    className="form-control"
+                                                    className={`form-control${errors.replyText ? ' is-invalid' : ''}`}
                                                     value={replyText}
                                                     onChange={e => setReplyText(e.target.value)}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, replyText: validateMinLength(e.target.value, 1, 'Reply') }))}
                                                     rows={2}
                                                     placeholder="Write a reply..."
                                                     required
@@ -391,6 +397,7 @@ export default function DiscussionsPage() {
                                                         : <i className="bi bi-send"></i>
                                                     }
                                                 </button>
+                                                {errors.replyText && <div className="invalid-feedback">{errors.replyText}</div>}
                                             </div>
                                         </form>
                                     </div>

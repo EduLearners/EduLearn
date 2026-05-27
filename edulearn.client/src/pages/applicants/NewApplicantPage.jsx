@@ -4,6 +4,7 @@ import { applicantService } from '../../services/applicantService';
 import { programService } from '../../services/programService';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
+import { validateName, validateEmail, validatePhone, validatePhoneRequired, validateAddress, validateNationalId } from '../../utils/validators';
 
 export default function NewApplicantPage() {
     const navigate = useNavigate();
@@ -13,6 +14,7 @@ export default function NewApplicantPage() {
     const [programs, setPrograms] = useState([]);
     const [loadingPrograms, setLoadingPrograms] = useState(true);
     const [programsError, setProgramsError] = useState(null);
+    const [errors, setErrors] = useState({});
 
     const [form, setForm] = useState({
         name: '',
@@ -24,8 +26,9 @@ export default function NewApplicantPage() {
         programApplied: '',
     });
 
-    // Phone validation — must be exactly 10 digits, no symbols allowed
-    const phoneInvalid = form.phone.length > 0 && !/^\d{10}$/.test(form.phone);
+    // Phone validation — shared validator (required field on this form)
+    const phoneError = validatePhoneRequired(form.phone);
+    const phoneInvalid = !!phoneError;
 
     // DOB validation — applicant must be at least 15 years old
     const maxDOB = new Date();
@@ -63,11 +66,14 @@ export default function NewApplicantPage() {
         e.preventDefault();
         setError(null);
 
-        if (phoneInvalid) {
-            setError({ message: 'Phone number must be exactly 10 digits.' });
-            setSaving(false);
-            return;
-        }
+        const next = {
+            name: validateName(form.name, 'Full name'),
+            email: validateEmail(form.email),
+            phone: validatePhoneRequired(form.phone),
+            address: validateAddress(form.address),
+            nationalID: validateNationalId(form.nationalID),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
 
         if (form.address && !form.address.trim()) {
             setError({ message: 'Address cannot be blank spaces only.' });
@@ -138,13 +144,15 @@ export default function NewApplicantPage() {
                                 <label className="form-label fw-bold">Full Name <span className="text-danger">*</span></label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control${errors.name ? ' is-invalid' : ''}`}
                                     value={form.name}
                                     onChange={handleChange('name')}
+                                    onBlur={e => setErrors(prev => ({ ...prev, name: validateName(e.target.value, 'Full name') }))}
                                     required
                                     placeholder="John Doe"
                                     maxLength={200}
                                 />
+                                {errors.name && <div className="invalid-feedback">{errors.name}</div>}
                             </div>
 
                             <div className="col-md-4">
@@ -172,18 +180,20 @@ export default function NewApplicantPage() {
                                 <label className="form-label fw-bold">National ID <span className="text-danger">*</span></label>
                                 <input
                                     type="text"
-                                    className={`form-control ${nationalIDInvalid ? 'is-invalid' : ''}`}
+                                    className={`form-control${nationalIDInvalid || errors.nationalID ? ' is-invalid' : ''}`}
                                     value={form.nationalID}
                                     onChange={handleChange('nationalID')}
+                                    onBlur={e => setErrors(prev => ({ ...prev, nationalID: validateNationalId(e.target.value) }))}
                                     placeholder="e.g. NATID001"
                                     minLength={4}
                                     maxLength={12}
                                     required
                                 />
-                                {nationalIDInvalid ? (
+                                {(nationalIDInvalid || errors.nationalID) ? (
                                     <div className="invalid-feedback">
-                                        <i className="bi bi-exclamation-circle me-1"></i>
-                                        National ID must be at least 4 characters.
+                                        {errors.nationalID || (
+                                            <><i className="bi bi-exclamation-circle me-1"></i>National ID must be at least 4 characters.</>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="form-text">
@@ -201,30 +211,30 @@ export default function NewApplicantPage() {
                                 <label className="form-label fw-bold">Email <span className="text-danger">*</span></label>
                                 <input
                                     type="email"
-                                    className="form-control"
+                                    className={`form-control${errors.email ? ' is-invalid' : ''}`}
                                     value={form.email}
                                     onChange={handleChange('email')}
+                                    onBlur={e => setErrors(prev => ({ ...prev, email: validateEmail(e.target.value) }))}
                                     placeholder="applicant@example.com"
                                     required
                                 />
+                                {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                             </div>
 
                             <div className="col-md-6">
                                 <label className="form-label fw-bold">Phone <span className="text-danger">*</span></label>
                                 <input
                                     type="text"
-                                    className={`form-control ${phoneInvalid ? 'is-invalid' : ''}`}
+                                    className={`form-control${errors.phone ? ' is-invalid' : ''}`}
                                     value={form.phone}
                                     onChange={handleChange('phone')}
+                                    onBlur={e => setErrors(prev => ({ ...prev, phone: validatePhoneRequired(e.target.value) }))}
                                     placeholder="9876543210"
                                     maxLength={15}
                                     required
                                 />
-                                {phoneInvalid ? (
-                                    <div className="invalid-feedback">
-                                        <i className="bi bi-exclamation-circle me-1"></i>
-                                        Phone number must be exactly 10 digits.
-                                    </div>
+                                {errors.phone ? (
+                                    <div className="invalid-feedback">{errors.phone}</div>
                                 ) : (
                                     <div className="form-text">Enter 10-digit mobile number.</div>
                                 )}
@@ -234,13 +244,15 @@ export default function NewApplicantPage() {
                                 <label className="form-label fw-bold">Address <span className="text-danger">*</span></label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control${errors.address ? ' is-invalid' : ''}`}
                                     value={form.address}
                                     onChange={handleChange('address')}
+                                    onBlur={e => setErrors(prev => ({ ...prev, address: validateAddress(e.target.value) }))}
                                     placeholder="Chennai, TN"
                                     required
                                     maxLength={200}
                                 />
+                                {errors.address && <div className="invalid-feedback">{errors.address}</div>}
                             </div>
                         </div>
 
@@ -320,7 +332,7 @@ export default function NewApplicantPage() {
                             <button
                                 type="submit"
                                 className="btn btn-primary-edulearn"
-                                disabled={saving || loadingPrograms || nationalIDInvalid || phoneInvalid || dobInvalid}
+                                disabled={saving || loadingPrograms || nationalIDInvalid || !!errors.phone || dobInvalid}
                             >
                                 {saving ? (
                                     <><span className="spinner-border spinner-border-sm me-2"></span>Submitting...</>

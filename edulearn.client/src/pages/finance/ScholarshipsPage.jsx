@@ -4,6 +4,7 @@ import { authService } from '../../services/authService';
 import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import StatusBadge from '../../components/StatusBadge';
+import { validateAwardType, validateAmount, validateOptionalPositiveId, validateDateRange } from '../../utils/validators';
 
 const SCHOLARSHIP_STATUSES = ['Active', 'Suspended', 'Revoked', 'Expired'];
 
@@ -18,6 +19,8 @@ export default function ScholarshipsPage() {
     const [saving, setSaving] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
+
+    const [errors, setErrors] = useState({});
 
     const [form, setForm] = useState({
         studentID: '',
@@ -52,6 +55,13 @@ export default function ScholarshipsPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+        const next = {
+            studentID: validateOptionalPositiveId(form.studentID),
+            awardType: validateAwardType(form.awardType),
+            amount: validateAmount(form.amount, 0.01, 9_999_999),
+            validTo: validateDateRange(form.validFrom, form.validTo),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         if (form.validFrom && form.validTo && new Date(form.validFrom) >= new Date(form.validTo)) {
             setError({ message: 'Valid From date must be before Valid To date.' });
             return;
@@ -103,6 +113,7 @@ export default function ScholarshipsPage() {
                     <button
                         className="btn btn-primary-edulearn"
                         onClick={() => {
+                            setErrors({});
                             setForm({ studentID: studentId || '', awardType: '', amount: '', validFrom: '', validTo: '' });
                             setSuccess('');
                             setShowForm(true);
@@ -258,12 +269,14 @@ export default function ScholarshipsPage() {
                                                 </label>
                                                 <input
                                                     type="number"
-                                                    className="form-control"
+                                                    className={`form-control${errors.studentID ? ' is-invalid' : ''}`}
                                                     value={form.studentID}
                                                     onChange={e => setForm({ ...form, studentID: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, studentID: validateOptionalPositiveId(e.target.value) }))}
                                                     min="1"
                                                     required
                                                 />
+                                                {errors.studentID && <div className="invalid-feedback">{errors.studentID}</div>}
                                             </div>
                                             <div className="col-md-8">
                                                 <label className="form-label fw-bold">
@@ -271,29 +284,33 @@ export default function ScholarshipsPage() {
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${errors.awardType ? ' is-invalid' : ''}`}
                                                     value={form.awardType}
                                                     onChange={e => setForm({ ...form, awardType: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, awardType: validateAwardType(e.target.value) }))}
                                                     placeholder="e.g. Merit, Need-based"
                                                     maxLength={100}
                                                     required
                                                 />
+                                                {errors.awardType && <div className="invalid-feedback">{errors.awardType}</div>}
                                             </div>
                                             <div className="col-md-4">
                                                 <label className="form-label fw-bold">
                                                     Amount <span className="text-danger">*</span>
                                                 </label>
-                                                <div className="input-group">
+                                                <div className={`input-group${errors.amount ? ' has-validation' : ''}`}>
                                                     <span className="input-group-text">₹</span>
                                                     <input
                                                         type="number"
-                                                        className="form-control"
+                                                        className={`form-control${errors.amount ? ' is-invalid' : ''}`}
                                                         value={form.amount}
                                                         onChange={e => setForm({ ...form, amount: e.target.value })}
+                                                        onBlur={e => setErrors(prev => ({ ...prev, amount: validateAmount(e.target.value, 0.01, 9_999_999) }))}
                                                         step="0.01"
                                                         min="0.01"
                                                         required
                                                     />
+                                                    {errors.amount && <div className="invalid-feedback">{errors.amount}</div>}
                                                 </div>
                                             </div>
                                             <div className="col-md-6">
@@ -302,7 +319,7 @@ export default function ScholarshipsPage() {
                                                 </label>
                                                 <input
                                                     type="date"
-                                                    className="form-control"
+                                                    className={`form-control${errors.validTo ? ' is-invalid' : ''}`}
                                                     value={form.validFrom}
                                                     onChange={e => setForm({ ...form, validFrom: e.target.value })}
                                                     required
@@ -314,11 +331,13 @@ export default function ScholarshipsPage() {
                                                 </label>
                                                 <input
                                                     type="date"
-                                                    className="form-control"
+                                                    className={`form-control${errors.validTo ? ' is-invalid' : ''}`}
                                                     value={form.validTo}
                                                     onChange={e => setForm({ ...form, validTo: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, validTo: validateDateRange(form.validFrom, e.target.value) }))}
                                                     required
                                                 />
+                                                {errors.validTo && <div className="invalid-feedback">{errors.validTo}</div>}
                                             </div>
                                         </div>
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />

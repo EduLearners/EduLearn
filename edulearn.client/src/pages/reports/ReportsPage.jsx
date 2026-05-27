@@ -3,6 +3,7 @@ import { reportService } from '../../services/reportService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
+import { validateJson } from '../../utils/validators';
 
 const REPORT_SCOPES = ['Course', 'Department', 'Institution', 'Student', 'Enrollment'];
 
@@ -20,6 +21,7 @@ export default function ReportsPage() {
         scope: 'Institution',
         parametersJSON: '',
     });
+    const [errors, setErrors] = useState({});
 
     const canGenerate = ['Auditor', 'ITAdmin'].includes(role);
 
@@ -42,6 +44,8 @@ export default function ReportsPage() {
 
     const handleGenerate = async (e) => {
         e.preventDefault();
+        const next = { parametersJSON: validateJson(form.parametersJSON) };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setError(null);
         setSuccess('');
         setGenerating(true);
@@ -151,11 +155,13 @@ export default function ReportsPage() {
                                     </label>
                                     <input
                                         type="text"
-                                        className="form-control font-monospace"
+                                        className={`form-control font-monospace${errors.parametersJSON ? ' is-invalid' : ''}`}
                                         value={form.parametersJSON}
                                         onChange={e => setForm({ ...form, parametersJSON: e.target.value })}
+                                        onBlur={e => setErrors(prev => ({ ...prev, parametersJSON: validateJson(e.target.value) }))}
                                         placeholder='e.g. {"courseId": 1}'
                                     />
+                                    {errors.parametersJSON && <div className="invalid-feedback">{errors.parametersJSON}</div>}
                                 </div>
                             </div>
                             {success && (

@@ -6,6 +6,7 @@ import { authService } from '../../services/authService';
 import { AssessmentType } from '../../models/Assessment';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
+import { validateTitle, validateAmount, validateFutureDate, validateJson, validatePositiveId } from '../../utils/validators';
 
 export default function AssessmentFormPage() {
     const { id } = useParams();
@@ -24,6 +25,8 @@ export default function AssessmentFormPage() {
         maxScore: 100,
         gradingRubricJSON: '',
     });
+
+    const [errors, setErrors] = useState({});
 
     const [mySections, setMySections] = useState([]);
     const [loadingSections, setLoadingSections] = useState(false);
@@ -111,18 +114,17 @@ export default function AssessmentFormPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
-        setLoading(true);
 
-        // Validate gradingRubricJSON if provided
-        if (form.gradingRubricJSON && form.gradingRubricJSON.trim()) {
-            try {
-                JSON.parse(form.gradingRubricJSON);
-            } catch {
-                setError({ message: 'Grading Rubric JSON is not valid JSON.' });
-                setLoading(false);
-                return;
-            }
-        }
+        const next = {
+            title: validateTitle(form.title),
+            maxScore: validateAmount(form.maxScore, 1, 9999),
+            dueAt: form.dueAt ? validateFutureDate(form.dueAt) : null,
+            gradingRubricJSON: validateJson(form.gradingRubricJSON),
+            ...(!isInstructor ? { courseID: validatePositiveId(form.courseID) } : {}),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
+
+        setLoading(true);
 
         const payload = {
             courseID: Number(form.courseID),
@@ -208,14 +210,16 @@ export default function AssessmentFormPage() {
                                 <label className="form-label fw-bold">Title <span className="text-danger">*</span></label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control${errors.title ? ' is-invalid' : ''}`}
                                     name="title"
                                     value={form.title}
                                     onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, title: validateTitle(e.target.value) }))}
                                     placeholder="e.g. Midterm Exam"
                                     maxLength={200}
                                     required
                                 />
+                                {errors.title && <div className="invalid-feedback">{errors.title}</div>}
                             </div>
 
                             <div className="col-md-3">
@@ -277,13 +281,15 @@ export default function AssessmentFormPage() {
                                     <>
                                         <input
                                             type="number"
-                                            className="form-control"
+                                            className={`form-control${errors.courseID ? ' is-invalid' : ''}`}
                                             name="courseID"
                                             value={form.courseID}
                                             onChange={handleChange}
+                                            onBlur={e => setErrors(prev => ({ ...prev, courseID: validatePositiveId(e.target.value) }))}
                                             min={1}
                                             required
                                         />
+                                        {errors.courseID && <div className="invalid-feedback">{errors.courseID}</div>}
                                         <div className="form-text">Enter the Course ID.</div>
                                     </>
                                 )}
@@ -336,15 +342,17 @@ export default function AssessmentFormPage() {
                                 <label className="form-label fw-bold">Max Score <span className="text-danger">*</span></label>
                                 <input
                                     type="number"
-                                    className="form-control"
+                                    className={`form-control${errors.maxScore ? ' is-invalid' : ''}`}
                                     name="maxScore"
                                     value={form.maxScore}
                                     onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, maxScore: validateAmount(e.target.value, 1, 9999) }))}
                                     min={0.1}
                                     max={9999.9}
                                     step={0.1}
                                     required
                                 />
+                                {errors.maxScore && <div className="invalid-feedback">{errors.maxScore}</div>}
                             </div>
 
                             {/* FIX: min prevents selecting past due dates on new assessments */}
@@ -354,12 +362,14 @@ export default function AssessmentFormPage() {
                                 </label>
                                 <input
                                     type="datetime-local"
-                                    className="form-control"
+                                    className={`form-control${errors.dueAt ? ' is-invalid' : ''}`}
                                     name="dueAt"
                                     value={form.dueAt}
                                     onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, dueAt: e.target.value ? validateFutureDate(e.target.value) : null }))}
                                     min={minDueAt}
                                 />
+                                {errors.dueAt && <div className="invalid-feedback">{errors.dueAt}</div>}
                                 {!isEditMode && (
                                     <div className="form-text">Must be a future date and time.</div>
                                 )}
@@ -370,13 +380,15 @@ export default function AssessmentFormPage() {
                                     Grading Rubric <small className="text-muted fw-normal ms-2">(optional JSON)</small>
                                 </label>
                                 <textarea
-                                    className="form-control font-monospace"
+                                    className={`form-control font-monospace${errors.gradingRubricJSON ? ' is-invalid' : ''}`}
                                     name="gradingRubricJSON"
                                     value={form.gradingRubricJSON}
                                     onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, gradingRubricJSON: validateJson(e.target.value) }))}
                                     rows={4}
                                     placeholder='e.g. [{"criterion": "Code Quality", "maxPoints": 40}]'
                                 />
+                                {errors.gradingRubricJSON && <div className="invalid-feedback">{errors.gradingRubricJSON}</div>}
                             </div>
                         </div>
 

@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import ErrorAlert from '../components/ErrorAlert';
+import { validateTotpCode } from '../utils/validators';
 
 export default function MfaVerifyPage() {
     const [code, setCode] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({});
     const navigate = useNavigate();
 
     // Capture mfaToken on initial mount only.
@@ -25,6 +27,8 @@ export default function MfaVerifyPage() {
 
     const handleVerify = async (e) => {
         e.preventDefault();
+        const next = { code: validateTotpCode(code) };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setError('');
         setLoading(true);
 
@@ -62,15 +66,17 @@ export default function MfaVerifyPage() {
                         <div className="mb-3">
                             <label className="form-label">6-digit code from your authenticator app</label>
                             <input
-                                className="form-control form-control-lg text-center"
+                                className={`form-control form-control-lg text-center${errors.code ? ' is-invalid' : ''}`}
                                 value={code}
                                 onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                onBlur={e => setErrors(prev => ({ ...prev, code: validateTotpCode(e.target.value) }))}
                                 maxLength={6}
                                 pattern="\d{6}"
                                 required
                                 autoFocus
                                 style={{ letterSpacing: '0.5rem', fontFamily: 'monospace' }}
                             />
+                            {errors.code && <div className="invalid-feedback">{errors.code}</div>}
                         </div>
 
                         <ErrorAlert error={error} />

@@ -2,16 +2,23 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import ErrorAlert from '../components/ErrorAlert';
+import { validateNotWhitespace } from '../utils/validators';
 
 export default function LoginPage() {
     const [usernameOrEmail, setUsernameOrEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({});
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        const next = {
+            usernameOrEmail: validateNotWhitespace(usernameOrEmail, 'Username or email'),
+            password: validateNotWhitespace(password, 'Password'),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         if (!usernameOrEmail.trim() || !password.trim()) return;
         setError('');
         setLoading(true);
@@ -60,39 +67,43 @@ export default function LoginPage() {
                     <form onSubmit={handleLogin} autoComplete="off">
                         <div className="mb-3">
                             <label className="form-label">Username or Email</label>
-                            <div className="input-group">
+                            <div className="input-group has-validation">
                                 <span className="input-group-text">
                                     <i className="bi bi-person"></i>
                                 </span>
                                 <input
-                                    className="form-control"
+                                    className={`form-control${errors.usernameOrEmail ? ' is-invalid' : ''}`}
                                     value={usernameOrEmail}
                                     onChange={(e) => setUsernameOrEmail(e.target.value)}
+                                    onBlur={e => setErrors(prev => ({ ...prev, usernameOrEmail: validateNotWhitespace(e.target.value, 'Username or email') }))}
                                     placeholder="Enter Username or email"
                                     maxLength={256}
                                     required
                                     autoFocus
                                     autoComplete="off"
                                 />
+                                {errors.usernameOrEmail && <div className="invalid-feedback">{errors.usernameOrEmail}</div>}
                             </div>
                         </div>
 
                         <div className="mb-3">
                             <label className="form-label">Password</label>
-                            <div className="input-group">
+                            <div className="input-group has-validation">
                                 <span className="input-group-text">
                                     <i className="bi bi-lock"></i>
                                 </span>
                                 <input
                                     type="password"
-                                    className="form-control"
+                                    className={`form-control${errors.password ? ' is-invalid' : ''}`}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    onBlur={e => setErrors(prev => ({ ...prev, password: validateNotWhitespace(e.target.value, 'Password') }))}
                                     placeholder="Enter password"
                                     maxLength={256}
                                     required
                                     autoComplete="new-password"
                                 />
+                                {errors.password && <div className="invalid-feedback">{errors.password}</div>}
                             </div>
                         </div>
 

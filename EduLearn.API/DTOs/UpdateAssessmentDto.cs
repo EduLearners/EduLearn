@@ -11,6 +11,7 @@ public class UpdateAssessmentDto
 {
     [Required]
     [StringLength(200)]
+    [RegularExpression(@"^[\w\s\-:()&,\.'\""\/]+$", ErrorMessage = "Title contains invalid characters")]
     public string Title { get; set; } = string.Empty;
 
     [Required]

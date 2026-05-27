@@ -5,6 +5,7 @@ import { authService } from '../../services/authService';
 import { emptyCourse } from '../../models/Course';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
+import { validateCourseCode, validateTitle, validateLevel, validateJson, validatePositiveInteger, validateOptionalPositiveId, validateTerm, validatePositiveId } from '../../utils/validators';
 
 export default function CourseFormPage() {
     const { id } = useParams();
@@ -13,6 +14,7 @@ export default function CourseFormPage() {
     const isEditMode = !!id;
 
     const [form, setForm] = useState(emptyCourse());
+    const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(isEditMode);
     const [error, setError] = useState(null);
@@ -28,6 +30,7 @@ export default function CourseFormPage() {
         try {
             setPageLoading(true);
             setError(null);
+            setErrors({});
             const data = await courseService.getById(id);
             setForm({
                 code: data.code || '',
@@ -54,18 +57,16 @@ export default function CourseFormPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
-        setLoading(true);
 
-        // Validate prerequisitesJSON if provided
-        if (form.prerequisitesJSON && form.prerequisitesJSON.trim()) {
-            try {
-                JSON.parse(form.prerequisitesJSON);
-            } catch {
-                setError({ message: 'Prerequisites JSON is not valid JSON.' });
-                setLoading(false);
-                return;
-            }
-        }
+        const next = {
+            code: isEditMode ? null : validateCourseCode(form.code),
+            title: validateTitle(form.title),
+            level: validateLevel(form.level),
+            prerequisitesJSON: validateJson(form.prerequisitesJSON),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
+
+        setLoading(true);
 
         try {
             if (isEditMode) {
@@ -135,15 +136,17 @@ export default function CourseFormPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control${errors.code ? ' is-invalid' : ''}`}
                                     name="code"
                                     value={form.code}
                                     onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, code: isEditMode ? null : validateCourseCode(e.target.value) }))}
                                     placeholder="e.g. CS101"
                                     maxLength={20}
                                     required
                                     disabled={isEditMode}
                                 />
+                                {errors.code && <div className="invalid-feedback">{errors.code}</div>}
                                 {isEditMode && (
                                     <small className="text-muted">Course code cannot be changed after creation.</small>
                                 )}
@@ -155,14 +158,16 @@ export default function CourseFormPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control${errors.title ? ' is-invalid' : ''}`}
                                     name="title"
                                     value={form.title}
                                     onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, title: validateTitle(e.target.value) }))}
                                     placeholder="e.g. Introduction to Computer Science"
                                     maxLength={200}
                                     required
                                 />
+                                {errors.title && <div className="invalid-feedback">{errors.title}</div>}
                             </div>
 
                             <div className="col-md-3">
@@ -190,13 +195,15 @@ export default function CourseFormPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control${errors.level ? ' is-invalid' : ''}`}
                                     name="level"
                                     value={form.level}
                                     onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, level: validateLevel(e.target.value) }))}
                                     placeholder="e.g. UG"
                                     maxLength={20}
                                 />
+                                {errors.level && <div className="invalid-feedback">{errors.level}</div>}
                             </div>
 
                             <div className="col-md-3">
@@ -230,13 +237,15 @@ export default function CourseFormPage() {
                                     <small className="text-muted fw-normal ms-2">(JSON array of Course IDs)</small>
                                 </label>
                                 <textarea
-                                    className="form-control font-monospace"
+                                    className={`form-control font-monospace${errors.prerequisitesJSON ? ' is-invalid' : ''}`}
                                     name="prerequisitesJSON"
                                     value={form.prerequisitesJSON}
                                     onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, prerequisitesJSON: validateJson(e.target.value) }))}
                                     rows={4}
                                     placeholder='e.g. [1, 2] — array of prerequisite Course IDs'
                                 />
+                                {errors.prerequisitesJSON && <div className="invalid-feedback">{errors.prerequisitesJSON}</div>}
                                 <div className="form-text">
                                     Enter a JSON array of Course IDs (numbers), e.g. <code>[1, 3]</code>.
                                     Leave blank if there are no prerequisites.

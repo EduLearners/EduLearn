@@ -6,11 +6,14 @@ import { authService } from '../../services/authService';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
 import StatusBadge from '../../components/StatusBadge';
+import { validateScore } from '../../utils/validators';
 
 export default function GradePage() {
     const { id } = useParams(); // submissionID
     const navigate = useNavigate();
     const { role } = authService.getCurrentUser();
+
+    const [errors, setErrors] = useState({});
 
     const [submission, setSubmission] = useState(null);
     const [assessment, setAssessment] = useState(null);
@@ -58,16 +61,22 @@ export default function GradePage() {
         setError(null);
         setSuccess('');
 
+        const maxAllowed = submission?.maxScore ?? assessment?.maxScore;
+        const next = {
+            score: validateScore(score, maxAllowed),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
+
         // AC-3: JS bounds check (browser min/max can be bypassed)
         const numScore = Number(score);
-        const maxAllowed = submission.maxScore ?? assessment?.maxScore ?? 9999;
-        if (numScore < 0 || numScore > maxAllowed) {
-            setError({ message: `Score must be between 0 and ${maxAllowed}.` });
+        const maxAllowedDisplay = maxAllowed ?? 9999;
+        if (numScore < 0 || numScore > maxAllowedDisplay) {
+            setError({ message: `Score must be between 0 and ${maxAllowedDisplay}.` });
             return;
         }
 
         // AC-5: Confirm before posting grade
-        if (!window.confirm(`Post a grade of ${numScore} / ${maxAllowed} for this submission?`)) {
+        if (!window.confirm(`Post a grade of ${numScore} / ${maxAllowedDisplay} for this submission?`)) {
             return;
         }
 
@@ -242,14 +251,16 @@ export default function GradePage() {
                                         </label>
                                         <input
                                             type="number"
-                                            className="form-control"
+                                            className={`form-control${errors.score ? ' is-invalid' : ''}`}
                                             value={score}
                                             onChange={e => setScore(e.target.value)}
+                                            onBlur={e => setErrors(prev => ({ ...prev, score: validateScore(e.target.value, submission?.maxScore ?? assessment?.maxScore) }))}
                                             min={0}
                                             max={submission.maxScore ?? assessment?.maxScore ?? 9999}
                                             step={0.1}
                                             required
                                         />
+                                        {errors.score && <div className="invalid-feedback">{errors.score}</div>}
                                     </div>
 
                                     {/* Reason */}

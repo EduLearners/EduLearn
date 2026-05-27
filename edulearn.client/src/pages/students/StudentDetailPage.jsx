@@ -6,6 +6,7 @@ import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
+import { validateName, validateEmail, validatePhone, validateTerm, validateJson } from '../../utils/validators';
 
 export default function StudentDetailPage() {
     const { id } = useParams();
@@ -16,6 +17,7 @@ export default function StudentDetailPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [editMode, setEditMode] = useState(false);
+    const [errors, setErrors] = useState({});
 
     // Editable form fields (phase4-fix-11: contactInfoJSON replaced with email + phone)
     const [form, setForm] = useState({
@@ -72,14 +74,21 @@ export default function StudentDetailPage() {
         }
     };
 
-    // phase4-fix-11: validate email + phone before saving
-    const phoneInvalid = form.phone.length > 0 && !/^\d{10}$/.test(form.phone);
-    const emailInvalid = form.email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
+    // phase4-fix-11: validate email + phone before saving (shared validators)
+    const phoneError = validatePhone(form.phone);
+    const phoneInvalid = !!phoneError;
+    const emailError = form.email ? validateEmail(form.email) : null;
+    const emailInvalid = !!emailError;
 
     const handleSave = async (e) => {
         e.preventDefault();
-        if (phoneInvalid) { setError({ message: 'Phone number must be exactly 10 digits.' }); return; }
-        if (emailInvalid) { setError({ message: 'Please enter a valid email address.' }); return; }
+        const next = {
+            name: validateName(form.name, 'Full name'),
+            email: form.email ? validateEmail(form.email) : null,
+            phone: validatePhone(form.phone),
+            expectedGraduationTerm: form.expectedGraduationTerm ? validateTerm(form.expectedGraduationTerm) : null,
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         try {
             setSaving(true);
             setError(null);
@@ -91,6 +100,7 @@ export default function StudentDetailPage() {
             const payload = { ...rest, contactInfoJSON: JSON.stringify(contactInfo) };
             await studentService.update(id, payload);
             await loadStudent();
+            setErrors({});
             setEditMode(false);
         } catch (err) {
             setError(err);
@@ -170,11 +180,13 @@ export default function StudentDetailPage() {
                                         <label className="form-label fw-bold">Name</label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className={`form-control${errors.name ? ' is-invalid' : ''}`}
                                             value={form.name}
                                             onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                            onBlur={e => setErrors(prev => ({ ...prev, name: validateName(e.target.value, 'Full name') }))}
                                             required
                                         />
+                                        {errors.name && <div className="invalid-feedback">{errors.name}</div>}
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Gender</label>
@@ -195,31 +207,29 @@ export default function StudentDetailPage() {
                                         <label className="form-label fw-bold">Email</label>
                                         <input
                                             type="email"
-                                            className={`form-control${emailInvalid ? ' is-invalid' : ''}`}
+                                            className={`form-control${errors.email ? ' is-invalid' : ''}`}
                                             value={form.email}
                                             onChange={(e) => setForm({ ...form, email: e.target.value.toLowerCase() })}
+                                            onBlur={e => setErrors(prev => ({ ...prev, email: e.target.value ? validateEmail(e.target.value) : null }))}
                                             placeholder="student@example.com"
                                             maxLength={255}
                                         />
-                                        {emailInvalid && (
-                                            <div className="invalid-feedback">Enter a valid email address.</div>
-                                        )}
+                                        {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Phone</label>
                                         <input
                                             type="text"
-                                            className={`form-control${phoneInvalid ? ' is-invalid' : ''}`}
+                                            className={`form-control${errors.phone ? ' is-invalid' : ''}`}
                                             value={form.phone}
                                             onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                                            onBlur={e => setErrors(prev => ({ ...prev, phone: validatePhone(e.target.value) }))}
                                             placeholder="9876543210"
                                             pattern="[0-9]{10}"
                                             minLength={10}
                                             maxLength={10}
                                         />
-                                        {phoneInvalid && (
-                                            <div className="invalid-feedback">Enter a 10-digit phone number.</div>
-                                        )}
+                                        {errors.phone && <div className="invalid-feedback">{errors.phone}</div>}
                                     </div>
 
                                     <div className="d-flex gap-2">
@@ -233,7 +243,7 @@ export default function StudentDetailPage() {
                                         <button
                                             type="button"
                                             className="btn btn-outline-secondary"
-                                            onClick={() => { setEditMode(false); loadStudent(); }}
+                                            onClick={() => { setErrors({}); setEditMode(false); loadStudent(); }}
                                             disabled={saving}
                                         >
                                             Cancel
@@ -283,14 +293,16 @@ export default function StudentDetailPage() {
                                         <label className="form-label fw-bold">Expected Graduation Term</label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className={`form-control${errors.expectedGraduationTerm ? ' is-invalid' : ''}`}
                                             placeholder="e.g. 2030-Spring"
                                             value={form.expectedGraduationTerm}
                                             onChange={(e) => setForm({ ...form, expectedGraduationTerm: e.target.value })}
+                                            onBlur={e => setErrors(prev => ({ ...prev, expectedGraduationTerm: e.target.value ? validateTerm(e.target.value) : null }))}
                                             maxLength={20}
                                             pattern="\d{4}-(Spring|Summer|Fall|Winter)"
                                             title="Format: YYYY-Season (e.g. 2026-Fall)"
                                         />
+                                        {errors.expectedGraduationTerm && <div className="invalid-feedback">{errors.expectedGraduationTerm}</div>}
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Enrollment Status</label>

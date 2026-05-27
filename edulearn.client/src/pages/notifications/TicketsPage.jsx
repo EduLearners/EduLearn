@@ -5,6 +5,7 @@ import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import StatusBadge from '../../components/StatusBadge';
+import { validateMinLength, validateTitle, validateOptionalUrl, validateOptionalPositiveId } from '../../utils/validators';
 
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 
@@ -94,6 +95,9 @@ export default function TicketsPage() {
         resolutionURI: '',
         resolutionNote: '',
     });
+    const [createErrors, setCreateErrors] = useState({});
+    const [assignErrors, setAssignErrors] = useState({});
+    const [resolveErrors, setResolveErrors] = useState({});
 
     const isITAdmin = role === 'ITAdmin';
 
@@ -116,6 +120,11 @@ export default function TicketsPage() {
 
     const handleCreate = async (e) => {
         e.preventDefault();
+        const next = {
+            subject: validateTitle(createForm.subject, 'Subject'),
+            description: validateMinLength(createForm.description, 10, 'Description'),
+        };
+        if (Object.values(next).some(Boolean)) { setCreateErrors(next); return; }
         setError(null);
         setSuccess('');
         setSaving(true);
@@ -142,6 +151,8 @@ export default function TicketsPage() {
 
     const handleAssign = async (e) => {
         e.preventDefault();
+        const next = { assignedToUserId: validateOptionalPositiveId(assignForm.assignedToUserId) };
+        if (Object.values(next).some(Boolean)) { setAssignErrors(next); return; }
         setError(null);
         setSaving(true);
         try {
@@ -161,6 +172,8 @@ export default function TicketsPage() {
 
     const handleResolve = async (e) => {
         e.preventDefault();
+        const next = { resolutionURI: validateOptionalUrl(resolveForm.resolutionURI) };
+        if (Object.values(next).some(Boolean)) { setResolveErrors(next); return; }
         setError(null);
         setSaving(true);
         try {
@@ -386,7 +399,7 @@ export default function TicketsPage() {
                                     <button
                                         type="button"
                                         className="btn-close btn-close-white"
-                                        onClick={() => setShowCreate(false)}
+                                        onClick={() => { setShowCreate(false); setCreateErrors({}); }}
                                         disabled={saving}
                                     />
                                 </div>
@@ -419,13 +432,15 @@ export default function TicketsPage() {
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${createErrors.subject ? ' is-invalid' : ''}`}
                                                     value={createForm.subject}
                                                     onChange={e => setCreateForm({ ...createForm, subject: e.target.value })}
+                                                    onBlur={e => setCreateErrors(prev => ({ ...prev, subject: validateTitle(e.target.value, 'Subject') }))}
                                                     placeholder="Brief description of the issue..."
                                                     maxLength={200}
                                                     required
                                                 />
+                                                {createErrors.subject && <div className="invalid-feedback">{createErrors.subject}</div>}
                                             </div>
                                             <div className="col-md-4">
                                                 <label className="form-label fw-bold">
@@ -447,13 +462,15 @@ export default function TicketsPage() {
                                                     Description <span className="text-danger">*</span>
                                                 </label>
                                                 <textarea
-                                                    className="form-control"
+                                                    className={`form-control${createErrors.description ? ' is-invalid' : ''}`}
                                                     value={createForm.description}
                                                     onChange={e => setCreateForm({ ...createForm, description: e.target.value })}
+                                                    onBlur={e => setCreateErrors(prev => ({ ...prev, description: validateMinLength(e.target.value, 10, 'Description') }))}
                                                     rows={5}
                                                     placeholder="Describe the issue in detail..."
                                                     required
                                                 />
+                                                {createErrors.description && <div className="invalid-feedback">{createErrors.description}</div>}
                                             </div>
                                         </div>
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
@@ -462,7 +479,7 @@ export default function TicketsPage() {
                                         <button
                                             type="button"
                                             className="btn btn-outline-secondary"
-                                            onClick={() => setShowCreate(false)}
+                                            onClick={() => { setShowCreate(false); setCreateErrors({}); }}
                                             disabled={saving}
                                         >
                                             Cancel
@@ -520,12 +537,14 @@ export default function TicketsPage() {
                                                 </label>
                                                 <input
                                                     type="number"
-                                                    className="form-control"
+                                                    className={`form-control${assignErrors.assignedToUserId ? ' is-invalid' : ''}`}
                                                     value={assignForm.assignedToUserId}
                                                     onChange={e => setAssignForm({ assignedToUserId: e.target.value })}
+                                                    onBlur={e => setAssignErrors(prev => ({ ...prev, assignedToUserId: validateOptionalPositiveId(e.target.value) }))}
                                                     placeholder="Enter ITAdmin UserID..."
                                                     required
                                                 />
+                                                {assignErrors.assignedToUserId && <div className="invalid-feedback">{assignErrors.assignedToUserId}</div>}
                                                 <div className="form-text">
                                                     Must be a user with ITAdmin role.
                                                 </div>
@@ -600,11 +619,13 @@ export default function TicketsPage() {
                                                     </span>
                                                     <input
                                                         type="text"
-                                                        className="form-control"
+                                                        className={`form-control${resolveErrors.resolutionURI ? ' is-invalid' : ''}`}
                                                         value={resolveForm.resolutionURI}
                                                         onChange={e => setResolveForm({ ...resolveForm, resolutionURI: e.target.value })}
+                                                        onBlur={e => setResolveErrors(prev => ({ ...prev, resolutionURI: validateOptionalUrl(e.target.value) }))}
                                                         placeholder="https://..."
                                                     />
+                                                    {resolveErrors.resolutionURI && <div className="invalid-feedback">{resolveErrors.resolutionURI}</div>}
                                                 </div>
                                             </div>
                                             <div className="col-12">

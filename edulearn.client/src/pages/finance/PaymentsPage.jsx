@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { invoiceService } from '../../services/invoiceService';
 import { paymentService } from '../../services/paymentService';
 import { authService } from '../../services/authService';
+import { validateAmount, validateReference } from '../../utils/validators';
 import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import Loading from '../../components/Loading';
@@ -20,6 +21,7 @@ export default function PaymentsPage() {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState('');
     const [saving, setSaving] = useState(false);
+    const [errors, setErrors] = useState({});
 
     // Invoice + payment state
     const [invoices, setInvoices] = useState([]);
@@ -89,6 +91,11 @@ export default function PaymentsPage() {
 
     const handlePayment = async (e) => {
         e.preventDefault();
+        const next = {
+            amount: validateAmount(payForm.amount, 0.01),
+            reference: validateReference(payForm.reference),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setError(null);
         setSuccess('');
         setSaving(true);
@@ -461,9 +468,10 @@ export default function PaymentsPage() {
                                                     <span className="input-group-text">₹</span>
                                                     <input
                                                         type="number"
-                                                        className="form-control"
+                                                        className={`form-control${errors.amount ? ' is-invalid' : ''}`}
                                                         value={payForm.amount}
                                                         onChange={e => setPayForm({ ...payForm, amount: e.target.value })}
+                                                        onBlur={e => setErrors(prev => ({ ...prev, amount: validateAmount(e.target.value, 0.01) }))}
                                                         placeholder={balance > 0 ? balance.toFixed(2) : '0.00'}
                                                         step="0.01"
                                                         min="0.01"
@@ -471,6 +479,7 @@ export default function PaymentsPage() {
                                                         required
                                                         autoFocus
                                                     />
+                                                    {errors.amount && <div className="invalid-feedback">{errors.amount}</div>}
                                                 </div>
                                                 {balance > 0 && (
                                                     <div className="form-text">
@@ -506,11 +515,14 @@ export default function PaymentsPage() {
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${errors.reference ? ' is-invalid' : ''}`}
                                                     value={payForm.reference}
                                                     onChange={e => setPayForm({ ...payForm, reference: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, reference: validateReference(e.target.value) }))}
                                                     placeholder="Transaction ID / Cheque number / UPI ref..."
+                                                    maxLength={100}
                                                 />
+                                                {errors.reference && <div className="invalid-feedback">{errors.reference}</div>}
                                             </div>
                                         </div>
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />

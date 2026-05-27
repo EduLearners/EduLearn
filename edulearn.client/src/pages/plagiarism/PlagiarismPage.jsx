@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { plagiarismService } from '../../services/plagiarismService';
 import { authService } from '../../services/authService';
+import { validatePositiveId } from '../../utils/validators';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
@@ -24,6 +25,7 @@ export default function PlagiarismPage() {
     const [flagForm, setFlagForm] = useState(emptyFlagForm);
     const [flagging, setFlagging] = useState(false);
     const [flagError, setFlagError] = useState(null);
+    const [errors, setErrors] = useState({});
 
     // Status update confirmation
     const [statusConfirm, setStatusConfirm] = useState(null); // { reportId, newStatus, reportTitle }
@@ -68,6 +70,8 @@ export default function PlagiarismPage() {
 
     const handleSubmitFlag = async (e) => {
         e.preventDefault();
+        const next = { submissionID: validatePositiveId(flagForm.submissionID) };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setFlagError(null);
         setFlagging(true);
 
@@ -427,14 +431,16 @@ export default function PlagiarismPage() {
                                             <label className="form-label fw-bold">Submission ID *</label>
                                             <input
                                                 type="number"
-                                                className="form-control"
+                                                className={`form-control${errors.submissionID ? ' is-invalid' : ''}`}
                                                 value={flagForm.submissionID}
                                                 onChange={(e) => setFlagForm({ ...flagForm, submissionID: e.target.value })}
+                                                onBlur={e => setErrors(prev => ({ ...prev, submissionID: validatePositiveId(e.target.value) }))}
                                                 required
                                                 min="1"
                                                 placeholder="e.g. 1"
                                                 autoFocus
                                             />
+                                            {errors.submissionID && <div className="invalid-feedback">{errors.submissionID}</div>}
                                             <small className="text-muted">
                                                 The ID of the submission you believe is plagiarised.
                                             </small>

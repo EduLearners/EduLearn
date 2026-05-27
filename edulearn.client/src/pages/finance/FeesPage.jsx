@@ -6,6 +6,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import Loading from '../../components/Loading';
 import StatusBadge from '../../components/StatusBadge';
+import { validateTerm, validateTitle, validateAmount, validateDateRange } from '../../utils/validators';
 
 const FEE_STATUSES = ['Draft', 'Active', 'Superseded'];
 
@@ -40,6 +41,8 @@ export default function FeesPage() {
     const [saving, setSaving] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
+
+    const [errors, setErrors] = useState({});
 
     const [form, setForm] = useState({
         programID: '',
@@ -85,6 +88,7 @@ export default function FeesPage() {
 
     const openCreate = () => {
         setIsEdit(false);
+        setErrors({});
         setForm({
             programID: programId || '',
             term: term || '',
@@ -100,6 +104,7 @@ export default function FeesPage() {
     const openEdit = () => {
         if (!fee) return;
         setIsEdit(true);
+        setErrors({});
         const existing = parseFeeItems(fee.feeItemsJSON);
         setForm({
             programID: fee.programID,
@@ -119,6 +124,21 @@ export default function FeesPage() {
         e.preventDefault();
         setError(null);
         setSuccess('');
+
+        // Inline validation guard
+        const itemErrors = {};
+        form.feeItems.forEach((row, idx) => {
+            const itemErr = validateTitle(row.item, 'Fee name');
+            const amtErr = validateAmount(row.amount, 0.01, 9_999_999);
+            if (itemErr) itemErrors[`item_${idx}`] = itemErr;
+            if (amtErr) itemErrors[`amount_${idx}`] = amtErr;
+        });
+        const next = {
+            term: validateTerm(form.term),
+            effectiveTo: validateDateRange(form.effectiveFrom, form.effectiveTo),
+            ...itemErrors,
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
 
         // FIX: Cross-validate effectiveFrom < effectiveTo
         if (form.effectiveFrom && form.effectiveTo && form.effectiveFrom >= form.effectiveTo) {
@@ -380,15 +400,17 @@ export default function FeesPage() {
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${errors.term ? ' is-invalid' : ''}`}
                                                     value={form.term}
                                                     onChange={e => setForm({ ...form, term: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, term: validateTerm(e.target.value) }))}
                                                     placeholder="e.g. 2026-Spring"
                                                     pattern="\d{4}-(Spring|Summer|Fall|Winter)"
                                                     title="Format: YYYY-Season (e.g. 2026-Spring)"
                                                     required
                                                     disabled={isEdit}
                                                 />
+                                                {errors.term && <div className="invalid-feedback">{errors.term}</div>}
                                             </div>
 
                                             {/* FIX: Date cross-validation with inline feedback */}
@@ -398,7 +420,7 @@ export default function FeesPage() {
                                                 </label>
                                                 <input
                                                     type="date"
-                                                    className={`form-control ${dateRangeInvalid ? 'is-invalid' : ''}`}
+                                                    className={`form-control${(dateRangeInvalid || errors.effectiveTo) ? ' is-invalid' : ''}`}
                                                     value={form.effectiveFrom}
                                                     onChange={e => setForm({ ...form, effectiveFrom: e.target.value })}
                                                     required
@@ -410,15 +432,16 @@ export default function FeesPage() {
                                                 </label>
                                                 <input
                                                     type="date"
-                                                    className={`form-control ${dateRangeInvalid ? 'is-invalid' : ''}`}
+                                                    className={`form-control${(dateRangeInvalid || errors.effectiveTo) ? ' is-invalid' : ''}`}
                                                     value={form.effectiveTo}
                                                     onChange={e => setForm({ ...form, effectiveTo: e.target.value })}
+                                                    onBlur={e => setErrors(prev => ({ ...prev, effectiveTo: validateDateRange(form.effectiveFrom, e.target.value) }))}
                                                     required
                                                 />
-                                                {dateRangeInvalid && (
+                                                {(dateRangeInvalid || errors.effectiveTo) && (
                                                     <div className="invalid-feedback">
                                                         <i className="bi bi-exclamation-circle me-1"></i>
-                                                        "Effective To" must be after "Effective From".
+                                                        {errors.effectiveTo || '"Effective To" must be after "Effective From".'}
                                                     </div>
                                                 )}
                                             </div>
@@ -445,28 +468,34 @@ export default function FeesPage() {
                                                     </button>
                                                 </div>
                                                 {form.feeItems.map((row, idx) => (
-                                                    <div key={idx} className="d-flex gap-2 mb-2 align-items-center">
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            placeholder="Item name (e.g. Tuition Fee)"
-                                                            value={row.item}
-                                                            onChange={e => updateFeeItem(idx, 'item', e.target.value)}
-                                                            required
-                                                        />
+                                                    <div key={idx} className="d-flex gap-2 mb-2 align-items-start">
+                                                        <div className="flex-grow-1">
+                                                            <input
+                                                                type="text"
+                                                                className={`form-control${errors[`item_${idx}`] ? ' is-invalid' : ''}`}
+                                                                placeholder="Item name (e.g. Tuition Fee)"
+                                                                value={row.item}
+                                                                onChange={e => updateFeeItem(idx, 'item', e.target.value)}
+                                                                onBlur={e => setErrors(prev => ({ ...prev, [`item_${idx}`]: validateTitle(e.target.value, 'Fee name') }))}
+                                                                required
+                                                            />
+                                                            {errors[`item_${idx}`] && <div className="invalid-feedback">{errors[`item_${idx}`]}</div>}
+                                                        </div>
                                                         <div className="input-group" style={{ maxWidth: 160 }}>
                                                             <span className="input-group-text">₹</span>
                                                             {/* FIX: min changed from "0" to "0.01" to prevent zero-amount items */}
                                                             <input
                                                                 type="number"
-                                                                className="form-control"
+                                                                className={`form-control${errors[`amount_${idx}`] ? ' is-invalid' : ''}`}
                                                                 placeholder="Amount"
                                                                 value={row.amount}
                                                                 min="0.01"
                                                                 step="0.01"
                                                                 onChange={e => updateFeeItem(idx, 'amount', e.target.value)}
+                                                                onBlur={e => setErrors(prev => ({ ...prev, [`amount_${idx}`]: validateAmount(e.target.value, 0.01, 9_999_999) }))}
                                                                 required
                                                             />
+                                                            {errors[`amount_${idx}`] && <div className="invalid-feedback">{errors[`amount_${idx}`]}</div>}
                                                         </div>
                                                         <button
                                                             type="button"

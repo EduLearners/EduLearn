@@ -6,6 +6,7 @@ import { userService } from '../../services/userService';
 import { applicantService } from '../../services/applicantService';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
+import { validateName, validateEmail, validatePhone, validateTerm } from '../../utils/validators';
 
 export default function NewStudentPage() {
     const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function NewStudentPage() {
     const [error, setError] = useState(null);
     const [programs, setPrograms] = useState([]);
     const [users, setUsers] = useState([]);
+    const [errors, setErrors] = useState({});
 
     const fromApplicantName = searchParams.get('name') || '';
     // phase4-fix-16: DOB no longer read from URL (PII). Resolved server-side from applicantID.
@@ -59,8 +61,9 @@ export default function NewStudentPage() {
     const maxDOBString = maxDOB.toISOString().split('T')[0];
     const dobInvalid = form.dob && new Date(form.dob) > maxDOB;
 
-    // FIX: Phone validation — must be exactly 10 digits when provided
-    const phoneInvalid = form.phone.length > 0 && !/^\d{10}$/.test(form.phone);
+    // FIX: Phone validation — shared validator (optional field)
+    const phoneError = validatePhone(form.phone);
+    const phoneInvalid = !!phoneError;
 
     // When a user is selected, silently auto-fill email, phone and name
     const handleUserChange = (e) => {
@@ -91,15 +94,18 @@ export default function NewStudentPage() {
         e.preventDefault();
         setError(null);
 
+        const next = {
+            name: validateName(form.name, 'Full name'),
+            email: form.email ? validateEmail(form.email) : null,
+            phone: validatePhone(form.phone),
+            entryTerm: validateTerm(form.entryTerm),
+            expectedGraduationTerm: form.expectedGraduationTerm ? validateTerm(form.expectedGraduationTerm) : null,
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
+
         // FIX: Block submission if DOB fails age requirement
         if (dobInvalid) {
             setError({ message: 'Student must be at least 15 years old.' });
-            return;
-        }
-
-        // FIX: Block submission if phone is provided but invalid
-        if (phoneInvalid) {
-            setError({ message: 'Phone number must be exactly 10 digits.' });
             return;
         }
 
@@ -209,15 +215,17 @@ export default function NewStudentPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control${errors.entryTerm ? ' is-invalid' : ''}`}
                                     value={form.entryTerm}
                                     onChange={handleChange('entryTerm')}
+                                    onBlur={e => setErrors(prev => ({ ...prev, entryTerm: validateTerm(e.target.value) }))}
                                     required
                                     placeholder="e.g. 2026-Spring"
                                     maxLength={20}
                                     pattern="\d{4}-(Spring|Summer|Fall|Winter)"
                                     title="Format: YYYY-Season (e.g. 2026-Fall)"
                                 />
+                                {errors.entryTerm && <div className="invalid-feedback">{errors.entryTerm}</div>}
                             </div>
 
                             <div className="col-md-8">
@@ -226,13 +234,15 @@ export default function NewStudentPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control${errors.name ? ' is-invalid' : ''}`}
                                     value={form.name}
                                     onChange={handleChange('name')}
+                                    onBlur={e => setErrors(prev => ({ ...prev, name: validateName(e.target.value, 'Full name') }))}
                                     required
                                     placeholder="John Doe"
                                     maxLength={100}
                                 />
+                                {errors.name && <div className="invalid-feedback">{errors.name}</div>}
                             </div>
 
                             <div className="col-md-4">
@@ -277,29 +287,29 @@ export default function NewStudentPage() {
                                 <label className="form-label fw-bold">Email</label>
                                 <input
                                     type="email"
-                                    className="form-control"
+                                    className={`form-control${errors.email ? ' is-invalid' : ''}`}
                                     value={form.email}
                                     onChange={handleChange('email')}
+                                    onBlur={e => setErrors(prev => ({ ...prev, email: e.target.value ? validateEmail(e.target.value) : null }))}
                                     placeholder="student@example.com"
                                 />
+                                {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                             </div>
 
-                            {/* FIX: Phone — added 10-digit validation consistent with NewApplicantPage */}
+                            {/* FIX: Phone — shared validatePhone validator */}
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">Phone</label>
                                 <input
                                     type="text"
-                                    className={`form-control ${phoneInvalid ? 'is-invalid' : ''}`}
+                                    className={`form-control${errors.phone ? ' is-invalid' : ''}`}
                                     value={form.phone}
                                     onChange={handleChange('phone')}
+                                    onBlur={e => setErrors(prev => ({ ...prev, phone: validatePhone(e.target.value) }))}
                                     placeholder="9876543210"
                                     maxLength={15}
                                 />
-                                {phoneInvalid ? (
-                                    <div className="invalid-feedback">
-                                        <i className="bi bi-exclamation-circle me-1"></i>
-                                        Phone number must be exactly 10 digits.
-                                    </div>
+                                {errors.phone ? (
+                                    <div className="invalid-feedback">{errors.phone}</div>
                                 ) : (
                                     <div className="form-text">Enter 10-digit mobile number (optional).</div>
                                 )}
@@ -311,14 +321,16 @@ export default function NewStudentPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control${errors.expectedGraduationTerm ? ' is-invalid' : ''}`}
                                     value={form.expectedGraduationTerm}
                                     onChange={handleChange('expectedGraduationTerm')}
+                                    onBlur={e => setErrors(prev => ({ ...prev, expectedGraduationTerm: e.target.value ? validateTerm(e.target.value) : null }))}
                                     placeholder="e.g. 2030-Spring"
                                     maxLength={20}
                                     pattern="\d{4}-(Spring|Summer|Fall|Winter)"
                                     title="Format: YYYY-Season (e.g. 2026-Fall)"
                                 />
+                                {errors.expectedGraduationTerm && <div className="invalid-feedback">{errors.expectedGraduationTerm}</div>}
                             </div>
 
                         </div>
@@ -331,7 +343,7 @@ export default function NewStudentPage() {
                             <button
                                 type="submit"
                                 className="btn btn-primary-edulearn"
-                                disabled={saving || dobInvalid || phoneInvalid}
+                                disabled={saving || dobInvalid || !!errors.phone}
                             >
                                 {saving ? (
                                     <><span className="spinner-border spinner-border-sm me-2"></span>Creating...</>

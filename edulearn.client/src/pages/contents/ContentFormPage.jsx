@@ -6,6 +6,7 @@ import { authService } from '../../services/authService';
 import { emptyContent, ContentType } from '../../models/Content';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
+import { validateTitle, validateUrl, validateJson, validatePositiveId } from '../../utils/validators';
 
 export default function ContentFormPage() {
     const { id } = useParams();
@@ -13,6 +14,8 @@ export default function ContentFormPage() {
     const { role, userId } = authService.getCurrentUser();
     const isEditMode = !!id;
     const isInstructor = role === 'Instructor';
+
+    const [errors, setErrors] = useState({});
 
     const [form, setForm] = useState(emptyContent());
     const [myCourses, setMyCourses] = useState([]);      // unique courses from instructor's sections
@@ -78,23 +81,21 @@ export default function ContentFormPage() {
         setForm(prev => ({ ...prev, [name]: value }));
     };
 
-    const uriInvalid = form.uri.trim().length > 0 && !/^https?:\/\/.+/.test(form.uri.trim());
-    const metadataInvalid = form.metadataJSON.trim().length > 0 && (() => {
-        try { JSON.parse(form.metadataJSON); return false; } catch { return true; }
-    })();
+    const uriInvalid = form.uri.trim().length > 0 && !!validateUrl(form.uri);
+    const metadataInvalid = form.metadataJSON.trim().length > 0 && !!validateJson(form.metadataJSON);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
         setSuccess('');
-        if (uriInvalid) {
-            setError({ message: 'Content URI must be a valid URL starting with https://' });
-            return;
-        }
-        if (metadataInvalid) {
-            setError({ message: 'Metadata must be valid JSON.' });
-            return;
-        }
+
+        const next = {
+            title: validateTitle(form.title),
+            uri: validateUrl(form.uri),
+            metadataJSON: validateJson(form.metadataJSON),
+            ...(!isInstructor ? { courseID: validatePositiveId(form.courseID) } : {}),
+        };
+        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setLoading(true);
         const payload = { ...form, courseID: Number(form.courseID) };
         try {
@@ -153,14 +154,16 @@ export default function ContentFormPage() {
                                 <label className="form-label fw-bold">Title <span className="text-danger">*</span></label>
                                 <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control${errors.title ? ' is-invalid' : ''}`}
                                     name="title"
                                     value={form.title}
                                     onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, title: validateTitle(e.target.value) }))}
                                     placeholder="e.g. Introduction to React Hooks"
                                     maxLength={200}
                                     required
                                 />
+                                {errors.title && <div className="invalid-feedback">{errors.title}</div>}
                             </div>
 
                             {/* Type */}
@@ -208,13 +211,15 @@ export default function ContentFormPage() {
                                     <>
                                         <input
                                             type="number"
-                                            className="form-control"
+                                            className={`form-control${errors.courseID ? ' is-invalid' : ''}`}
                                             name="courseID"
                                             value={form.courseID}
                                             onChange={handleChange}
+                                            onBlur={e => setErrors(prev => ({ ...prev, courseID: validatePositiveId(e.target.value) }))}
                                             min={1}
                                             required
                                         />
+                                        {errors.courseID && <div className="invalid-feedback">{errors.courseID}</div>}
                                         <div className="form-text">Enter the Course ID.</div>
                                     </>
                                 )}
@@ -227,15 +232,17 @@ export default function ContentFormPage() {
                                     <span className="input-group-text"><i className="bi bi-link-45deg"></i></span>
                                     <input
                                         type="url"
-                                        className={`form-control ${uriInvalid ? 'is-invalid' : ''}`}
+                                        className={`form-control ${uriInvalid || errors.uri ? 'is-invalid' : ''}`}
                                         name="uri"
                                         value={form.uri}
                                         onChange={handleChange}
+                                        onBlur={e => setErrors(prev => ({ ...prev, uri: validateUrl(e.target.value) }))}
                                         placeholder="https://..."
                                         maxLength={500}
                                         required
                                     />
-                                    {uriInvalid && (
+                                    {errors.uri && <div className="invalid-feedback">{errors.uri}</div>}
+                                    {!errors.uri && uriInvalid && (
                                         <div className="invalid-feedback">
                                             <i className="bi bi-exclamation-circle me-1"></i>
                                             Must be a valid URL starting with https://
@@ -250,14 +257,16 @@ export default function ContentFormPage() {
                                     Metadata <small className="text-muted fw-normal ms-2">(optional JSON)</small>
                                 </label>
                                 <textarea
-                                    className={`form-control font-monospace ${metadataInvalid ? 'is-invalid' : ''}`}
+                                    className={`form-control font-monospace ${metadataInvalid || errors.metadataJSON ? 'is-invalid' : ''}`}
                                     name="metadataJSON"
                                     value={form.metadataJSON}
                                     onChange={handleChange}
+                                    onBlur={e => setErrors(prev => ({ ...prev, metadataJSON: validateJson(e.target.value) }))}
                                     rows={4}
                                     placeholder='e.g. {"duration": "45 mins", "language": "English"}'
                                 />
-                                {metadataInvalid && (
+                                {errors.metadataJSON && <div className="invalid-feedback">{errors.metadataJSON}</div>}
+                                {!errors.metadataJSON && metadataInvalid && (
                                     <div className="invalid-feedback">
                                         <i className="bi bi-exclamation-circle me-1"></i>
                                         Metadata must be valid JSON.

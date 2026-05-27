@@ -6,6 +6,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import StatusBadge from '../../components/StatusBadge';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import { validateUsername, validateName, validateEmail, validatePhone, validatePassword } from '../../utils/validators';
 
 const ALL_ROLES = ['Student', 'Instructor', 'Registrar', 'DeptAdmin', 'Finance', 'ITAdmin', 'Auditor'];
 const ALL_STATUSES = ['Active', 'Inactive', 'Suspended', 'Locked', 'Withdrawn'];
@@ -46,12 +47,14 @@ export default function UsersPage() {
     const [createForm, setCreateForm] = useState(EMPTY_FORM);
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState(null);
+    const [createErrors, setCreateErrors] = useState({});
 
     const [showEdit, setShowEdit] = useState(false);
     const [editTarget, setEditTarget] = useState(null);
     const [editForm, setEditForm] = useState({ fullName: '', email: '', phone: '' });
     const [editing, setEditing] = useState(false);
     const [editError, setEditError] = useState(null);
+    const [editErrors, setEditErrors] = useState({});
 
     const [showStatus, setShowStatus] = useState(false);
     const [statusTarget, setStatusTarget] = useState(null);
@@ -82,12 +85,14 @@ export default function UsersPage() {
         e.preventDefault();
         setCreateError(null);
 
-        // FIX: Validate phone format (10 digits) if provided
-        const phoneDigits = createForm.phone.replace(/\D/g, '');
-        if (createForm.phone && phoneDigits.length !== 10) {
-            setCreateError({ message: 'Phone number must be exactly 10 digits.' });
-            return;
-        }
+        const next = {
+            username: validateUsername(createForm.username),
+            fullName: validateName(createForm.fullName, 'Full Name'),
+            email: validateEmail(createForm.email),
+            phone: validatePhone(createForm.phone),
+            password: validatePassword(createForm.password),
+        };
+        if (Object.values(next).some(Boolean)) { setCreateErrors(next); return; }
 
         // FIX: Validate password confirmation matches
         if (createForm.password !== createForm.confirmPassword) {
@@ -125,6 +130,7 @@ export default function UsersPage() {
         setEditTarget(user);
         setEditForm({ fullName: user.fullName, email: user.email, phone: user.phone || '' });
         setEditError(null);
+        setEditErrors({});
         setShowEdit(true);
     };
 
@@ -132,12 +138,12 @@ export default function UsersPage() {
         e.preventDefault();
         setEditError(null);
 
-        // FIX: Validate phone format (10 digits) if provided — strip non-digits first (matches Create modal + display guard)
-        const digitsOnly = editForm.phone.replace(/\D/g, '');
-        if (editForm.phone && digitsOnly.length !== 10) {
-            setEditError('Phone must be a 10-digit number.');
-            return;
-        }
+        const next = {
+            fullName: validateName(editForm.fullName, 'Full Name'),
+            email: validateEmail(editForm.email),
+            phone: validatePhone(editForm.phone),
+        };
+        if (Object.values(next).some(Boolean)) { setEditErrors(next); return; }
 
         setEditing(true);
         try {
@@ -215,7 +221,7 @@ export default function UsersPage() {
                 </h2>
                 <button
                     className="btn btn-primary-edulearn"
-                    onClick={() => { setShowCreate(true); setCreateError(null); }}
+                    onClick={() => { setShowCreate(true); setCreateError(null); setCreateErrors({}); }}
                 >
                     <i className="bi bi-person-plus me-2"></i>Create User
                 </button>
@@ -426,13 +432,15 @@ export default function UsersPage() {
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${createErrors.username ? ' is-invalid' : ''}`}
                                                     value={createForm.username}
                                                     onChange={e => setCreateForm({ ...createForm, username: e.target.value })}
+                                                    onBlur={e => setCreateErrors(prev => ({ ...prev, username: validateUsername(e.target.value) }))}
                                                     placeholder="e.g. john.doe"
                                                     maxLength={100}
                                                     required
                                                 />
+                                                {createErrors.username && <div className="invalid-feedback">{createErrors.username}</div>}
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">
@@ -440,13 +448,15 @@ export default function UsersPage() {
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${createErrors.fullName ? ' is-invalid' : ''}`}
                                                     value={createForm.fullName}
                                                     onChange={e => setCreateForm({ ...createForm, fullName: e.target.value })}
+                                                    onBlur={e => setCreateErrors(prev => ({ ...prev, fullName: validateName(e.target.value, 'Full Name') }))}
                                                     placeholder="e.g. John Doe"
                                                     maxLength={200}
                                                     required
                                                 />
+                                                {createErrors.fullName && <div className="invalid-feedback">{createErrors.fullName}</div>}
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">
@@ -454,36 +464,32 @@ export default function UsersPage() {
                                                 </label>
                                                 <input
                                                     type="email"
-                                                    className="form-control"
+                                                    className={`form-control${createErrors.email ? ' is-invalid' : ''}`}
                                                     value={createForm.email}
                                                     onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
+                                                    onBlur={e => setCreateErrors(prev => ({ ...prev, email: validateEmail(e.target.value) }))}
                                                     placeholder="e.g. john@example.com"
                                                     maxLength={255}
                                                     required
                                                 />
+                                                {createErrors.email && <div className="invalid-feedback">{createErrors.email}</div>}
                                             </div>
-                                            {/* FIX: Phone with 10-digit validation */}
+                                            {/* Phone with 10-digit validation */}
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">Phone</label>
                                                 <input
                                                     type="text"
-                                                    className={`form-control ${
-                                                        createForm.phone && createForm.phone.replace(/\D/g, '').length !== 10
-                                                            ? 'is-invalid' : ''
-                                                    }`}
+                                                    className={`form-control${createErrors.phone ? ' is-invalid' : ''}`}
                                                     value={createForm.phone}
                                                     onChange={e => setCreateForm({ ...createForm, phone: e.target.value })}
+                                                    onBlur={e => setCreateErrors(prev => ({ ...prev, phone: validatePhone(e.target.value) }))}
                                                     placeholder="9876543210"
                                                     maxLength={20}
                                                 />
-                                                {createForm.phone && createForm.phone.replace(/\D/g, '').length !== 10 ? (
-                                                    <div className="invalid-feedback">
-                                                        <i className="bi bi-exclamation-circle me-1"></i>
-                                                        Phone must be exactly 10 digits.
-                                                    </div>
-                                                ) : (
-                                                    <div className="form-text">Enter 10-digit mobile number (optional).</div>
-                                                )}
+                                                {createErrors.phone
+                                                    ? <div className="invalid-feedback">{createErrors.phone}</div>
+                                                    : <div className="form-text">Enter 10-digit mobile number (optional).</div>
+                                                }
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">
@@ -507,13 +513,15 @@ export default function UsersPage() {
                                                 </label>
                                                 <input
                                                     type="password"
-                                                    className="form-control"
+                                                    className={`form-control${createErrors.password ? ' is-invalid' : ''}`}
                                                     value={createForm.password}
                                                     onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
+                                                    onBlur={e => setCreateErrors(prev => ({ ...prev, password: validatePassword(e.target.value) }))}
                                                     placeholder="Min 8 characters"
                                                     minLength={8}
                                                     required
                                                 />
+                                                {createErrors.password && <div className="invalid-feedback">{createErrors.password}</div>}
                                             </div>
                                             {/* FIX: Confirm Password field — prevents locked-out accounts from typos */}
                                             <div className="col-md-6">
@@ -629,12 +637,14 @@ export default function UsersPage() {
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    className="form-control"
+                                                    className={`form-control${editErrors.fullName ? ' is-invalid' : ''}`}
                                                     value={editForm.fullName}
                                                     onChange={e => setEditForm({ ...editForm, fullName: e.target.value })}
+                                                    onBlur={e => setEditErrors(prev => ({ ...prev, fullName: validateName(e.target.value, 'Full Name') }))}
                                                     maxLength={200}
                                                     required
                                                 />
+                                                {editErrors.fullName && <div className="invalid-feedback">{editErrors.fullName}</div>}
                                             </div>
                                             <div className="col-12">
                                                 <label className="form-label fw-bold">
@@ -642,37 +652,30 @@ export default function UsersPage() {
                                                 </label>
                                                 <input
                                                     type="email"
-                                                    className="form-control"
+                                                    className={`form-control${editErrors.email ? ' is-invalid' : ''}`}
                                                     value={editForm.email}
                                                     onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                                                    onBlur={e => setEditErrors(prev => ({ ...prev, email: validateEmail(e.target.value) }))}
                                                     maxLength={255}
                                                     required
                                                 />
+                                                {editErrors.email && <div className="invalid-feedback">{editErrors.email}</div>}
                                             </div>
-                                            {/* phase4-fix-12: match Create modal — 10-digit enforcement + inline feedback */}
                                             <div className="col-12">
                                                 <label className="form-label fw-bold">Phone</label>
                                                 <input
                                                     type="text"
-                                                    className={`form-control ${
-                                                        editForm.phone && editForm.phone.replace(/\D/g, '').length !== 10
-                                                            ? 'is-invalid' : ''
-                                                    }`}
+                                                    className={`form-control${editErrors.phone ? ' is-invalid' : ''}`}
                                                     value={editForm.phone}
                                                     onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                                    onBlur={e => setEditErrors(prev => ({ ...prev, phone: validatePhone(e.target.value) }))}
                                                     placeholder="9876543210"
-                                                    pattern="[0-9]{10}"
-                                                    minLength={10}
-                                                    maxLength={10}
+                                                    maxLength={20}
                                                 />
-                                                {editForm.phone && editForm.phone.replace(/\D/g, '').length !== 10 ? (
-                                                    <div className="invalid-feedback">
-                                                        <i className="bi bi-exclamation-circle me-1"></i>
-                                                        Enter a 10-digit phone number.
-                                                    </div>
-                                                ) : (
-                                                    <div className="form-text">Enter 10-digit mobile number (optional).</div>
-                                                )}
+                                                {editErrors.phone
+                                                    ? <div className="invalid-feedback">{editErrors.phone}</div>
+                                                    : <div className="form-text">Enter 10-digit mobile number (optional).</div>
+                                                }
                                             </div>
                                         </div>
                                         <ErrorAlert error={editError} onDismiss={() => setEditError(null)} />
