@@ -24,9 +24,8 @@ export default function NewApplicantPage() {
         programApplied: '',
     });
 
-    // Phone validation — must be exactly 10 digits
-    const phoneDigits = form.phone.replace(/\D/g, '');
-    const phoneInvalid = form.phone.length > 0 && phoneDigits.length !== 10;
+    // Phone validation — must be exactly 10 digits, no symbols allowed
+    const phoneInvalid = form.phone.length > 0 && !/^\d{10}$/.test(form.phone);
 
     // DOB validation — applicant must be at least 15 years old
     const maxDOB = new Date();
@@ -56,7 +55,8 @@ export default function NewApplicantPage() {
     }, []);
 
     const handleChange = (field) => (e) => {
-        setForm({ ...form, [field]: e.target.value });
+        const value = field === 'email' ? e.target.value.toLowerCase() : e.target.value;
+        setForm({ ...form, [field]: value });
     };
 
     const handleSubmit = async (e) => {

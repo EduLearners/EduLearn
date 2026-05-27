@@ -84,8 +84,7 @@ export default function UserDetailPage() {
         e.preventDefault();
         setEditError(null);
         if (editForm.phone.length > 0) {
-            const digits = editForm.phone.replace(/\D/g, '');
-            if (digits.length !== 10) {
+            if (!/^\d{10}$/.test(editForm.phone)) {
                 setEditError({ message: 'Phone number must be exactly 10 digits.' });
                 return;
             }
@@ -246,7 +245,7 @@ export default function UserDetailPage() {
                                             type="email"
                                             className="form-control"
                                             value={editForm.email}
-                                            onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                                            onChange={e => setEditForm({ ...editForm, email: e.target.value.toLowerCase() })}
                                             maxLength={255}
                                             required
                                         />
@@ -255,12 +254,12 @@ export default function UserDetailPage() {
                                         <label className="form-label fw-bold">Phone</label>
                                         <input
                                             type="text"
-                                            className={`form-control ${editForm.phone.length > 0 && editForm.phone.replace(/\D/g, '').length !== 10 ? 'is-invalid' : ''}`}
+                                            className={`form-control ${editForm.phone.length > 0 && !/^\d{10}$/.test(editForm.phone) ? 'is-invalid' : ''}`}
                                             value={editForm.phone}
                                             onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
                                             maxLength={20}
                                         />
-                                        {editForm.phone.length > 0 && editForm.phone.replace(/\D/g, '').length !== 10 && (
+                                        {editForm.phone.length > 0 && !/^\d{10}$/.test(editForm.phone) && (
                                             <div className="invalid-feedback">
                                                 <i className="bi bi-exclamation-circle me-1"></i>
                                                 Phone number must be exactly 10 digits.

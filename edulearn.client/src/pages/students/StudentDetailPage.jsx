@@ -73,8 +73,7 @@ export default function StudentDetailPage() {
     };
 
     // phase4-fix-11: validate email + phone before saving
-    const phoneDigits = form.phone.replace(/\D/g, '');
-    const phoneInvalid = form.phone.length > 0 && phoneDigits.length !== 10;
+    const phoneInvalid = form.phone.length > 0 && !/^\d{10}$/.test(form.phone);
     const emailInvalid = form.email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
 
     const handleSave = async (e) => {
@@ -198,7 +197,7 @@ export default function StudentDetailPage() {
                                             type="email"
                                             className={`form-control${emailInvalid ? ' is-invalid' : ''}`}
                                             value={form.email}
-                                            onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                            onChange={(e) => setForm({ ...form, email: e.target.value.toLowerCase() })}
                                             placeholder="student@example.com"
                                             maxLength={255}
                                         />

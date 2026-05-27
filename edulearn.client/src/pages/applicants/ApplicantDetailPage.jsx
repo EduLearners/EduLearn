@@ -93,8 +93,7 @@ export default function ApplicantDetailPage() {
         e.preventDefault();
         setCreateError(null);
         if (userForm.phone.length > 0) {
-            const digits = userForm.phone.replace(/\D/g, '');
-            if (digits.length !== 10) {
+            if (!/^\d{10}$/.test(userForm.phone)) {
                 setCreateError({ message: 'Phone number must be exactly 10 digits.' });
                 return;
             }
@@ -484,14 +483,14 @@ export default function ApplicantDetailPage() {
                                                     <label className="form-label fw-bold">Phone</label>
                                                     <input
                                                         type="text"
-                                                        className={`form-control ${userForm.phone.length > 0 && userForm.phone.replace(/\D/g, '').length !== 10 ? 'is-invalid' : ''}`}
+                                                        className={`form-control ${userForm.phone.length > 0 && !/^\d{10}$/.test(userForm.phone) ? 'is-invalid' : ''}`}
                                                         value={userForm.phone}
                                                         onChange={e => setUserForm({ ...userForm, phone: e.target.value })}
                                                         placeholder="9876543210"
                                                         maxLength={15}
                                                         autoComplete="off"
                                                     />
-                                                    {userForm.phone.length > 0 && userForm.phone.replace(/\D/g, '').length !== 10 && (
+                                                    {userForm.phone.length > 0 && !/^\d{10}$/.test(userForm.phone) && (
                                                         <div className="invalid-feedback">
                                                             <i className="bi bi-exclamation-circle me-1"></i>
                                                             Phone must be exactly 10 digits.
