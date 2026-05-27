@@ -69,6 +69,11 @@ export default function NewApplicantPage() {
             return;
         }
 
+        if (form.address && !form.address.trim()) {
+            setError({ message: 'Address cannot be blank spaces only.' });
+            return;
+        }
+
         if (dobInvalid) {
             setError({ message: 'Applicant must be at least 15 years old.' });
             setSaving(false);
@@ -234,6 +239,7 @@ export default function NewApplicantPage() {
                                     onChange={handleChange('address')}
                                     placeholder="Chennai, TN"
                                     required
+                                    maxLength={200}
                                 />
                             </div>
                         </div>

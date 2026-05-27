@@ -98,6 +98,10 @@ export default function ApplicantDetailPage() {
                 return;
             }
         }
+        if (!userForm.username.trim()) {
+            setCreateError({ message: 'Username cannot be blank.' });
+            return;
+        }
         setCreating(true);
 
         try {
@@ -471,7 +475,7 @@ export default function ApplicantDetailPage() {
                                                         type="email"
                                                         className="form-control"
                                                         value={userForm.email}
-                                                        onChange={e => setUserForm({ ...userForm, email: e.target.value })}
+                                                        onChange={e => setUserForm({ ...userForm, email: e.target.value.toLowerCase() })}
                                                         placeholder="e.g. vikash@example.com"
                                                         maxLength={255}
                                                         required

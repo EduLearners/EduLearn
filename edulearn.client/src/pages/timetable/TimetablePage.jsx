@@ -407,6 +407,9 @@ export default function TimetablePage() {
                                     value={term}
                                     onChange={e => setTerm(e.target.value)}
                                     placeholder="e.g. 2026-Spring"
+                                    pattern="\d{4}-(Spring|Summer|Fall|Winter)"
+                                    title="Format: YYYY-Season (e.g. 2026-Fall)"
+                                    maxLength={20}
                                 />
                             </div>
                             <div className="col-md-3">
@@ -500,6 +503,9 @@ export default function TimetablePage() {
                                     value={term}
                                     onChange={e => setTerm(e.target.value)}
                                     placeholder="e.g. 2026-Spring"
+                                    pattern="\d{4}-(Spring|Summer|Fall|Winter)"
+                                    title="Format: YYYY-Season (e.g. 2026-Fall)"
+                                    maxLength={20}
                                 />
                             </div>
                             <div className="col-md-3">

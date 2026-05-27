@@ -261,6 +261,7 @@ export default function ScholarshipsPage() {
                                                     className="form-control"
                                                     value={form.studentID}
                                                     onChange={e => setForm({ ...form, studentID: e.target.value })}
+                                                    min="1"
                                                     required
                                                 />
                                             </div>

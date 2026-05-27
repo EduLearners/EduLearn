@@ -103,6 +103,9 @@ export default function DiscussionsPage() {
 
     const handleCreateThread = async (e) => {
         e.preventDefault();
+        if (!newThread.title.trim()) {
+            return;
+        }
         setError(null);
         setSuccess('');
         setSubmitting(true);
@@ -232,6 +235,7 @@ export default function DiscussionsPage() {
                                                 onChange={e => setNewThread({ ...newThread, title: e.target.value })}
                                                 placeholder="Thread title..."
                                                 required
+                                                maxLength={200}
                                             />
                                         </div>
                                         <div className="col-12">

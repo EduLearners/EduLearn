@@ -56,6 +56,17 @@ export default function CourseFormPage() {
         setSuccess('');
         setLoading(true);
 
+        // Validate prerequisitesJSON if provided
+        if (form.prerequisitesJSON && form.prerequisitesJSON.trim()) {
+            try {
+                JSON.parse(form.prerequisitesJSON);
+            } catch {
+                setError({ message: 'Prerequisites JSON is not valid JSON.' });
+                setLoading(false);
+                return;
+            }
+        }
+
         try {
             if (isEditMode) {
                 await courseService.update(id, form);

@@ -113,6 +113,17 @@ export default function AssessmentFormPage() {
         setSuccess('');
         setLoading(true);
 
+        // Validate gradingRubricJSON if provided
+        if (form.gradingRubricJSON && form.gradingRubricJSON.trim()) {
+            try {
+                JSON.parse(form.gradingRubricJSON);
+            } catch {
+                setError({ message: 'Grading Rubric JSON is not valid JSON.' });
+                setLoading(false);
+                return;
+            }
+        }
+
         const payload = {
             courseID: Number(form.courseID),
             sectionID: form.sectionID ? Number(form.sectionID) : null,

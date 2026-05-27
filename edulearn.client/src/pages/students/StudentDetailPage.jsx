@@ -287,6 +287,9 @@ export default function StudentDetailPage() {
                                             placeholder="e.g. 2030-Spring"
                                             value={form.expectedGraduationTerm}
                                             onChange={(e) => setForm({ ...form, expectedGraduationTerm: e.target.value })}
+                                            maxLength={20}
+                                            pattern="\d{4}-(Spring|Summer|Fall|Winter)"
+                                            title="Format: YYYY-Season (e.g. 2026-Fall)"
                                         />
                                     </div>
                                     <div className="mb-3">

@@ -365,6 +365,7 @@ export default function RoomsPage() {
                                                     value={form.computers}
                                                     onChange={(e) => setForm({ ...form, computers: e.target.value })}
                                                     min={0}
+                                                    max={500}
                                                     placeholder="0"
                                                 />
                                             </div>

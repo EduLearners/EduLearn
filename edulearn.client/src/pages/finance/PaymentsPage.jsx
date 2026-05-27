@@ -177,6 +177,7 @@ export default function PaymentsPage() {
                                     value={searchId}
                                     onChange={e => setSearchId(e.target.value)}
                                     placeholder={searchType === 'invoice' ? 'Enter Invoice ID...' : 'Enter Student ID...'}
+                                    min="1"
                                     required
                                 />
                             </div>

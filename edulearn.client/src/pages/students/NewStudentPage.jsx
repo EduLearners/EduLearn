@@ -60,8 +60,7 @@ export default function NewStudentPage() {
     const dobInvalid = form.dob && new Date(form.dob) > maxDOB;
 
     // FIX: Phone validation — must be exactly 10 digits when provided
-    const phoneDigits = form.phone.replace(/\D/g, '');
-    const phoneInvalid = form.phone.length > 0 && phoneDigits.length !== 10;
+    const phoneInvalid = form.phone.length > 0 && !/^\d{10}$/.test(form.phone);
 
     // When a user is selected, silently auto-fill email, phone and name
     const handleUserChange = (e) => {
@@ -215,6 +214,9 @@ export default function NewStudentPage() {
                                     onChange={handleChange('entryTerm')}
                                     required
                                     placeholder="e.g. 2026-Spring"
+                                    maxLength={20}
+                                    pattern="\d{4}-(Spring|Summer|Fall|Winter)"
+                                    title="Format: YYYY-Season (e.g. 2026-Fall)"
                                 />
                             </div>
 
@@ -229,6 +231,7 @@ export default function NewStudentPage() {
                                     onChange={handleChange('name')}
                                     required
                                     placeholder="John Doe"
+                                    maxLength={100}
                                 />
                             </div>
 
@@ -312,6 +315,9 @@ export default function NewStudentPage() {
                                     value={form.expectedGraduationTerm}
                                     onChange={handleChange('expectedGraduationTerm')}
                                     placeholder="e.g. 2030-Spring"
+                                    maxLength={20}
+                                    pattern="\d{4}-(Spring|Summer|Fall|Winter)"
+                                    title="Format: YYYY-Season (e.g. 2026-Fall)"
                                 />
                             </div>
 

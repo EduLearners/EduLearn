@@ -233,6 +233,7 @@ export default function InvoicesPage() {
                                         value={studentId}
                                         onChange={e => setStudentId(e.target.value)}
                                         placeholder="Enter student ID..."
+                                        min="1"
                                         required
                                     />
                                 </div>
