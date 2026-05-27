@@ -381,7 +381,6 @@ export default function ScholarshipsPage() {
                     </div>
                 </ModalPortal>
             )}
-        </div>
 
             {/* Status change confirmation */}
             <ConfirmDialog

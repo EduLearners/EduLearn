@@ -229,7 +229,6 @@ export default function KpisPage() {
                     })}
                 </div>
             )}
-        </div>
 
             {/* Recalculate confirmation */}
             <ConfirmDialog
