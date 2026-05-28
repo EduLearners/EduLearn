@@ -58,6 +58,7 @@ const NAV_ITEMS = [
     //      section roster, notifications, tickets
     { label: 'Programs',      to: '/programs',      icon: 'mortarboard',            roles: ['DeptAdmin'] },
     { label: 'Courses',       to: '/courses',       icon: 'book',                   roles: ['DeptAdmin'] },
+    { label: 'Students',      to: '/students',      icon: 'people',                 roles: ['DeptAdmin'] },
     { label: 'Sections',      to: '/sections',      icon: 'collection',             roles: ['DeptAdmin'] },
     { label: 'Rooms',         to: '/rooms',         icon: 'door-closed',            roles: ['DeptAdmin'] },
     { label: 'Syllabus',      to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['DeptAdmin'] },

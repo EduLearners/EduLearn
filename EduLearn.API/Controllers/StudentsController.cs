@@ -121,10 +121,10 @@ public class StudentsController : ControllerBase
     }
 
     /// <summary>
-    /// List all student records. Registrar, Instructor, and ITAdmin only.
+    /// List all student records. Registrar, Instructor, DeptAdmin, and ITAdmin only.
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = "Registrar,Instructor,ITAdmin")]
+    [Authorize(Roles = "Registrar,Instructor,DeptAdmin,ITAdmin")]
     public async Task<ActionResult<IEnumerable<StudentResponseDto>>> GetStudents(
         CancellationToken cancellationToken)
     {

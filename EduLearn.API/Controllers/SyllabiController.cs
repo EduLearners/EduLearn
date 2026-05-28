@@ -90,7 +90,7 @@ public class SyllabiController : ControllerBase
     /// List all syllabus versions for a given course. Any authenticated user may call this endpoint.
     /// Returns 404 if the course does not exist.
     /// </summary>
-    [Authorize(Roles = "Student,Instructor,Registrar,ITAdmin")]
+    [Authorize(Roles = "Student,Instructor,Registrar,DeptAdmin,ITAdmin")]
     [HttpGet("course/{courseId}")]
     public async Task<ActionResult<List<SyllabusResponseDto>>> GetByCourse(int courseId)
     {
@@ -112,7 +112,7 @@ public class SyllabiController : ControllerBase
     /// Retrieve a single syllabus by its ID. Any authenticated user may call this endpoint.
     /// Returns 404 if the syllabus does not exist.
     /// </summary>
-    [Authorize(Roles = "Student,Instructor,Registrar,ITAdmin")]
+    [Authorize(Roles = "Student,Instructor,Registrar,DeptAdmin,ITAdmin")]
     [HttpGet("{id}")]
     public async Task<ActionResult<SyllabusResponseDto>> GetSyllabus(int id)
     {

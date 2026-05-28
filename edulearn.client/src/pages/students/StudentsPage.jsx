@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { studentService } from '../../services/studentService';
 import { sectionService } from '../../services/sectionService';
 import { enrollmentService } from '../../services/enrollmentService';
@@ -10,7 +10,11 @@ import StatusBadge from '../../components/StatusBadge';
 
 export default function StudentsPage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { role, userId } = authService.getCurrentUser();
+
+    // Read optional programId filter passed from ProgramDetailPage
+    const programIdFilter = searchParams.get('programId');
 
     const canCreate = ['Registrar', 'ITAdmin'].includes(role);
     const isInstructor = role === 'Instructor';
@@ -104,6 +108,7 @@ export default function StudentsPage() {
     const activeList = isInstructor ? sectionStudents : students;
     const filteredStudents = useMemo(() => {
         return activeList.filter(s => {
+            if (programIdFilter && String(s.programID) !== String(programIdFilter)) return false;
             if (statusFilter !== 'All' && s.enrollmentStatus !== statusFilter) return false;
             if (search.trim()) {
                 const q = search.toLowerCase();
@@ -111,7 +116,7 @@ export default function StudentsPage() {
             }
             return true;
         });
-    }, [activeList, search, statusFilter]);
+    }, [activeList, search, statusFilter, programIdFilter]);
 
     // ── INSTRUCTOR VIEW ──────────────────────────────────────────────────────────
     if (isInstructor) {
@@ -261,9 +266,25 @@ export default function StudentsPage() {
     return (
         <div>
             <div className="d-flex align-items-center justify-content-between mb-4">
-                <h2 className="text-primary-edulearn mb-0">
-                    <i className="bi bi-people me-2"></i>Students
-                </h2>
+                <div>
+                    <h2 className="text-primary-edulearn mb-0">
+                        <i className="bi bi-people me-2"></i>Students
+                    </h2>
+                    {programIdFilter && (
+                        <div className="d-flex align-items-center gap-2 mt-1">
+                            <small className="text-muted">
+                                <i className="bi bi-funnel me-1"></i>
+                                Filtered by Program ID: <strong>{programIdFilter}</strong>
+                            </small>
+                            <button
+                                className="btn btn-link btn-sm p-0 text-muted"
+                                onClick={() => navigate('/students')}
+                            >
+                                <i className="bi bi-x"></i> Clear filter
+                            </button>
+                        </div>
+                    )}
+                </div>
                 {canCreate && (
                     <button className="btn btn-primary-edulearn" onClick={() => navigate('/students/new')}>
                         <i className="bi bi-plus-lg me-2"></i>Add Student

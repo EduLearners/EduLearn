@@ -1,6 +1,7 @@
 using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,17 +16,20 @@ public class SectionsController : ControllerBase
     private readonly ICourseRepository _courseRepo;
     private readonly IUserRepository _userRepo;
     private readonly IRoomRepository _roomRepo;
+    private readonly TimetableConflictService _conflictService;
 
     public SectionsController(
         ISectionRepository sectionRepo,
         ICourseRepository courseRepo,
         IUserRepository userRepo,
-        IRoomRepository roomRepo)
+        IRoomRepository roomRepo,
+        TimetableConflictService conflictService)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
         _userRepo = userRepo;
         _roomRepo = roomRepo;
+        _conflictService = conflictService;
     }
 
     // GET /api/sections
@@ -96,6 +100,16 @@ public class SectionsController : ControllerBase
                     code = "ROOM_NOT_FOUND"
                 });
         }
+
+        // ETS-02: Check instructor does not already have a section at the same day/time/term
+        var instructorConflict = await CheckInstructorConflictAsync(
+            dto.InstructorID, dto.Term, dto.ScheduleJSON);
+        if (instructorConflict is not null)
+            return Conflict(new
+            {
+                error = instructorConflict,
+                code = "INSTRUCTOR_SCHEDULE_CONFLICT"
+            });
 
         var section = new Section
         {
@@ -220,6 +234,16 @@ public class SectionsController : ControllerBase
                 code = "CAPACITY_TOO_LOW"
             });
 
+        // ETS-02: Check instructor does not already have a conflicting section (exclude self)
+        var instructorConflict = await CheckInstructorConflictAsync(
+            dto.InstructorID, dto.Term, dto.ScheduleJSON, excludeSectionId: id);
+        if (instructorConflict is not null)
+            return Conflict(new
+            {
+                error = instructorConflict,
+                code = "INSTRUCTOR_SCHEDULE_CONFLICT"
+            });
+
         section.CourseID = dto.CourseID;
         section.Term = dto.Term;
         section.InstructorID = dto.InstructorID;
@@ -270,4 +294,50 @@ public class SectionsController : ControllerBase
         ScheduleJSON = s.ScheduleJSON,
         Status = s.Status
     };
+
+    // ── Instructor schedule conflict check ────────────────────────────────────
+    // Fetches all existing sections for the instructor in the same term and checks
+    // whether any of them overlap in days + time with the new/updated section.
+    // excludeSectionId: pass the current section's ID on updates to skip self-comparison.
+    private async Task<string?> CheckInstructorConflictAsync(
+        int instructorId, string term, string? scheduleJson,
+        int excludeSectionId = 0)
+    {
+        var newSchedule = _conflictService.ParseSchedule(scheduleJson);
+        if (newSchedule is null) return null; // no schedule — cannot conflict
+
+        var existing = await _sectionRepo.GetByInstructorAndTermAsync(instructorId, term);
+
+        foreach (var s in existing)
+        {
+            if (s.SectionID == excludeSectionId) continue; // skip self on update
+
+            var existingSchedule = _conflictService.ParseSchedule(s.ScheduleJSON);
+            if (existingSchedule is null) continue;
+
+            // Check day overlap
+            var newDays = (newSchedule.Days ?? string.Empty)
+                .Split(new[] { '-', ',', '/' })
+                .Select(d => d.Trim().ToLowerInvariant())
+                .Where(d => d.Length > 0)
+                .ToHashSet();
+
+            var existingDays = (existingSchedule.Days ?? string.Empty)
+                .Split(new[] { '-', ',', '/' })
+                .Select(d => d.Trim().ToLowerInvariant())
+                .Where(d => d.Length > 0)
+                .ToHashSet();
+
+            bool daysOverlap = newDays.Intersect(existingDays).Any();
+
+            if (daysOverlap && _conflictService.TimesOverlap(newSchedule.Time, existingSchedule.Time))
+            {
+                return $"Instructor already has Section #{s.SectionID} scheduled on "
+                     + $"{existingSchedule.Days} at {existingSchedule.Time} "
+                     + $"in term {term}. Please choose a different time or day.";
+            }
+        }
+
+        return null; // no conflict
+    }
 }
