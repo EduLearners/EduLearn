@@ -125,6 +125,13 @@ export default function RegistrarDashboard() {
         setCreateError(null);
         setCreateSuccess('');
         setCreatedUser(null);
+
+        // Validate passwords match
+        if (userForm.password !== userForm.confirmPassword) {
+            setCreateError({ message: 'Passwords do not match. Please re-enter.' });
+            return;
+        }
+
         setCreating(true);
         try {
             const { data } = await axiosClient.post('/auth/register', {
@@ -298,7 +305,7 @@ export default function RegistrarDashboard() {
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">Email <span className="text-danger">*</span></label>
-                                                <input type="email" className="form-control" value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} placeholder="e.g. john@example.com" required disabled={creating} />
+                                                <input type="text" className="form-control" value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value.toLowerCase() })} placeholder="e.g. name@gmail.com" required disabled={creating} />
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">Phone</label>
@@ -306,11 +313,27 @@ export default function RegistrarDashboard() {
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label fw-bold">Password <span className="text-danger">*</span> <small className="text-muted fw-normal">(min 8 chars)</small></label>
-                                                <input type="password" className="form-control" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} placeholder="Min 8 characters" minLength={8} required disabled={creating} />
+                                                <input type="password" className="form-control" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} placeholder="Min 8, uppercase, number, special char" minLength={8} maxLength={72} required disabled={creating} />
                                             </div>
                                             <div className="col-md-6">
-                                                <label className="form-label fw-bold">Role</label>
-                                                <input type="text" className="form-control bg-light" value="Student (enforced by backend)" readOnly />
+                                                <label className="form-label fw-bold">Confirm Password <span className="text-danger">*</span></label>
+                                                <input
+                                                    type="password"
+                                                    className={`form-control ${userForm.confirmPassword && userForm.password !== userForm.confirmPassword ? 'is-invalid' : ''}`}
+                                                    value={userForm.confirmPassword ?? ''}
+                                                    onChange={e => setUserForm({ ...userForm, confirmPassword: e.target.value })}
+                                                    placeholder="Re-enter password"
+                                                    minLength={8}
+                                                    maxLength={72}
+                                                    required
+                                                    disabled={creating}
+                                                />
+                                                {userForm.confirmPassword && userForm.password !== userForm.confirmPassword && (
+                                                    <div className="invalid-feedback">Passwords do not match.</div>
+                                                )}
+                                                {userForm.confirmPassword && userForm.password === userForm.confirmPassword && (
+                                                    <div className="form-text text-success"><i className="bi bi-check-circle me-1"></i>Passwords match</div>
+                                                )}
                                             </div>
                                             <div className="col-12">
                                                 <div className="p-3 bg-light rounded d-flex align-items-start gap-3">
@@ -333,7 +356,7 @@ export default function RegistrarDashboard() {
                                                 <i className="bi bi-arrow-right me-2"></i>Go to Create Student Record
                                             </button>
                                         ) : (
-                                            <button type="submit" className="btn btn-primary-edulearn" disabled={creating}>
+                                            <button type="submit" className="btn btn-primary-edulearn" disabled={creating || (userForm.password !== userForm.confirmPassword)}>
                                                 {creating ? <><span className="spinner-border spinner-border-sm me-2"></span>Creating...</> : <><i className="bi bi-check-lg me-2"></i>Create Student User</>}
                                             </button>
                                         )}

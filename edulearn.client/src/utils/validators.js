@@ -5,12 +5,15 @@
 // Callers bind the result to a per-field errors state entry.
 // ──────────────────────────────────────────────────────────────────────────────
 
-/** Phone: exactly 10 consecutive digits — no spaces, dashes, plus, brackets, dots. */
+/** Phone: exactly 10 consecutive digits — no spaces, dashes, plus, brackets, dots.
+ *  First digit must be 6, 7, 8, or 9 (valid Indian mobile numbers). */
 export const validatePhone = (v) => {
     const t = String(v ?? '').trim();
     if (!t) return null; // optional field — callers that need required call validatePhoneRequired
     if (!/^\d{10}$/.test(t))
         return 'Phone must be exactly 10 digits — no spaces, dashes, or symbols (e.g. 9876543210)';
+    if (!/^[6-9]/.test(t))
+        return 'Phone number must start with 6, 7, 8, or 9 (e.g. 9876543210)';
     return null;
 };
 
@@ -20,15 +23,26 @@ export const validatePhoneRequired = (v) => {
     return validatePhone(v);
 };
 
-/** Email: proper format, no double-dots, trimmed + lowercased. */
+/** Email: proper format, specific messages for each failure case. */
 export const validateEmail = (v) => {
     const t = String(v ?? '').trim().toLowerCase();
     if (!t) return 'Email is required';
+    if (!t.includes('@'))
+        return "Invalid email — missing '@'. Enter a valid email like name@gmail.com";
+    const parts = t.split('@');
+    if (parts.length > 2)
+        return "Invalid email — multiple '@' signs found";
+    const [local, domain] = parts;
+    if (!local)
+        return "Invalid email — nothing before '@'. Enter a valid email like name@gmail.com";
+    if (!domain || !domain.includes('.'))
+        return "Invalid email — domain must include a '.' (e.g. name@gmail.com)";
+    if (domain.startsWith('.') || domain.endsWith('.'))
+        return 'Invalid email format — check the domain part (e.g. name@gmail.com)';
+    if (/\.{2,}/.test(t))
+        return 'Email cannot contain consecutive dots';
     if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(t))
-        return 'Enter a valid email address (e.g. user@example.com)';
-    if (/\.{2,}/.test(t)) return 'Email cannot contain consecutive dots';
-    if (t.startsWith('.') || t.includes('@.') || t.endsWith('.'))
-        return 'Invalid email format';
+        return 'Enter a valid email address (e.g. name@gmail.com)';
     return null;
 };
 
@@ -48,13 +62,17 @@ export const validateUsername = (v) => {
     return null;
 };
 
-/** Password: min 8 chars, at least one letter and one digit, no leading/trailing spaces. */
+/** Password: min 8 chars, at least one uppercase, one lowercase, one digit, one special char.
+ *  Follows real-world password strength standards (NIST 800-63B inspired). */
 export const validatePassword = (v) => {
     if (!v) return 'Password is required';
     if (v !== v.trim()) return 'Password cannot start or end with spaces';
     if (v.length < 8) return 'Password must be at least 8 characters';
-    if (!/[a-zA-Z]/.test(v)) return 'Password must contain at least one letter';
-    if (!/\d/.test(v)) return 'Password must contain at least one digit';
+    if (!/[a-z]/.test(v)) return 'Password must contain at least one lowercase letter';
+    if (!/[A-Z]/.test(v)) return 'Password must contain at least one uppercase letter';
+    if (!/\d/.test(v)) return 'Password must contain at least one number';
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(v))
+        return 'Password must contain at least one special character (e.g. @, #, !, $)';
     return null;
 };
 
@@ -75,11 +93,11 @@ export const validateOptionalUrl = (v) => {
     return validateUrl(v);
 };
 
-/** Term: YYYY-Season — year 2000–2039, season one of Spring/Summer/Fall/Winter (case-sensitive). */
+/** Term: YYYY-Season — year 2000–2099, season one of Spring/Summer/Fall/Winter (case-sensitive). */
 export const validateTerm = (v) => {
     const t = String(v ?? '').trim();
     if (!t) return 'Term is required';
-    if (!/^20[0-3]\d-(Spring|Summer|Fall|Winter)$/.test(t))
+    if (!/^20[0-9]\d-(Spring|Summer|Fall|Winter)$/.test(t))
         return 'Use format YYYY-Season — e.g. 2026-Spring (seasons: Spring, Summer, Fall, Winter)';
     return null;
 };
@@ -142,7 +160,7 @@ export const validatePositiveInteger = (v, min = 1, max = Infinity, label = 'Val
 };
 
 /**
- * Monetary / decimal amount.
+ * Monetary / decimal amount — max 2 decimal places, within min/max range.
  * @param {string|number} v
  * @param {number} min  default 0.01
  * @param {number} max  default 9 999 999
@@ -152,13 +170,16 @@ export const validateAmount = (v, min = 0.01, max = 9_999_999) => {
     if (!s) return 'Amount is required';
     const n = Number(s);
     if (isNaN(n)) return 'Enter a valid number';
+    if (n < 0) return 'Amount cannot be negative';
     if (n < min) return `Amount must be at least ${min}`;
     if (n > max) return `Amount cannot exceed ${max.toLocaleString()}`;
+    if (!/^\d+(\.\d{1,2})?$/.test(s))
+        return 'Amount can have at most 2 decimal places (e.g. 1000.00)';
     return null;
 };
 
 /**
- * Score: must be a number ≥ 0 and ≤ maxScore.
+ * Score: must be a number ≥ 0 and ≤ maxScore, max 2 decimal places.
  * @param {string|number} v
  * @param {number} [maxScore]
  */
@@ -168,6 +189,8 @@ export const validateScore = (v, maxScore) => {
     const n = Number(s);
     if (isNaN(n)) return 'Score must be a number';
     if (n < 0) return 'Score cannot be negative';
+    if (!/^\d+(\.\d{1,2})?$/.test(s))
+        return 'Score can have at most 2 decimal places (e.g. 18.50)';
     if (maxScore !== undefined && maxScore !== null && n > maxScore)
         return `Score cannot exceed the maximum of ${maxScore}`;
     return null;
@@ -175,7 +198,7 @@ export const validateScore = (v, maxScore) => {
 
 /**
  * Full name: 2–200 chars, Unicode letters + spaces + hyphens + apostrophes + dots.
- * Rejects purely numeric values and symbols.
+ * Trims before validation; rejects purely numeric values and symbols.
  * @param {string} v
  * @param {string} label  field display name
  */
@@ -221,10 +244,13 @@ export const validateDateRange = (from, to) => {
     return null;
 };
 
-/** Future date: given datetime must not be in the past. */
+/** Future date: given date must not be before today (today is allowed). */
 export const validateFutureDate = (v) => {
     if (!v) return 'Date is required';
-    if (new Date(v) < new Date()) return 'Date must be in the future';
+    // Compare date-only strings to allow today as a valid date
+    const today = new Date().toISOString().split('T')[0];
+    const inputDate = String(v).split('T')[0];
+    if (inputDate < today) return 'Date must be today or in the future';
     return null;
 };
 
@@ -237,16 +263,18 @@ export const validateVersion = (v) => {
     return null;
 };
 
-/** Address: trimmed 5–500 chars, not whitespace-only. */
+/** Address: trimmed 3–500 chars, not whitespace-only, not purely numeric. */
 export const validateAddress = (v) => {
     const t = String(v ?? '').trim();
     if (!t) return 'Address is required';
-    if (t.length < 5) return 'Address must be at least 5 characters';
+    if (t.length < 3) return 'Address must be at least 3 characters';
     if (t.length > 500) return 'Address cannot exceed 500 characters';
+    if (/^\d+$/.test(t)) return 'Address cannot be purely numeric';
     return null;
 };
 
-/** National ID: 4–50 alphanumeric chars + hyphens; no spaces or other symbols. */
+/** National ID: 4–50 alphanumeric chars + hyphens; no spaces or other symbols.
+ *  Must contain at least one alphanumeric character (not purely hyphens). */
 export const validateNationalId = (v) => {
     const t = String(v ?? '').trim();
     if (!t) return 'National ID is required';
@@ -254,6 +282,8 @@ export const validateNationalId = (v) => {
     if (t.length > 50) return 'National ID cannot exceed 50 characters';
     if (!/^[a-zA-Z0-9-]+$/.test(t))
         return 'National ID can only contain letters, digits, and hyphens';
+    if (!/[a-zA-Z0-9]/.test(t))
+        return 'National ID must contain at least one letter or digit';
     return null;
 };
 

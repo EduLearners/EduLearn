@@ -409,15 +409,12 @@ export default function ApplicantDetailPage() {
                                             <dl className="row">
                                                 <dt className="col-sm-4 text-muted">User ID</dt>
                                                 <dd className="col-sm-8">
-                                                    <code className="text-primary-edulearn fw-bold fs-5">
+                                                    <span className="fw-bold fs-5">
                                                         {createSuccess.userID ?? createSuccess.userId ?? createSuccess.id ?? '—'}
-                                                    </code>
-                                                    <span className="ms-2 badge bg-info text-dark">
-                                                        Use this when creating the Student record
                                                     </span>
                                                 </dd>
                                                 <dt className="col-sm-4 text-muted">Username</dt>
-                                                <dd className="col-sm-8"><code>{createSuccess.username}</code></dd>
+                                                <dd className="col-sm-8">{createSuccess.username}</dd>
                                             </dl>
                                             <div className="alert alert-info mb-0">
                                                 <i className="bi bi-arrow-right-circle me-2"></i>

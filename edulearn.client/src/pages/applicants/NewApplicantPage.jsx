@@ -6,6 +6,39 @@ import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
 import { validateName, validateEmail, validatePhone, validatePhoneRequired, validateAddress, validateNationalId } from '../../utils/validators';
 
+// Defined outside component to avoid recreation on every render
+const validateApplicantName = (v) => {
+    const t = String(v ?? '').trim();
+    if (!t) return 'Full name is required';
+    if (t.length < 2) return 'Full name must be at least 2 characters';
+    if (t.length > 200) return 'Full name cannot exceed 200 characters';
+    if (!/^[\p{L} ]+$/u.test(t))
+        return 'Full name can only contain letters and spaces — no numbers, hyphens, or symbols';
+    return null;
+};
+
+const validateApplicantEmail = (v) => {
+    const t = String(v ?? '').trim().toLowerCase();
+    if (!t) return 'Email is required';
+    if (!t.includes('@'))
+        return "Invalid email — missing '@'. Enter a valid email like name@gmail.com";
+    const parts = t.split('@');
+    if (parts.length > 2)
+        return "Invalid email — multiple '@' signs found";
+    const [local, domain] = parts;
+    if (!local)
+        return "Invalid email — nothing before '@'. Enter a valid email like name@gmail.com";
+    if (!domain || !domain.includes('.'))
+        return "Invalid email — domain must include a '.' (e.g. name@gmail.com)";
+    if (domain.startsWith('.') || domain.endsWith('.'))
+        return 'Invalid email format — check the domain part (e.g. name@gmail.com)';
+    if (/\.{2,}/.test(t))
+        return 'Email cannot contain consecutive dots';
+    if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(t))
+        return 'Enter a valid email address (e.g. name@gmail.com)';
+    return null;
+};
+
 export default function NewApplicantPage() {
     const navigate = useNavigate();
     const [saving, setSaving] = useState(false);
@@ -67,8 +100,8 @@ export default function NewApplicantPage() {
         setError(null);
 
         const next = {
-            name: validateName(form.name, 'Full name'),
-            email: validateEmail(form.email),
+            name: validateApplicantName(form.name),
+            email: validateApplicantEmail(form.email),
             phone: validatePhoneRequired(form.phone),
             address: validateAddress(form.address),
             nationalID: validateNationalId(form.nationalID),
@@ -146,13 +179,21 @@ export default function NewApplicantPage() {
                                     type="text"
                                     className={`form-control${errors.name ? ' is-invalid' : ''}`}
                                     value={form.name}
-                                    onChange={handleChange('name')}
-                                    onBlur={e => setErrors(prev => ({ ...prev, name: validateName(e.target.value, 'Full name') }))}
+                                    onChange={e => {
+                                        // Strip anything that is not a letter or space as the user types
+                                        const cleaned = e.target.value.replace(/[^\p{L} ]/gu, '');
+                                        setForm(prev => ({ ...prev, name: cleaned }));
+                                        setErrors(prev => ({ ...prev, name: validateApplicantName(cleaned) }));
+                                    }}
+                                    onBlur={e => setErrors(prev => ({ ...prev, name: validateApplicantName(e.target.value) }))}
                                     required
-                                    placeholder="John Doe"
+                                    placeholder="e.g. Arun Kumar"
                                     maxLength={200}
                                 />
-                                {errors.name && <div className="invalid-feedback">{errors.name}</div>}
+                                {errors.name
+                                    ? <div className="invalid-feedback">{errors.name}</div>
+                                    : <div className="form-text">Letters and spaces only — no numbers or symbols.</div>
+                                }
                             </div>
 
                             <div className="col-md-4">
@@ -210,15 +251,22 @@ export default function NewApplicantPage() {
                             <div className="col-md-6">
                                 <label className="form-label fw-bold">Email <span className="text-danger">*</span></label>
                                 <input
-                                    type="email"
+                                    type="text"
                                     className={`form-control${errors.email ? ' is-invalid' : ''}`}
                                     value={form.email}
-                                    onChange={handleChange('email')}
-                                    onBlur={e => setErrors(prev => ({ ...prev, email: validateEmail(e.target.value) }))}
-                                    placeholder="applicant@example.com"
+                                    onChange={e => {
+                                        const val = e.target.value.toLowerCase();
+                                        setForm(prev => ({ ...prev, email: val }));
+                                        if (errors.email) setErrors(prev => ({ ...prev, email: validateApplicantEmail(val) }));
+                                    }}
+                                    onBlur={e => setErrors(prev => ({ ...prev, email: validateApplicantEmail(e.target.value) }))}
+                                    placeholder="e.g. name@gmail.com"
                                     required
                                 />
-                                {errors.email && <div className="invalid-feedback">{errors.email}</div>}
+                                {errors.email
+                                    ? <div className="invalid-feedback">{errors.email}</div>
+                                    : <div className="form-text">Must contain '@' and a domain — e.g. name@gmail.com</div>
+                                }
                             </div>
 
                             <div className="col-md-6">

@@ -17,13 +17,14 @@ export default function ChangePasswordForm({ userId, onClose }) {
 
     // Live validation rules
     const rules = {
-        minLength: newPassword.length >= 8,
-        hasLetter: /[a-zA-Z]/.test(newPassword),
-        // FIX: isDifferent was true when newPassword is empty (misleading green checkmark).
-        // Now it is only true when the user has actually typed something AND it differs.
-        isDifferent: newPassword.length > 0 && newPassword !== currentPassword,
+        minLength:    newPassword.length >= 8,
+        hasLower:     /[a-z]/.test(newPassword),
+        hasUpper:     /[A-Z]/.test(newPassword),
+        hasNumber:    /\d/.test(newPassword),
+        hasSpecial:   /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(newPassword),
+        isDifferent:  newPassword.length > 0 && newPassword !== currentPassword,
     };
-    const allRulesPassed = rules.minLength && rules.hasLetter && rules.isDifferent;
+    const allRulesPassed = Object.values(rules).every(Boolean);
     const passwordsMatch = newPassword === confirmPassword && confirmPassword !== '';
 
     const handleSubmit = async (e) => {
@@ -104,9 +105,24 @@ export default function ChangePasswordForm({ userId, onClose }) {
                             text="At least 8 characters"
                         />
                         <RuleItem
-                            passed={rules.hasLetter}
+                            passed={rules.hasLower}
                             active={newPassword.length > 0}
-                            text="At least one letter"
+                            text="At least one lowercase letter (a-z)"
+                        />
+                        <RuleItem
+                            passed={rules.hasUpper}
+                            active={newPassword.length > 0}
+                            text="At least one uppercase letter (A-Z)"
+                        />
+                        <RuleItem
+                            passed={rules.hasNumber}
+                            active={newPassword.length > 0}
+                            text="At least one number (0-9)"
+                        />
+                        <RuleItem
+                            passed={rules.hasSpecial}
+                            active={newPassword.length > 0}
+                            text="At least one special character (e.g. @, #, !, $)"
                         />
                         <RuleItem
                             passed={rules.isDifferent}
@@ -146,6 +162,7 @@ export default function ChangePasswordForm({ userId, onClose }) {
                                     style={{ WebkitTextSecurity: showCurrent ? 'none' : 'disc' }}
                                     onChange={e => setCurrentPassword(e.target.value)}
                                     placeholder="Enter current password"
+                                    maxLength={72}
                                     required
                                     disabled={loading}
                                 />
@@ -179,6 +196,7 @@ export default function ChangePasswordForm({ userId, onClose }) {
                                     onChange={e => setNewPassword(e.target.value)}
                                     placeholder="Min 8 characters"
                                     minLength={8}
+                                    maxLength={72}
                                     required
                                     disabled={loading}
                                 />
@@ -208,6 +226,7 @@ export default function ChangePasswordForm({ userId, onClose }) {
                                     onChange={e => setConfirmPassword(e.target.value)}
                                     placeholder="Re-enter new password"
                                     minLength={8}
+                                    maxLength={72}
                                     required
                                     disabled={loading}
                                 />

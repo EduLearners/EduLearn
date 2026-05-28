@@ -286,12 +286,16 @@ export default function NewStudentPage() {
                             <div className="col-md-4">
                                 <label className="form-label fw-bold">Email</label>
                                 <input
-                                    type="email"
+                                    type="text"
                                     className={`form-control${errors.email ? ' is-invalid' : ''}`}
                                     value={form.email}
-                                    onChange={handleChange('email')}
+                                    onChange={e => {
+                                        const val = e.target.value.toLowerCase();
+                                        setForm({ ...form, email: val });
+                                        if (errors.email) setErrors(prev => ({ ...prev, email: validateEmail(val) }));
+                                    }}
                                     onBlur={e => setErrors(prev => ({ ...prev, email: e.target.value ? validateEmail(e.target.value) : null }))}
-                                    placeholder="student@example.com"
+                                    placeholder="e.g. name@gmail.com"
                                 />
                                 {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                             </div>

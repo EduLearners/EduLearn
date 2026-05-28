@@ -72,12 +72,12 @@ export default function ForgotPasswordPage() {
                                         <i className="bi bi-envelope"></i>
                                     </span>
                                     <input
-                                        type="email"
+                                        type="text"
                                         className={`form-control${errors.email ? ' is-invalid' : ''}`}
                                         value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
+                                        onChange={(e) => setEmail(e.target.value.toLowerCase())}
                                         onBlur={e => setErrors(prev => ({ ...prev, email: validateEmail(e.target.value) }))}
-                                        placeholder="Enter your registered email"
+                                        placeholder="e.g. name@gmail.com"
                                         required
                                         autoFocus
                                     />

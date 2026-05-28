@@ -463,12 +463,12 @@ export default function UsersPage() {
                                                     Email <span className="text-danger">*</span>
                                                 </label>
                                                 <input
-                                                    type="email"
+                                                    type="text"
                                                     className={`form-control${createErrors.email ? ' is-invalid' : ''}`}
                                                     value={createForm.email}
-                                                    onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
+                                                    onChange={e => setCreateForm({ ...createForm, email: e.target.value.toLowerCase() })}
                                                     onBlur={e => setCreateErrors(prev => ({ ...prev, email: validateEmail(e.target.value) }))}
-                                                    placeholder="e.g. john@example.com"
+                                                    placeholder="e.g. name@gmail.com"
                                                     maxLength={255}
                                                     required
                                                 />
@@ -517,11 +517,28 @@ export default function UsersPage() {
                                                     value={createForm.password}
                                                     onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
                                                     onBlur={e => setCreateErrors(prev => ({ ...prev, password: validatePassword(e.target.value) }))}
-                                                    placeholder="Min 8 characters"
+                                                    placeholder="Min 8, uppercase, number, special char"
                                                     minLength={8}
+                                                    maxLength={72}
                                                     required
                                                 />
                                                 {createErrors.password && <div className="invalid-feedback">{createErrors.password}</div>}
+                                                {/* Live strength badges */}
+                                                {createForm.password && (
+                                                    <div className="mt-1 d-flex flex-wrap gap-1">
+                                                        {[
+                                                            { ok: createForm.password.length >= 8,                                              label: '8+ chars' },
+                                                            { ok: /[a-z]/.test(createForm.password),                                           label: 'a-z' },
+                                                            { ok: /[A-Z]/.test(createForm.password),                                           label: 'A-Z' },
+                                                            { ok: /\d/.test(createForm.password),                                              label: '0-9' },
+                                                            { ok: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(createForm.password),         label: '@#!' },
+                                                        ].map(r => (
+                                                            <span key={r.label} className={`badge ${r.ok ? 'bg-success' : 'bg-secondary'}`} style={{ fontSize: 10 }}>
+                                                                {r.ok ? '\u2713' : '\u2717'} {r.label}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                             {/* FIX: Confirm Password field — prevents locked-out accounts from typos */}
                                             <div className="col-md-6">
@@ -538,6 +555,7 @@ export default function UsersPage() {
                                                     onChange={e => setCreateForm({ ...createForm, confirmPassword: e.target.value })}
                                                     placeholder="Re-enter password"
                                                     minLength={8}
+                                                    maxLength={72}
                                                     required
                                                 />
                                                 {createForm.confirmPassword && createForm.password !== createForm.confirmPassword && (
@@ -651,10 +669,10 @@ export default function UsersPage() {
                                                     Email <span className="text-danger">*</span>
                                                 </label>
                                                 <input
-                                                    type="email"
+                                                    type="text"
                                                     className={`form-control${editErrors.email ? ' is-invalid' : ''}`}
                                                     value={editForm.email}
-                                                    onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                                                    onChange={e => setEditForm({ ...editForm, email: e.target.value.toLowerCase() })}
                                                     onBlur={e => setEditErrors(prev => ({ ...prev, email: validateEmail(e.target.value) }))}
                                                     maxLength={255}
                                                     required

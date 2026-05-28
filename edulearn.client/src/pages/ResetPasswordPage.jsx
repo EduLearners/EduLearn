@@ -116,7 +116,7 @@ export default function ResetPasswordPage() {
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
                                         onBlur={e => setErrors(prev => ({ ...prev, newPassword: validatePassword(e.target.value) }))}
-                                        placeholder="Enter new password"
+                                        placeholder="Min 8 chars, uppercase, number, special char"
                                         minLength={8}
                                         required
                                         autoFocus
@@ -131,6 +131,26 @@ export default function ResetPasswordPage() {
                                     </button>
                                     {errors.newPassword && <div className="invalid-feedback">{errors.newPassword}</div>}
                                 </div>
+                                {/* Live strength hints */}
+                                {newPassword && (
+                                    <div className="mt-2 d-flex flex-wrap gap-2">
+                                        {[
+                                            { ok: newPassword.length >= 8,                                       label: '8+ chars' },
+                                            { ok: /[a-z]/.test(newPassword),                                    label: 'lowercase' },
+                                            { ok: /[A-Z]/.test(newPassword),                                    label: 'UPPERCASE' },
+                                            { ok: /\d/.test(newPassword),                                       label: '0-9' },
+                                            { ok: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(newPassword), label: 'special (@#!)' },
+                                        ].map(r => (
+                                            <span
+                                                key={r.label}
+                                                className={`badge ${r.ok ? 'bg-success' : 'bg-secondary'}`}
+                                                style={{ fontSize: 11 }}
+                                            >
+                                                {r.ok ? '✓' : '✗'} {r.label}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="mb-3">

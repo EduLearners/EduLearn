@@ -6,6 +6,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 
 export default function KpisPage() {
     const { role } = authService.getCurrentUser();
+    const isITAdmin = role === 'ITAdmin';
 
     const [kpis, setKpis] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -15,8 +16,6 @@ export default function KpisPage() {
     const [success, setSuccess] = useState('');
     const [lastRecalculated, setLastRecalculated] = useState(null);
     const [deltas, setDeltas] = useState({});
-
-    const isITAdmin = role === 'ITAdmin';
 
     useEffect(() => {
         loadKpis();

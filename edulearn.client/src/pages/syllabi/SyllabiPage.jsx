@@ -344,14 +344,31 @@ export default function SyllabiPage() {
                                             <label className="form-label text-muted small text-uppercase">
                                                 Learning Outcomes
                                             </label>
-                                            <div className="p-3 bg-light rounded">
-                                                <pre
-                                                    className="mb-0 small"
-                                                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                                                >
-                                                    {selected.learningOutcomesJSON}
-                                                </pre>
-                                            </div>
+                                            {(() => {
+                                                try {
+                                                    const parsed = JSON.parse(selected.learningOutcomesJSON);
+                                                    if (Array.isArray(parsed) && parsed.length > 0) {
+                                                        return (
+                                                            <ul className="mb-0 ps-3">
+                                                                {parsed.map((item, idx) => (
+                                                                    <li key={idx} className="mb-1">
+                                                                        {typeof item === 'object' && item !== null
+                                                                            ? Object.entries(item).map(([k, v]) => `${k}: ${v}`).join(' • ')
+                                                                            : String(item)}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        );
+                                                    }
+                                                } catch { /* fall through to raw display */ }
+                                                return (
+                                                    <div className="p-3 bg-light rounded">
+                                                        <pre className="mb-0 small" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                            {selected.learningOutcomesJSON}
+                                                        </pre>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     )}
 
@@ -360,14 +377,31 @@ export default function SyllabiPage() {
                                             <label className="form-label text-muted small text-uppercase">
                                                 Assessment Plan
                                             </label>
-                                            <div className="p-3 bg-light rounded">
-                                                <pre
-                                                    className="mb-0 small"
-                                                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                                                >
-                                                    {selected.assessmentPlanJSON}
-                                                </pre>
-                                            </div>
+                                            {(() => {
+                                                try {
+                                                    const parsed = JSON.parse(selected.assessmentPlanJSON);
+                                                    if (Array.isArray(parsed) && parsed.length > 0) {
+                                                        return (
+                                                            <ul className="mb-0 ps-3">
+                                                                {parsed.map((item, idx) => (
+                                                                    <li key={idx} className="mb-1">
+                                                                        {typeof item === 'object' && item !== null
+                                                                            ? Object.entries(item).map(([k, v]) => `${k}: ${v}`).join(' • ')
+                                                                            : String(item)}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        );
+                                                    }
+                                                } catch { /* fall through to raw display */ }
+                                                return (
+                                                    <div className="p-3 bg-light rounded">
+                                                        <pre className="mb-0 small" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                            {selected.assessmentPlanJSON}
+                                                        </pre>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     )}
                                 </div>
