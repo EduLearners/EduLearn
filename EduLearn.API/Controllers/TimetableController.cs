@@ -16,9 +16,9 @@ public class TimetableController : ControllerBase
     private readonly IEnrollmentRepository _enrollRepo;
     private readonly IStudentRepository _studentRepo;
     private readonly ISectionRepository _sectionRepo;
-    // BUG-1 FIX: fetch real instructor names instead of "See section details".
+    // fetch real instructor names instead of "See section details".
     private readonly IUserRepository _userRepo;
-    // BUG-3 FIX: shared service for schedule parsing + overlap detection.
+    // shared service for schedule parsing + overlap detection.
     private readonly TimetableConflictService _conflictService;
 
     public TimetableController(

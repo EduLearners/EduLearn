@@ -86,7 +86,7 @@ public class EnrollmentsController : ControllerBase
             });
         }
 
-        // BUG-2 FIX (PRD §14.1): Detect schedule conflicts against student's current enrollments.
+        // BUG-2 FIX : Detect schedule conflicts against student's current enrollments.
         var conflict = await _conflictService.CheckAsync(dto.StudentID, dto.SectionID, cancellationToken);
         if (conflict is not null)
         {
