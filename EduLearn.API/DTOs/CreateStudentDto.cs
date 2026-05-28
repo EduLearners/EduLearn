@@ -15,7 +15,7 @@ public class CreateStudentDto
     [Required]
     public DateTime DOB { get; set; }
 
-    [MaxLength(10)]
+    [MaxLength(18)]
     [RegularExpression(@"^(Male|Female|Other|Prefer not to say)$", ErrorMessage = "Gender must be Male, Female, Other, or Prefer not to say")]
     public string? Gender { get; set; }
 
