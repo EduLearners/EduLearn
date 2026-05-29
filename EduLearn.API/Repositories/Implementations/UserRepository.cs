@@ -16,7 +16,7 @@ public class UserRepository : IUserRepository
     }
 
     public async Task<IEnumerable<User>> GetAllAsync()
-        => await _context.Users.ToListAsync();
+        => await _context.Users.AsNoTracking().ToListAsync();
 
     public async Task<User?> GetByIdAsync(int userId)
         => await _context.Users.FindAsync(userId);

@@ -16,7 +16,7 @@ public class StudentRepository : IStudentRepository
     }
 
     public async Task<IEnumerable<Student>> GetAllAsync()
-        => await _context.Students.ToListAsync();
+        => await _context.Students.AsNoTracking().ToListAsync();
 
     public async Task<Student?> GetByIdAsync(int studentId)
         => await _context.Students.FindAsync(studentId);
