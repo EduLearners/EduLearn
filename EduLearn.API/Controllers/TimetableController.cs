@@ -51,7 +51,8 @@ public class TimetableController : ControllerBase
 
         // Students can only view their own timetable
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
-        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
 
         if (callerRole == "Student" && student.UserID != callerId)
             return StatusCode(403, new { error = "You may only view your own timetable", code = "TIMETABLE_FORBIDDEN" });

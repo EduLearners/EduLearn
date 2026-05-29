@@ -59,7 +59,9 @@ public class SubmissionsController : ControllerBase
             return BadRequest(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
-        if (callerRole == "Student" && student.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
+        if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
+        if (callerRole == "Student" && student.UserID != callerId)
             return StatusCode(403, new { error = "Students may only submit their own work", code = "SUBMISSION_FORBIDDEN" });
 
         // Check for duplicate submission (same student + same assessment)
@@ -235,7 +237,9 @@ public class SubmissionsController : ControllerBase
         if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
-        if (callerRole == "Student" && student.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
+        if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
+        if (callerRole == "Student" && student.UserID != callerId)
             return StatusCode(403, new { error = "You may only view your own submissions", code = "SUBMISSION_FORBIDDEN" });
 
         var submissions = await _submissionRepository.GetByStudentIdWithDetailsAsync(studentId);

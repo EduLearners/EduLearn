@@ -84,8 +84,8 @@ public class InvoicesController : ControllerBase
         var activeStudents = students.Where(s => s.EnrollmentStatus == StudentLifecycleStatus.Active).ToList();
 
         int generated = 0, skipped = 0;
-        var callerIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0";
-        var callerId = int.Parse(callerIdStr);
+        if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
 
         foreach (var student in activeStudents)
         {
@@ -250,10 +250,12 @@ public class InvoicesController : ControllerBase
         if (!allowedRoles.Contains(callerRole))
             return StatusCode(403, new { error = "Access denied — finance or admin role required", code = "INVOICE_POLICY_DENIED" });
 
+        if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
         if (callerRole == "Student")
         {
             var target = await _studentRepository.GetByIdAsync(studentId);
-            if (target?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
+            if (target?.UserID != callerId)
                 return StatusCode(403, new { error = "You may only view your own invoices", code = "INVOICE_FORBIDDEN" });
         }
 
@@ -285,7 +287,9 @@ public class InvoicesController : ControllerBase
 
         var student = await _studentRepository.GetByIdAsync(invoice.StudentID);
 
-        if (callerRole == "Student" && student?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
+        if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
+        if (callerRole == "Student" && student?.UserID != callerId)
             return StatusCode(403, new { error = "You may only view your own invoices", code = "INVOICE_FORBIDDEN" });
 
         return Ok(MapToDto(invoice, student));
