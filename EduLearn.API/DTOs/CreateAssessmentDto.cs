@@ -37,6 +37,11 @@ namespace EduLearn.API.DTOs
         // JSON rubric like [{"criterion": "Code Quality", "maxPoints": 40, "description": "Clean code"}]
         public string? GradingRubricJSON { get; set; }
 
+        // Optional link to the assignment brief / question paper (Google Drive, Notion, PDF URL etc.)
+        [MaxLength(500)]
+        [Url]
+        public string? InstructionsURI { get; set; }
+
         // The instructor's UserID who is creating this assessment
         public int CreatedByFK { get; set; }
     }

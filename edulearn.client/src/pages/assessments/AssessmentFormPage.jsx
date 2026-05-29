@@ -6,7 +6,7 @@ import { authService } from '../../services/authService';
 import { AssessmentType } from '../../models/Assessment';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
-import { validateTitle, validateAmount, validateFutureDate, validateJson, validatePositiveId } from '../../utils/validators';
+import { validateTitle, validateAmount, validateFutureDate, validateJson, validatePositiveId, validateOptionalUrl } from '../../utils/validators';
 
 export default function AssessmentFormPage() {
     const { id } = useParams();
@@ -24,6 +24,7 @@ export default function AssessmentFormPage() {
         dueAt: '',
         maxScore: 100,
         gradingRubricJSON: '',
+        instructionsURI: '',
     });
 
     const [errors, setErrors] = useState({});
@@ -71,6 +72,7 @@ export default function AssessmentFormPage() {
                 dueAt: data.dueAt ? new Date(data.dueAt).toISOString().slice(0, 16) : '',
                 maxScore: data.maxScore || 100,
                 gradingRubricJSON: data.gradingRubricJSON || '',
+                instructionsURI: data.instructionsURI || '',
             });
         } catch (err) {
             setError(err);
@@ -120,6 +122,7 @@ export default function AssessmentFormPage() {
             maxScore: validateAmount(form.maxScore, 1, 9999),
             dueAt: form.dueAt ? validateFutureDate(form.dueAt) : null,
             gradingRubricJSON: validateJson(form.gradingRubricJSON),
+            instructionsURI: validateOptionalUrl(form.instructionsURI),
             ...(!isInstructor ? { courseID: validatePositiveId(form.courseID) } : {}),
         };
         if (Object.values(next).some(Boolean)) { setErrors(next); return; }
@@ -135,6 +138,7 @@ export default function AssessmentFormPage() {
             dueAt: form.dueAt ? new Date(form.dueAt).toISOString() : null,
             maxScore: Number(form.maxScore),
             gradingRubricJSON: form.gradingRubricJSON || null,
+            instructionsURI: form.instructionsURI.trim() || null,
         };
 
         try {
@@ -373,6 +377,36 @@ export default function AssessmentFormPage() {
                                 {!isEditMode && (
                                     <div className="form-text">Must be a future date and time.</div>
                                 )}
+                            </div>
+
+                            <div className="col-12">
+                                <label className="form-label fw-bold">
+                                    Assessment Instructions URL
+                                    <small className="text-muted fw-normal ms-2">(optional — link to the question paper or brief)</small>
+                                </label>
+                                <div className="input-group">
+                                    <span className="input-group-text">
+                                        <i className="bi bi-link-45deg"></i>
+                                    </span>
+                                    <input
+                                        type="text"
+                                        className={`form-control${errors.instructionsURI ? ' is-invalid' : ''}`}
+                                        name="instructionsURI"
+                                        value={form.instructionsURI}
+                                        onChange={handleChange}
+                                        onBlur={e => setErrors(prev => ({ ...prev, instructionsURI: validateOptionalUrl(e.target.value) }))}
+                                        placeholder="https://drive.google.com/... or https://notion.so/..."
+                                        maxLength={500}
+                                        autoComplete="off"
+                                        spellCheck={false}
+                                    />
+                                    {errors.instructionsURI && (
+                                        <div className="invalid-feedback">{errors.instructionsURI}</div>
+                                    )}
+                                </div>
+                                <div className="form-text">
+                                    Students will see this link on the assessment page and on the submission page before they submit.
+                                </div>
                             </div>
 
                             <div className="col-12">

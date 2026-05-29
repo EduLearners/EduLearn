@@ -61,37 +61,23 @@ public class AssessmentsController : ControllerBase
 
         var assessment = new Assessment
         {
-            CourseID = dto.CourseID,
-            SectionID = dto.SectionID,
-            Title = dto.Title,
-            Type = dto.Type,
-            Status = dto.Status,   // honour the status chosen on the form (default: Draft)
-            DueAt = dto.DueAt,
-            MaxScore = dto.MaxScore,
+            CourseID      = dto.CourseID,
+            SectionID     = dto.SectionID,
+            Title         = dto.Title,
+            Type          = dto.Type,
+            Status        = dto.Status,
+            DueAt         = dto.DueAt,
+            MaxScore      = dto.MaxScore,
             GradingRubricJSON = dto.GradingRubricJSON,
-            CreatedByFK = callerId
+            InstructionsURI   = dto.InstructionsURI,
+            CreatedByFK   = callerId
         };
 
         await _assessmentRepository.CreateAsync(assessment);
 
-        var response = new AssessmentResponseDto
-        {
-            AssessmentID = assessment.AssessmentID,
-            CourseID = assessment.CourseID,
-            CourseName = course.Title,
-            SectionID = assessment.SectionID,
-            Title = assessment.Title,
-            Type = assessment.Type,
-            DueAt = assessment.DueAt,
-            MaxScore = assessment.MaxScore,
-            GradingRubricJSON = assessment.GradingRubricJSON,
-            CreatedByFK = assessment.CreatedByFK,
-            CreatedByName = creator.FullName,
-            CreatedAt = assessment.CreatedAt,
-            Status = assessment.Status
-        };
-
-        return CreatedAtAction(nameof(GetAssessmentsByCourse), new { courseId = assessment.CourseID }, response);
+        return CreatedAtAction(nameof(GetById),
+            new { id = assessment.AssessmentID },
+            MapToDto(assessment, course.Title, creator.FullName));
     }
 
     /// <summary>
@@ -108,24 +94,22 @@ public class AssessmentsController : ControllerBase
 
         var assessments = await _assessmentRepository.GetByCourseIdWithDetailsAsync(courseId);
 
-        var response = assessments.Select(a => new AssessmentResponseDto
-        {
-            AssessmentID = a.AssessmentID,
-            CourseID = a.CourseID,
-            CourseName = a.Course.Title,
-            SectionID = a.SectionID,
-            Title = a.Title,
-            Type = a.Type,
-            DueAt = a.DueAt,
-            MaxScore = a.MaxScore,
-            GradingRubricJSON = a.GradingRubricJSON,
-            CreatedByFK = a.CreatedByFK,
-            CreatedByName = a.CreatedBy.FullName,
-            CreatedAt = a.CreatedAt,
-            Status = a.Status
-        }).ToList();
+        return Ok(assessments.Select(a =>
+            MapToDto(a, a.Course.Title, a.CreatedBy.FullName)).ToList());
+    }
 
-        return Ok(response);
+    /// <summary>
+    /// Get a single assessment by ID. All authenticated users.
+    /// </summary>
+    [HttpGet("{id}")]
+    public async Task<ActionResult<AssessmentResponseDto>> GetById(int id)
+    {
+        var assessment = await _assessmentRepository.GetByIdWithDetailsAsync(id);
+
+        if (assessment is null)
+            return NotFound(new { error = "Assessment not found", code = "ASSESSMENT_NOT_FOUND" });
+
+        return Ok(MapToDto(assessment, assessment.Course.Title, assessment.CreatedBy.FullName));
     }
 
     /// <summary>
@@ -152,31 +136,17 @@ public class AssessmentsController : ControllerBase
                 return BadRequest(new { error = "Section not found", code = "SECTION_NOT_FOUND" });
         }
 
-        assessment.SectionID = dto.SectionID;
-        assessment.Title = dto.Title;
-        assessment.Type = dto.Type;
-        assessment.DueAt = dto.DueAt;
-        assessment.MaxScore = dto.MaxScore;
+        assessment.SectionID        = dto.SectionID;
+        assessment.Title            = dto.Title;
+        assessment.Type             = dto.Type;
+        assessment.DueAt            = dto.DueAt;
+        assessment.MaxScore         = dto.MaxScore;
         assessment.GradingRubricJSON = dto.GradingRubricJSON;
+        assessment.InstructionsURI  = dto.InstructionsURI;
 
         await _assessmentRepository.UpdateAsync(assessment);
 
-        return Ok(new AssessmentResponseDto
-        {
-            AssessmentID = assessment.AssessmentID,
-            CourseID = assessment.CourseID,
-            CourseName = assessment.Course.Title,
-            SectionID = assessment.SectionID,
-            Title = assessment.Title,
-            Type = assessment.Type,
-            DueAt = assessment.DueAt,
-            MaxScore = assessment.MaxScore,
-            GradingRubricJSON = assessment.GradingRubricJSON,
-            CreatedByFK = assessment.CreatedByFK,
-            CreatedByName = assessment.CreatedBy.FullName,
-            CreatedAt = assessment.CreatedAt,
-            Status = assessment.Status
-        });
+        return Ok(MapToDto(assessment, assessment.Course.Title, assessment.CreatedBy.FullName));
     }
 
     /// <summary>
@@ -194,9 +164,9 @@ public class AssessmentsController : ControllerBase
 
         var validTransition = (assessment.Status, dto.Status) switch
         {
-            (AssessmentStatus.Draft, AssessmentStatus.Published) => true,
-            (AssessmentStatus.Published, AssessmentStatus.Closed) => true,
-            (AssessmentStatus.Closed, AssessmentStatus.Archived) => true,
+            (AssessmentStatus.Draft,     AssessmentStatus.Published) => true,
+            (AssessmentStatus.Published, AssessmentStatus.Closed)    => true,
+            (AssessmentStatus.Closed,    AssessmentStatus.Archived)  => true,
             _ => false
         };
 
@@ -204,27 +174,32 @@ public class AssessmentsController : ControllerBase
             return BadRequest(new
             {
                 error = $"Cannot transition from {assessment.Status} to {dto.Status}. Valid: Draft → Published → Closed → Archived",
-                code = "INVALID_STATUS_TRANSITION"
+                code  = "INVALID_STATUS_TRANSITION"
             });
 
         assessment.Status = dto.Status;
         await _assessmentRepository.UpdateAsync(assessment);
 
-        return Ok(new AssessmentResponseDto
-        {
-            AssessmentID = assessment.AssessmentID,
-            CourseID = assessment.CourseID,
-            CourseName = assessment.Course.Title,
-            SectionID = assessment.SectionID,
-            Title = assessment.Title,
-            Type = assessment.Type,
-            DueAt = assessment.DueAt,
-            MaxScore = assessment.MaxScore,
-            GradingRubricJSON = assessment.GradingRubricJSON,
-            CreatedByFK = assessment.CreatedByFK,
-            CreatedByName = assessment.CreatedBy.FullName,
-            CreatedAt = assessment.CreatedAt,
-            Status = assessment.Status
-        });
+        return Ok(MapToDto(assessment, assessment.Course.Title, assessment.CreatedBy.FullName));
     }
+
+    // ── shared mapper ────────────────────────────────────────────
+    private static AssessmentResponseDto MapToDto(
+        Assessment a, string courseName, string createdByName) => new()
+    {
+        AssessmentID      = a.AssessmentID,
+        CourseID          = a.CourseID,
+        CourseName        = courseName,
+        SectionID         = a.SectionID,
+        Title             = a.Title,
+        Type              = a.Type,
+        DueAt             = a.DueAt,
+        MaxScore          = a.MaxScore,
+        GradingRubricJSON = a.GradingRubricJSON,
+        InstructionsURI   = a.InstructionsURI,
+        CreatedByFK       = a.CreatedByFK,
+        CreatedByName     = createdByName,
+        CreatedAt         = a.CreatedAt,
+        Status            = a.Status
+    };
 }

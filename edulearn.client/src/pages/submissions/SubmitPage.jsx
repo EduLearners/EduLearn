@@ -12,7 +12,7 @@ import { validateOptionalUrl } from '../../utils/validators';
 export default function SubmitPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { role, userId } = authService.getCurrentUser();
+    const { role } = authService.getCurrentUser();
 
     const [assessment, setAssessment] = useState(null);
     const [studentID, setStudentID] = useState(null);
@@ -25,9 +25,7 @@ export default function SubmitPage() {
 
     const isStudent = role === 'Student';
 
-    useEffect(() => {
-        loadData();
-    }, [id]);
+    useEffect(() => { loadData(); }, [id]);
 
     const loadData = async () => {
         try {
@@ -55,7 +53,6 @@ export default function SubmitPage() {
             } else {
                 throw new Error('Could not load your student record. Please contact support.');
             }
-
         } catch (err) {
             setError(err);
         } finally {
@@ -66,25 +63,24 @@ export default function SubmitPage() {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setForm(prev => ({ ...prev, [name]: value }));
+        // clear error as user types
+        if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
     };
-
-    // FIX: Validate that fileURI looks like a proper URL when provided
-    const fileURIInvalid = !!validateOptionalUrl(form.fileURI);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
         setSuccess('');
 
-        // FIX: Block if fileURI is provided but doesn't look like a URL
-        const nextErrors = { fileURI: validateOptionalUrl(form.fileURI) };
-        if (Object.values(nextErrors).some(Boolean)) { setErrors(nextErrors); return; }
+        const urlError = validateOptionalUrl(form.fileURI);
+        if (urlError) {
+            setErrors({ fileURI: urlError });
+            return;
+        }
 
-        // AC-2: Late submission warning
+        // Late submission warning
         if (assessment?.dueAt && new Date() > new Date(assessment.dueAt)) {
-            if (!window.confirm('This assessment deadline has passed. Submit anyway?')) {
-                return;
-            }
+            if (!window.confirm('This assessment deadline has passed. Submit anyway?')) return;
         }
 
         setLoading(true);
@@ -117,8 +113,12 @@ export default function SubmitPage() {
 
     if (pageLoading) return <Loading message="Loading assessment..." />;
 
+    const urlValue = form.fileURI || '';
+    const urlIsValid = urlValue.trim() && !validateOptionalUrl(urlValue);
+
     return (
         <div>
+            {/* Page header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
                     <i className="bi bi-cloud-upload me-2"></i>
@@ -132,30 +132,50 @@ export default function SubmitPage() {
                 </button>
             </div>
 
+            {/* Assessment info banner */}
             {assessment && (
                 <div className="alert alert-info mb-4">
-                    <div className="row">
-                        <div className="col-md-6">
-                            <strong>
+                    <div className="row align-items-center">
+                        <div className="col-md-7">
+                            <div className="fw-bold">
                                 <i className="bi bi-file-earmark-text me-2"></i>
                                 {assessment.title}
-                            </strong>
+                            </div>
                             <div className="mt-1">
                                 <span className="badge bg-secondary me-2">{assessment.type}</span>
                                 <small className="text-muted">Max Score: {assessment.maxScore}</small>
                             </div>
+                            {assessment.instructionsURI && (
+                                <div className="mt-2">
+                                    <a
+                                        href={assessment.instructionsURI}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-sm btn-primary-edulearn"
+                                    >
+                                        <i className="bi bi-file-earmark-text me-1"></i>
+                                        View Assessment Brief
+                                    </a>
+                                </div>
+                            )}
                         </div>
-                        <div className="col-md-6 text-md-end">
-                            <small className="text-muted">
-                                <i className="bi bi-calendar3 me-1"></i>
-                                Due:{' '}
-                                {assessment.dueAt
-                                    ? new Date(assessment.dueAt).toLocaleString('en-US', {
+                        <div className="col-md-5 text-md-end mt-2 mt-md-0">
+                            {assessment.dueAt ? (
+                                <small className={new Date() > new Date(assessment.dueAt) ? 'text-danger fw-bold' : 'text-muted'}>
+                                    <i className="bi bi-calendar3 me-1"></i>
+                                    Due: {new Date(assessment.dueAt).toLocaleString('en-US', {
                                         year: 'numeric', month: 'long', day: 'numeric',
                                         hour: '2-digit', minute: '2-digit',
-                                    })
-                                    : 'No due date set'}
-                            </small>
+                                    })}
+                                    {new Date() > new Date(assessment.dueAt) && (
+                                        <span className="ms-2 badge bg-danger">Overdue</span>
+                                    )}
+                                </small>
+                            ) : (
+                                <small className="text-muted">
+                                    <i className="bi bi-calendar3 me-1"></i>No due date set
+                                </small>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -177,31 +197,43 @@ export default function SubmitPage() {
                     </strong>
                 </div>
                 <div className="card-body">
-                    <form onSubmit={handleSubmit}>
-                        <div className="row g-3">
+                    <form onSubmit={handleSubmit} noValidate>
+                        <div className="row g-4">
 
-                            {/* FIX: Changed type to "url" and added live URL validation */}
+                            {/* Submission URL field */}
                             <div className="col-12">
-                                <label className="form-label fw-bold">
-                                    File Link
-                                    <small className="text-muted fw-normal ms-2">
-                                        (paste a link to your file — Google Drive, GitHub, etc.)
-                                    </small>
+                                <label className="form-label fw-bold fs-6">
+                                    <i className="bi bi-link-45deg me-1"></i>
+                                    Submission URL
+                                    <span className="text-muted fw-normal ms-2 small">
+                                        (optional — leave blank if submitting in person)
+                                    </span>
                                 </label>
-                                <div className="input-group">
-                                    <span className="input-group-text">
-                                        <i className="bi bi-link-45deg"></i>
+
+                                <div className={`input-group${errors.fileURI ? ' has-validation' : ''}`}>
+                                    <span className="input-group-text bg-white">
+                                        <i className="bi bi-link-45deg text-primary-edulearn"></i>
                                     </span>
                                     <input
-                                        type="url"
-                                        className={`form-control ${errors.fileURI ? 'is-invalid' : ''}`}
+                                        type="text"
+                                        className={`form-control form-control-lg${errors.fileURI ? ' is-invalid' : urlIsValid ? ' is-valid' : ''}`}
                                         name="fileURI"
-                                        value={form.fileURI}
+                                        value={urlValue}
                                         onChange={handleChange}
-                                        onBlur={e => setErrors(prev => ({ ...prev, fileURI: validateOptionalUrl(e.target.value) }))}
-                                        placeholder="https://drive.google.com/..."
+                                        onBlur={e => setErrors(prev => ({
+                                            ...prev,
+                                            fileURI: validateOptionalUrl(e.target.value)
+                                        }))}
+                                        placeholder="https://drive.google.com/file/... or https://github.com/..."
                                         maxLength={500}
+                                        autoComplete="off"
+                                        spellCheck={false}
                                     />
+                                    {urlIsValid && (
+                                        <span className="input-group-text bg-white text-success">
+                                            <i className="bi bi-check-circle-fill"></i>
+                                        </span>
+                                    )}
                                     {errors.fileURI && (
                                         <div className="invalid-feedback">
                                             <i className="bi bi-exclamation-circle me-1"></i>
@@ -209,11 +241,52 @@ export default function SubmitPage() {
                                         </div>
                                     )}
                                 </div>
-                                <div className="form-text">
-                                    Paste a shareable link to your submitted work. Leave blank if submitting in person.
-                                </div>
+
+                                {/* Live URL preview */}
+                                {urlIsValid && (() => {
+                                    try {
+                                        const parsed = new URL(urlValue.trim());
+                                        return (
+                                            <div className="mt-2 p-2 bg-light border rounded d-flex align-items-center gap-2">
+                                                <i className="bi bi-globe text-muted small"></i>
+                                                <small className="text-muted">
+                                                    <strong>{parsed.hostname}</strong>
+                                                    {parsed.pathname !== '/' && (
+                                                        <span className="text-truncate ms-1" style={{ maxWidth: 300, display: 'inline-block', verticalAlign: 'middle' }}>
+                                                            {parsed.pathname}
+                                                        </span>
+                                                    )}
+                                                </small>
+                                                <a
+                                                    href={urlValue.trim()}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="btn btn-outline-secondary btn-sm ms-auto"
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    <i className="bi bi-box-arrow-up-right me-1"></i>Test link
+                                                </a>
+                                            </div>
+                                        );
+                                    } catch { return null; }
+                                })()}
+
+                                {/* Helper text with examples */}
+                                {!errors.fileURI && (
+                                    <div className="form-text mt-2">
+                                        <i className="bi bi-info-circle me-1"></i>
+                                        Paste a <strong>shareable link</strong> to your work. Accepted sources:
+                                        <span className="ms-1">
+                                            Google Drive · OneDrive · GitHub · Dropbox · any public URL
+                                        </span>
+                                        <div className="mt-1 text-muted" style={{ fontSize: '0.78rem' }}>
+                                            Make sure the link is set to <strong>"Anyone with the link can view"</strong> before submitting.
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
+                            {/* Plagiarism declaration */}
                             <div className="col-12">
                                 <div className="form-check">
                                     <input
@@ -229,16 +302,23 @@ export default function SubmitPage() {
                             </div>
                         </div>
 
+                        {/* Actions */}
                         <div className="d-flex gap-2 mt-4">
                             <button
                                 type="submit"
                                 className="btn btn-primary-edulearn"
-                                disabled={loading || !studentID || fileURIInvalid}
+                                disabled={loading || !studentID}
                             >
                                 {loading ? (
-                                    <><span className="spinner-border spinner-border-sm me-2"></span>Submitting...</>
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2"></span>
+                                        Submitting...
+                                    </>
                                 ) : (
-                                    <><i className="bi bi-cloud-upload me-2"></i>Submit Assessment</>
+                                    <>
+                                        <i className="bi bi-cloud-upload me-2"></i>
+                                        Submit Assessment
+                                    </>
                                 )}
                             </button>
                             <button

@@ -135,6 +135,22 @@ export default function AssessmentDetailPage() {
                                         <dd className="col-sm-7">
                                             {assessment.courseName || assessment.courseID || '—'}
                                         </dd>
+                                        {assessment.instructionsURI && (
+                                            <>
+                                                <dt className="col-sm-5 text-muted">Instructions</dt>
+                                                <dd className="col-sm-7">
+                                                    <a
+                                                        href={assessment.instructionsURI}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="btn btn-sm btn-outline-primary"
+                                                    >
+                                                        <i className="bi bi-file-earmark-text me-1"></i>
+                                                        View Assessment Brief
+                                                    </a>
+                                                </dd>
+                                            </>
+                                        )}
                                     </dl>
                                 </div>
 

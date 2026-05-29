@@ -13,6 +13,7 @@ namespace EduLearn.API.DTOs
         public DateTime? DueAt { get; set; }
         public decimal MaxScore { get; set; }
         public string? GradingRubricJSON { get; set; }
+        public string? InstructionsURI { get; set; }    // Link to assignment brief shown to students
         public int CreatedByFK { get; set; }
         public string CreatedByName { get; set; } = null!;  // From User.FullName navigation
         public DateTime CreatedAt { get; set; }

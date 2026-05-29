@@ -25,5 +25,10 @@ public class UpdateAssessmentDto
 
     public string? GradingRubricJSON { get; set; }
 
+    // Optional link to the assignment brief / question paper
+    [StringLength(500)]
+    [Url]
+    public string? InstructionsURI { get; set; }
+
     public int? SectionID { get; set; }
 }
