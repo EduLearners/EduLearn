@@ -31,6 +31,10 @@ public class Assessment
 
     public string? GradingRubricJSON { get; set; }
 
+    // Link to the actual assignment document / question paper the student needs to read
+    [MaxLength(500)]
+    public string? InstructionsURI { get; set; }
+
     [Required]
     public int CreatedByFK { get; set; }
 

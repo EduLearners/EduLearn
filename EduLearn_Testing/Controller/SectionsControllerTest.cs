@@ -3,6 +3,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -16,6 +17,7 @@ public class SectionsControllerTest
     private Mock<ICourseRepository> _courseRepoMock;
     private Mock<IUserRepository> _userRepoMock;
     private Mock<IRoomRepository> _roomRepoMock;
+    private TimetableConflictService _conflictService;
 
     // ── Controller under test ──
     private SectionsController _controller;
@@ -34,11 +36,18 @@ public class SectionsControllerTest
         _userRepoMock = new Mock<IUserRepository>();
         _roomRepoMock = new Mock<IRoomRepository>();
 
+        // TimetableConflictService is a concrete class — instantiate with mocked repos
+        var enrollRepoMock = new Mock<IEnrollmentRepository>();
+        _conflictService = new TimetableConflictService(
+            enrollRepoMock.Object,
+            _sectionRepoMock.Object);
+
         _controller = new SectionsController(
             _sectionRepoMock.Object,
             _courseRepoMock.Object,
             _userRepoMock.Object,
-            _roomRepoMock.Object);
+            _roomRepoMock.Object,
+            _conflictService);
 
         _testCourse = new Course
         {
