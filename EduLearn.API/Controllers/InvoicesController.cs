@@ -48,12 +48,9 @@ public class InvoicesController : ControllerBase
     public async Task<ActionResult<IEnumerable<InvoiceResponseDto>>> GetAll(CancellationToken ct)
     {
         var invoices = await _invoiceRepository.GetAllAsync();
-        var result = new List<InvoiceResponseDto>();
-        foreach (var i in invoices)
-        {
-            var student = await _studentRepository.GetByIdAsync(i.StudentID);
-            result.Add(MapToDto(i, student));
-        }
+        var students = (await _studentRepository.GetAllAsync()).ToDictionary(s => s.StudentID);
+        var result = invoices.Select(i =>
+            MapToDto(i, students.TryGetValue(i.StudentID, out var s) ? s : null)).ToList();
         return Ok(result);
     }
 
