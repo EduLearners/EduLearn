@@ -72,7 +72,7 @@ builder.Services.AddCors(options =>
         {
             var allowed = builder.Configuration
                 .GetSection("Cors:AllowedOrigins").Get<string[]>()
-                ?? new[] { "http://localhost:5173" };
+                ?? Array.Empty<string>();
             policy.WithOrigins(allowed).AllowAnyHeader().AllowAnyMethod();
         }
     }));
@@ -172,10 +172,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     errorMessage = "Your session has expired. Please sign in again.";
                 }
 
+                var isExpired = !string.IsNullOrEmpty(context.ErrorDescription) &&
+                    context.ErrorDescription.Contains("expired");
+
                 var response = new
                 {
                     error = errorMessage,
-                    code = "AUTH_REQUIRED",
+                    code = isExpired ? "TOKEN_EXPIRED" : "AUTH_REQUIRED",
                     statusCode = 401
                 };
 
