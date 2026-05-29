@@ -54,6 +54,7 @@ import ContentFormPage from './pages/contents/ContentFormPage';
 
 import AppLayout from './components/Layout/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import PublicOnlyRoute from './components/PublicOnlyRoute';
 
 // RKA — Reports, KPIs, Audit Log
 import ReportsPage from './pages/reports/ReportsPage';
@@ -85,11 +86,11 @@ export default function App() {
             <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/mfa/setup" element={<MfaSetupPage />} />
-                <Route path="/mfa/verify" element={<MfaVerifyPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+                <Route path="/mfa/setup" element={<PublicOnlyRoute><MfaSetupPage /></PublicOnlyRoute>} />
+                <Route path="/mfa/verify" element={<PublicOnlyRoute><MfaVerifyPage /></PublicOnlyRoute>} />
+                <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>} />
+                <Route path="/reset-password" element={<PublicOnlyRoute><ResetPasswordPage /></PublicOnlyRoute>} />
 
                 {/* Protected routes */}
                 <Route element={

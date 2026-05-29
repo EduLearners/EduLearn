@@ -19,7 +19,6 @@ export default function LoginPage() {
             password: validateNotWhitespace(password, 'Password'),
         };
         if (Object.values(next).some(Boolean)) { setErrors(next); return; }
-        if (!usernameOrEmail.trim() || !password.trim()) return;
         setError('');
         setLoading(true);
 
@@ -32,16 +31,16 @@ export default function LoginPage() {
                 sessionStorage.setItem('mfaMessage', data.message);
 
                 if (data.message?.toLowerCase().includes('enrollment')) {
-                    navigate('/mfa/setup');
+                    navigate('/mfa/setup', { replace: true });
                 } else {
-                    navigate('/mfa/verify');
+                    navigate('/mfa/verify', { replace: true });
                 }
                 return;
             }
 
             // Student / Instructor -> direct JWT
             authService.saveSession(data.token, data.role, data.username);
-            navigate('/dashboard');
+            navigate('/dashboard', { replace: true });
 
         } catch (err) {
             setError(err);
@@ -63,8 +62,7 @@ export default function LoginPage() {
                         <p className="text-muted mb-0">University Management System</p>
                     </div>
 
-                    {/* autoComplete="off" on both form and inputs prevents browser autofill */}
-                    <form onSubmit={handleLogin} autoComplete="off">
+                    <form onSubmit={handleLogin}>
                         <div className="mb-3">
                             <label className="form-label">Username or Email</label>
                             <div className="input-group has-validation">
@@ -80,7 +78,7 @@ export default function LoginPage() {
                                     maxLength={256}
                                     required
                                     autoFocus
-                                    autoComplete="off"
+                                    autoComplete="username"
                                 />
                                 {errors.usernameOrEmail && <div className="invalid-feedback">{errors.usernameOrEmail}</div>}
                             </div>
@@ -101,7 +99,7 @@ export default function LoginPage() {
                                     placeholder="Enter password"
                                     maxLength={256}
                                     required
-                                    autoComplete="new-password"
+                                    autoComplete="current-password"
                                 />
                                 {errors.password && <div className="invalid-feedback">{errors.password}</div>}
                             </div>
