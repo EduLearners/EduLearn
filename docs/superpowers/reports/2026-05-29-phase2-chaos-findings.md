@@ -73,8 +73,85 @@ Reproduced the exact scenario — Auditor renders `/reports`, navigate to `/dash
 
 ---
 
-## Conclusion
+## Conclusion (Wave 1)
 
 Wave 1 found **zero product defects**. The application's authorization (backend and frontend) is PRD-aligned and the two originally-reported security bugs are confirmed fixed on the live app. The only defects were in the test harness itself (wrong expectations + a GET-body bug + burst flakiness), now corrected so the matrix is trustworthy and re-runnable.
 
-**Next:** Wave 2 (per-role navigation + all 7 dashboards: render, metrics, empty/error states, console errors).
+---
+
+# Wave 2 — Per-role navigation + all 7 dashboards
+
+**Execution:** logged in as each of the 7 roles; loaded the dashboard and swept the data-heavy list pages; checked render, role-scoped nav, metrics, empty/error states, console errors.
+
+## All 7 dashboards — PASS
+
+| Role | Nav items | Dashboard metrics (live) | Errors |
+|------|-----------|--------------------------|--------|
+| ITAdmin | 26 (full) | TOTAL USERS 26, tickets… | none |
+| Student | 14 | ENROLLED 2, CGPA 9.00, NOTIFICATIONS 8 | none |
+| Instructor | 12 | MY SECTIONS 0, MY COURSES 0 (see N-1) | none |
+| Registrar | 13 | APPLICANTS 2, STUDENTS 4, SECTIONS 0 (see N-1) | none |
+| DeptAdmin | 10 | PROGRAMS 2, COURSES 6, SECTIONS 5, ROOMS 3, INSTRUCTORS 3 | none |
+| Finance | 7 | INVOICES 3, PENDING 1, PAID 1, SCHOLARSHIPS 1, FEES 2 | none |
+| Auditor | 7 | AUDIT LOGS 100, KPIS 4 (READ-ONLY badge) | none |
+
+Each role's sidebar shows exactly its permitted sections (matches `routeRoles.js`).
+
+## Section sweep (as ITAdmin) — PASS
+
+`/users` (26 rows), `/students` (4), `/courses` (6 + filters), `/audit-log` (7), `/tickets` (1 card), `/sections` (course+term selector by design), `/invoices` (search-by-student by design). No page crashed; no error-boundary fallback; no DOM error text.
+
+## Observations (not product bugs)
+
+- **N-1 (seed/term alignment):** the seed created operational rows (sections, enrollments, assessments) in term **2026-Fall**, but the app's "current term" is **2026-Spring**, so term-scoped dashboard counts (Instructor MY SECTIONS, Registrar SECTIONS) read 0. Non-term-scoped views (DeptAdmin SECTIONS 5) show the data. Consider seeding in the current term (or both) to make every dashboard metric populate for testing. Tracked for Wave 4.
+- **Stale console noise:** earlier in the session the console showed `ReferenceError: Outlet is not defined (AppLayout.jsx:50)` and `Login failed for ITAdmin`. Verified these were **stale**: the current `AppLayout.jsx` (21 lines) imports/uses `RoleGuardedOutlet` and has no `Outlet` reference; the line-50 target no longer exists; a clean reload renders every dashboard with no such error. The `Login failed` lines were from the pre-fix Wave 1 burst. No current runtime error.
+
+**Wave 2 result: zero product defects.**
+
+---
+
+# Wave 3 — Form-validation matrix
+
+**Execution:** drove backend DTO validators directly via API (deterministic source of truth for data integrity), POSTing invalid payloads (must reject) and valid/boundary payloads (must accept); then spot-checked the frontend form error surfacing. Validators read from `EduLearn.API/DTOs/Create*.cs`.
+
+## Rejection matrix (invalid input must be rejected) — 19/19 PASS
+
+| Form | Invalid case | Result |
+|------|--------------|--------|
+| User | username `_bad` (regex) | 400 `Username` |
+| User | fullName `John123` (digits) | 400 `FullName` |
+| User | email `notanemail` | 400 `Email` |
+| User | password `short` (<8) | 400 `Password` |
+| User | phone `123` (≠10 digits) | 400 `Phone` |
+| User | duplicate username `admin` | 409 `DUPLICATE_USERNAME` |
+| Student | term `Fall 2026` (wrong format) | 400 `EntryTerm` |
+| Student | gender `M` (not in enum) | 400 `Gender` |
+| Course | code `cs101` (lowercase) | 400 `Code` |
+| Course | credits `0` / `13` (range 1-12) | 400 `Credits` (both) |
+| Assessment | maxScore `0` / `10000` (range 0.1-9999.9) | 400 `MaxScore` (both) |
+| Scholarship | amount `0` / `-5` (≥0.01) | 400 `Amount` (both) |
+| Scholarship | validFrom > validTo | 400 `INVALID_DATE_RANGE` |
+| Payment | amount `0` / `-5` (≥0.01) | 400 `Amount` (both) |
+| Fee | effectiveFrom > effectiveTo | 400 `INVALID_DATE_RANGE` |
+
+## Accept / boundary matrix (valid input must be accepted) — 5/5 PASS
+
+| Case | Result |
+|------|--------|
+| Course valid + credits = 1 (lower boundary) | 201 |
+| Course credits = 12 (upper boundary) | 201 |
+| Assessment maxScore = 0.1 (lower boundary) | 201 |
+| Assessment maxScore = 9999.9 (upper boundary) | 201 |
+| Enroll into nonexistent section | 400 `SECTION_NOT_FOUND` (correctly rejected) |
+
+## Frontend form surfacing — PASS
+
+On `/courses/new`: empty submit is blocked by HTML5 `required` (stays on form, fields flagged). An invalid code (`cs101`) submit surfaces a friendly alert — *"Please check your input. We couldn't process that request."* — stays on the form, **no raw stack/route leak.**
+
+## Observation (low severity, not a bug)
+
+- **O-1 (UX polish):** the frontend shows a *generic* error on a 400, even though the backend returns the specific offending field (`errors.Code`). Field-level inline messages would improve UX. Data integrity is unaffected — the bad submission is correctly blocked.
+
+**Wave 3 result: zero data-integrity defects** (24/24 validation checks pass).
+
+**Next:** Wave 4 (end-to-end workflows on seeded data).
