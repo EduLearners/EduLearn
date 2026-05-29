@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
 import { authService } from '../../services/authService';
 
@@ -116,12 +117,15 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
     const { role } = authService.getCurrentUser();
-    const visible = NAV_ITEMS.filter(i => i.roles.includes('*') || i.roles.includes(role));
+    const visibleItems = useMemo(
+        () => NAV_ITEMS.filter(i => i.roles.includes('*') || i.roles.includes(role)),
+        [role]
+    );
 
     return (
         <div className="bg-white border-end" style={{ minHeight: '100%' }}>
             <ul className="nav flex-column p-3">
-                {visible.map(item => (
+                {visibleItems.map(item => (
                     <li key={item.to} className="nav-item mb-1">
                         <NavLink
                             to={item.to}
