@@ -7,8 +7,9 @@ import { submissionService } from '../../services/submissionService';
 import Loading from '../Loading';
 import StatusBadge from '../StatusBadge';
 import './RoleDashboard.css';
-
-const TERM = '2026-Spring';
+import ErrorAlert from '../ErrorAlert';
+import { logger } from '../../utils/logger';
+import { CURRENT_TERM } from '../../config/academic';
 
 export default function InstructorDashboard() {
     const navigate = useNavigate();
@@ -17,12 +18,14 @@ export default function InstructorDashboard() {
     const [mySections, setMySections] = useState([]);
     const [stats, setStats] = useState({});
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const today = new Date();
 
     useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {
         setLoading(true);
+        setError(null);
         const s = {};
         try {
             // Load sections assigned to this instructor
@@ -62,7 +65,10 @@ export default function InstructorDashboard() {
                 const allSubs = subResults.filter(r => r.status === 'fulfilled').flatMap(r => r.value || []);
                 s.pendingGrading = allSubs.filter(sub => sub.status === 'Submitted').length;
             }
-        } catch { }
+        } catch (err) {
+            logger.error('InstructorDashboard load failed:', err);
+            setError(err);
+        }
         setStats(s);
         setLoading(false);
     };
@@ -73,7 +79,7 @@ export default function InstructorDashboard() {
     };
 
     const STAT_CARDS = [
-        { key: 'sections',      label: 'My Sections',     sub: () => TERM,                                    icon: 'bi-collection-fill',    accent: '#185FA5', iconBg: '#dbeafe', iconColor: '#185FA5', path: '/sections'     },
+        { key: 'sections',      label: 'My Sections',     sub: () => CURRENT_TERM,                                    icon: 'bi-collection-fill',    accent: '#185FA5', iconBg: '#dbeafe', iconColor: '#185FA5', path: '/sections'     },
         { key: 'courses',       label: 'My Courses',      sub: () => 'unique courses',                         icon: 'bi-book-fill',          accent: '#3B6D11', iconBg: '#dcfce7', iconColor: '#3B6D11', path: '/courses'      },
         { key: 'students',      label: 'Total Students',  sub: () => 'across my sections',                    icon: 'bi-people-fill',        accent: '#534AB7', iconBg: '#ede9fe', iconColor: '#534AB7', path: '/students'     },
         { key: 'assessments',   label: 'Assessments',     sub: (s) => `${s.published ?? 0} published`,        icon: 'bi-file-earmark-check', accent: '#0F6E56', iconBg: '#d1fae5', iconColor: '#0F6E56', path: '/assessments'  },
@@ -84,10 +90,11 @@ export default function InstructorDashboard() {
 
     return (
         <div className="role-dashboard">
+            {error && <ErrorAlert error={error} onDismiss={() => setError(null)} />}
             {/* Hero */}
             <div className="rd-hero">
                 <div style={{ position: 'relative', zIndex: 1 }}>
-                    <span className="rd-hero-badge">Instructor · {TERM}</span>
+                    <span className="rd-hero-badge">Instructor · {CURRENT_TERM}</span>
                     <div className="rd-hero-title">Welcome back, {username}! 👋</div>
                     <p className="rd-hero-sub">
                         {today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -128,7 +135,7 @@ export default function InstructorDashboard() {
             <div className="rd-card mb-4">
                 <div className="rd-card-header">
                     <span className="rd-card-header-title">
-                        <i className="bi bi-collection me-2"></i>My Sections — {TERM}
+                        <i className="bi bi-collection me-2"></i>My Sections — {CURRENT_TERM}
                     </span>
                     <button className="btn btn-sm btn-link p-0 text-decoration-none" style={{ color: '#185FA5', fontSize: '0.8rem' }} onClick={() => navigate('/sections')}>
                         Manage sections <i className="bi bi-arrow-right ms-1"></i>
@@ -138,7 +145,7 @@ export default function InstructorDashboard() {
                 {mySections.length === 0 ? (
                     <div className="text-center py-4 text-muted">
                         <i className="bi bi-collection display-5 d-block mb-2 opacity-25"></i>
-                        <p className="mb-0 small">No sections assigned to you for {TERM}.</p>
+                        <p className="mb-0 small">No sections assigned to you for {CURRENT_TERM}.</p>
                         <small>Contact the Registrar to be assigned to a section.</small>
                     </div>
                 ) : (
