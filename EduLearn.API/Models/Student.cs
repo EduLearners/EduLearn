@@ -29,7 +29,7 @@ public class Student
     [Column(TypeName = "date")]
     public DateTime DOB { get; set; }
 
-    [MaxLength(10)]
+    [MaxLength(20)]
     public string? Gender { get; set; }
 
     public string? ContactInfoJSON { get; set; }
