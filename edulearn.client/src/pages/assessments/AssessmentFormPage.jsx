@@ -40,7 +40,8 @@ export default function AssessmentFormPage() {
 
     useEffect(() => {
         if (isInstructor && userId) loadMySections();
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isInstructor, userId]);
 
     useEffect(() => {
         if (isEditMode) loadAssessment();
