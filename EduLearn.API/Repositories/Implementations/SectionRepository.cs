@@ -39,6 +39,11 @@ public class SectionRepository : ISectionRepository
             .Where(s => s.CourseID == courseId && s.Term == term)
             .ToListAsync();
 
+    public async Task<IEnumerable<Section>> GetByInstructorAndTermAsync(int instructorId, string term)
+        => await _context.Sections
+            .Where(s => s.InstructorID == instructorId && s.Term == term)
+            .ToListAsync();
+
     public async Task<Section> CreateAsync(Section section)
     {
         _context.Sections.Add(section);

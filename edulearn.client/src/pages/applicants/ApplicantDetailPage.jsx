@@ -443,7 +443,7 @@ export default function ApplicantDetailPage() {
                                                         value={userForm.username}
                                                         onChange={e => setUserForm({ ...userForm, username: e.target.value })}
                                                         onBlur={e => setCreateErrors(prev => ({ ...prev, username: validateUsername(e.target.value) }))}
-                                                        placeholder="e.g. vikash.kumar"
+                                                        placeholder="e.g. vikash_kumar"
                                                         maxLength={100}
                                                         required
                                                         autoComplete="off"

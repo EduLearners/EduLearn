@@ -268,7 +268,7 @@ export default function ProgramDetailPage() {
                                 <button className="btn btn-outline-primary" onClick={() => navigate('/courses')}>
                                     <i className="bi bi-book me-2"></i>All Courses
                                 </button>
-                                <button className="btn btn-outline-primary" onClick={() => navigate('/students')}>
+                                <button className="btn btn-outline-primary" onClick={() => navigate(`/students?programId=${id}`)}>
                                     <i className="bi bi-people me-2"></i>Students in this Program
                                 </button>
                                 {canManage && (

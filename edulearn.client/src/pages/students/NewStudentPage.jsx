@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { studentService } from '../../services/studentService';
 import { programService } from '../../services/programService';
@@ -16,10 +16,18 @@ export default function NewStudentPage() {
     const [error, setError] = useState(null);
     const [programs, setPrograms] = useState([]);
     const [users, setUsers] = useState([]);
+    const [allApplicants, setAllApplicants] = useState([]);
     const [errors, setErrors] = useState({});
+    const [programAutoFilled, setProgramAutoFilled] = useState(false);
+    const [programAutoName, setProgramAutoName] = useState('');
+
+    // Searchable User Account dropdown state
+    const [userSearch, setUserSearch] = useState('');
+    const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+    const [selectedUserLabel, setSelectedUserLabel] = useState('');
+    const userDropdownRef = useRef(null);
 
     const fromApplicantName = searchParams.get('name') || '';
-    // phase4-fix-16: DOB no longer read from URL (PII). Resolved server-side from applicantID.
     const fromApplicantID   = searchParams.get('applicantID') || '';
 
     const [form, setForm] = useState({
@@ -36,21 +44,70 @@ export default function NewStudentPage() {
 
     useEffect(() => { loadDropdowns(); }, []);
 
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (userDropdownRef.current && !userDropdownRef.current.contains(e.target)) {
+                setUserDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const loadDropdowns = async () => {
         try {
             setPageLoading(true);
             const tasks = [
                 programService.getAll(),
                 userService.getByRole('Student'),
+                studentService.getAll(),
+                applicantService.getAll(),  // load all applicants for email-based program lookup
             ];
-            // phase4-fix-16: fetch DOB from server instead of from URL param
             if (fromApplicantID) tasks.push(applicantService.getById(fromApplicantID));
-            const [programData, userData, applicantData] = await Promise.allSettled(tasks);
-            if (programData.status === 'fulfilled') setPrograms(programData.value || []);
-            if (userData.status === 'fulfilled')   setUsers(userData.value || []);
+
+            const [programData, userData, studentData, applicantsData, applicantData] = await Promise.allSettled(tasks);
+
+            const allPrograms = programData.status === 'fulfilled' ? (programData.value || []) : [];
+            setPrograms(allPrograms);
+
+            // Store all applicants for use in handleUserChange
+            const fetchedApplicants = applicantsData.status === 'fulfilled' ? (applicantsData.value || []) : [];
+            setAllApplicants(fetchedApplicants);
+
+            // Build a Set of userIDs that already have a student record
+            // so we can exclude them from the dropdown — prevents DUPLICATE_STUDENT
+            const usedUserIds = new Set(
+                (studentData.status === 'fulfilled' ? (studentData.value || []) : [])
+                    .map(s => String(s.userID))
+            );
+
+            if (userData.status === 'fulfilled') {
+                // Only show users who do NOT already have a student record
+                const filtered = (userData.value || []).filter(
+                    u => !usedUserIds.has(String(u.userID))
+                );
+                setUsers(filtered);
+            }
+
+            // Pre-fill DOB from applicant (when coming via ?applicantID=)
             if (applicantData?.status === 'fulfilled' && applicantData.value?.dob) {
                 setForm(prev => ({ ...prev, dob: applicantData.value.dob.split('T')[0] }));
             }
+
+            // Auto-fill Program from applicant's programApplied (when coming via ?applicantID=)
+            if (applicantData?.status === 'fulfilled' && applicantData.value?.programApplied) {
+                const appliedName = applicantData.value.programApplied.trim().toLowerCase();
+                const matched = allPrograms.find(
+                    p => p.name.trim().toLowerCase() === appliedName
+                );
+                if (matched) {
+                    setForm(prev => ({ ...prev, programID: String(matched.programID) }));
+                    setProgramAutoFilled(true);
+                    setProgramAutoName(matched.name);
+                }
+            }
+
         } catch (err) { console.error('loadDropdowns failed:', err); }
         finally { setPageLoading(false); }
     };
@@ -65,18 +122,26 @@ export default function NewStudentPage() {
     const phoneError = validatePhone(form.phone);
     const phoneInvalid = !!phoneError;
 
-    // When a user is selected, silently auto-fill email, phone and name
+    // When a user is selected, auto-fill name/email/phone
+    // AND look up their accepted applicant record by email to auto-fill program
     const handleUserChange = (e) => {
         const selectedId = e.target.value;
+
+        // User cleared the selection
         if (!selectedId) {
-            setForm(prev => ({ ...prev, userID: '' }));
+            setForm(prev => ({ ...prev, userID: '', programID: '' }));
+            setProgramAutoFilled(false);
+            setProgramAutoName('');
             return;
         }
+
         const selectedUser = users.find(u => String(u.userID) === String(selectedId));
         if (!selectedUser) {
             setForm(prev => ({ ...prev, userID: selectedId }));
             return;
         }
+
+        // Auto-fill name, email, phone from the user record
         setForm(prev => ({
             ...prev,
             userID: selectedId,
@@ -84,6 +149,68 @@ export default function NewStudentPage() {
             email: selectedUser.email || prev.email || '',
             phone: selectedUser.phone || prev.phone || '',
         }));
+
+        // Find an Accepted applicant whose contactInfoJSON email matches this user's email
+        // This links the applicant's chosen program to the student record being created
+        const userEmail = (selectedUser.email || '').trim().toLowerCase();
+        if (userEmail) {
+            const matchedApplicant = allApplicants.find(a => {
+                if (a.applicationStatus !== 'Accepted') return false;
+                try {
+                    const contact = JSON.parse(a.contactInfoJSON || '{}');
+                    return (contact.email || '').trim().toLowerCase() === userEmail;
+                } catch {
+                    return false;
+                }
+            });
+
+            if (matchedApplicant?.programApplied) {
+                // Match program name against programs list to get the programID
+                const appliedName = matchedApplicant.programApplied.trim().toLowerCase();
+                const matchedProgram = programs.find(
+                    p => p.name.trim().toLowerCase() === appliedName
+                );
+                if (matchedProgram) {
+                    setForm(prev => ({ ...prev, programID: String(matchedProgram.programID) }));
+                    setProgramAutoFilled(true);
+                    setProgramAutoName(matchedProgram.name);
+                    return;
+                }
+            }
+        }
+
+        // No matching applicant found — clear any previous auto-fill, show normal dropdown
+        setProgramAutoFilled(false);
+        setProgramAutoName('');
+        setForm(prev => ({ ...prev, programID: '' }));
+    };
+
+    // Filtered users based on search query — matches User ID or username
+    const filteredUsers = users.filter(u => {
+        if (!userSearch.trim()) return true;
+        const q = userSearch.trim().toLowerCase().replace(/^#/, '');
+        return (
+            String(u.userID).includes(q) ||
+            (u.username || '').toLowerCase().includes(q) ||
+            (u.fullName || '').toLowerCase().includes(q)
+        );
+    });
+
+    // Called when a user is picked from the searchable dropdown list
+    const handleUserSelect = (u) => {
+        setUserSearch('');
+        setUserDropdownOpen(false);
+        setSelectedUserLabel(`#${u.userID} — ${u.fullName} (${u.username})`);
+        // Reuse existing handleUserChange logic by creating a synthetic event
+        handleUserChange({ target: { value: String(u.userID) } });
+    };
+
+    // Called when the X button clears the selected user
+    const handleUserClear = () => {
+        setSelectedUserLabel('');
+        setUserSearch('');
+        setUserDropdownOpen(false);
+        handleUserChange({ target: { value: '' } });
     };
 
     const handleChange = (field) => (e) => {
@@ -168,25 +295,122 @@ export default function NewStudentPage() {
                     <form onSubmit={handleSubmit}>
                         <div className="row g-3">
 
-                            <div className="col-md-6">
+                            <div className="col-md-6" ref={userDropdownRef}>
                                 <label className="form-label fw-bold">
                                     User Account <span className="text-danger">*</span>
                                 </label>
-                                <select
-                                    className="form-select"
+
+                                {/* Looks like a Bootstrap form-select, opens a searchable dropdown */}
+                                <div style={{ position: 'relative' }}>
+
+                                    {/* The trigger box — styled exactly like form-select */}
+                                    <div
+                                        className="form-select d-flex align-items-center justify-content-between"
+                                        style={{ cursor: 'pointer', userSelect: 'none' }}
+                                        onClick={() => setUserDropdownOpen(prev => !prev)}
+                                    >
+                                        {selectedUserLabel ? (
+                                            <span className="text-dark">{selectedUserLabel}</span>
+                                        ) : (
+                                            <span className="text-muted">— Select Student User —</span>
+                                        )}
+                                    </div>
+
+                                    {/* Dropdown panel */}
+                                    {userDropdownOpen && (
+                                        <div
+                                            className="border rounded bg-white shadow-sm"
+                                            style={{
+                                                position: 'absolute',
+                                                top: '100%',
+                                                left: 0,
+                                                right: 0,
+                                                zIndex: 1050,
+                                                marginTop: 2,
+                                            }}
+                                        >
+                                            {/* Search input — grey header row, same style as the native select header */}
+                                            <div
+                                                style={{
+                                                    background: '#343a40',
+                                                    padding: '6px 8px',
+                                                    borderRadius: '4px 4px 0 0',
+                                                }}
+                                            >
+                                                <input
+                                                    type="text"
+                                                    className="form-control form-control-sm"
+                                                    style={{ background: 'white' }}
+                                                    placeholder="Search by User ID or username..."
+                                                    value={userSearch}
+                                                    onChange={e => setUserSearch(e.target.value)}
+                                                    autoFocus
+                                                    autoComplete="off"
+                                                    onMouseDown={e => e.stopPropagation()}
+                                                />
+                                            </div>
+
+                                            {/* Results list */}
+                                            <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                                                {/* Clear / default option — dark grey like native select */}
+                                                <div
+                                                    className="px-3 py-2 small"
+                                                    style={{
+                                                        cursor: 'pointer',
+                                                        background: '#6c757d',
+                                                        color: 'white',
+                                                    }}
+                                                    onMouseDown={e => e.preventDefault()}
+                                                    onClick={handleUserClear}
+                                                >
+                                                    — Select Student User —
+                                                </div>
+
+                                                {filteredUsers.length === 0 ? (
+                                                    <div className="px-3 py-2 text-muted small">
+                                                        <i className="bi bi-inbox me-2"></i>
+                                                        No users found{userSearch ? ` matching "${userSearch}"` : ''}
+                                                    </div>
+                                                ) : (
+                                                    filteredUsers.map(u => (
+                                                        <div
+                                                            key={u.userID}
+                                                            className="px-3 py-2 d-flex align-items-center gap-2"
+                                                            style={{
+                                                                cursor: 'pointer',
+                                                                background: String(form.userID) === String(u.userID) ? '#e8f0fe' : 'white',
+                                                                borderBottom: '1px solid #f0f0f0',
+                                                            }}
+                                                            onMouseDown={e => e.preventDefault()}
+                                                            onClick={() => handleUserSelect(u)}
+                                                            onMouseEnter={e => { if (String(form.userID) !== String(u.userID)) e.currentTarget.style.background = '#f0f4ff'; }}
+                                                            onMouseLeave={e => { if (String(form.userID) !== String(u.userID)) e.currentTarget.style.background = 'white'; }}
+                                                        >
+                                                            <span className="text-muted small" style={{ minWidth: 30 }}>#{u.userID}</span>
+                                                            <span className="small">{u.fullName} ({u.username})</span>
+                                                            {String(form.userID) === String(u.userID) && (
+                                                                <i className="bi bi-check2 text-primary ms-auto"></i>
+                                                            )}
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Hidden required input for form validation */}
+                                <input
+                                    type="text"
+                                    style={{ position: 'absolute', opacity: 0, height: 0, pointerEvents: 'none' }}
                                     value={form.userID}
-                                    onChange={handleUserChange}
                                     required
-                                >
-                                    <option value="">— Select Student User —</option>
-                                    {users.map(u => (
-                                        <option key={u.userID} value={u.userID}>
-                                            #{u.userID} — {u.fullName} ({u.username})
-                                        </option>
-                                    ))}
-                                </select>
+                                    onChange={() => {}}
+                                    tabIndex={-1}
+                                />
+
                                 <div className="form-text">
-                                    Only active users with Student role are shown.
+                                    Only active users with Student role <strong>without an existing student record</strong> are shown.
                                 </div>
                             </div>
 
@@ -194,19 +418,35 @@ export default function NewStudentPage() {
                                 <label className="form-label fw-bold">
                                     Program <span className="text-danger">*</span>
                                 </label>
-                                <select
-                                    className="form-select"
-                                    value={form.programID}
-                                    onChange={handleChange('programID')}
-                                    required
-                                >
-                                    <option value="">— Select Program —</option>
-                                    {programs.map(p => (
-                                        <option key={p.programID} value={p.programID}>
-                                            {p.name} ({p.degreeType})
-                                        </option>
-                                    ))}
-                                </select>
+                                {programAutoFilled ? (
+                                    <>
+                                        <input
+                                            type="text"
+                                            className="form-control bg-light"
+                                            value={programAutoName}
+                                            readOnly
+                                            disabled
+                                        />
+                                        <div className="form-text text-success">
+                                            <i className="bi bi-check-circle me-1"></i>
+                                            Auto-filled from applicant's program — read only.
+                                        </div>
+                                    </>
+                                ) : (
+                                    <select
+                                        className="form-select"
+                                        value={form.programID}
+                                        onChange={handleChange('programID')}
+                                        required
+                                    >
+                                        <option value="">— Select Program —</option>
+                                        {programs.map(p => (
+                                            <option key={p.programID} value={p.programID}>
+                                                {p.name} ({p.degreeType})
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
                             </div>
 
                             <div className="col-md-4">
