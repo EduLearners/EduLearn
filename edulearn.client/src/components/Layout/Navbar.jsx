@@ -38,7 +38,10 @@ export default function Navbar() {
 
     const handleLogout = () => {
         authService.logout();
-        navigate('/login');
+        // replace: true so the authenticated pages are dropped from the history
+        // stack — the browser Back button cannot return into a protected area
+        // after sign-out. Paired with the bfcache guard in main.jsx.
+        navigate('/login', { replace: true });
     };
 
     // Initials shown inside the avatar circle (e.g. "DpAkash" → "D")

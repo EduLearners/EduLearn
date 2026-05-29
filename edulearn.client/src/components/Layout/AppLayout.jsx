@@ -1,7 +1,7 @@
-import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import ConnectivityBanner from '../ConnectivityBanner';
+import RoleGuardedOutlet from '../RoleGuardedOutlet';
 
 export default function AppLayout() {
     return (
@@ -13,7 +13,7 @@ export default function AppLayout() {
                     <Sidebar />
                 </aside>
                 <main className="flex-grow-1 p-4" style={{ overflowY: 'auto', height: '100%', isolation: 'auto' }}>
-                    <Outlet />
+                    <RoleGuardedOutlet />
                 </main>
             </div>
         </div>
