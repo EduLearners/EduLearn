@@ -31,6 +31,7 @@ export default function ProfilePage() {
     // MFA re-enable setup modal state
     const [mfaSetupModal, setMfaSetupModal] = useState(false);
     const [mfaSetupData, setMfaSetupData] = useState(null); // { secret, otpauthUri }
+    const [showMfaSecret, setShowMfaSecret] = useState(false);
     const [mfaCode, setMfaCode] = useState('');
     const [mfaCodeError, setMfaCodeError] = useState('');
     const [mfaConfirming, setMfaConfirming] = useState(false);
@@ -74,6 +75,7 @@ export default function ProfilePage() {
                 setMfaSetupData(setupData);
                 setMfaCode('');
                 setMfaCodeError('');
+                setShowMfaSecret(false);
                 setMfaSetupModal(true);
             }
         } catch (err) {
@@ -447,10 +449,20 @@ export default function ProfilePage() {
                                         </div>
                                     </div>
 
-                                    {/* Manual secret */}
+                                    {/* Manual secret — masked by default */}
                                     <div className="mb-3 text-center">
                                         <small className="text-muted">Or enter manually:</small><br />
-                                        <code style={{ fontSize: '0.85rem', letterSpacing: 2 }}>{mfaSetupData.secret}</code>
+                                        <code style={{ fontSize: '0.85rem', letterSpacing: 2 }}>
+                                            {showMfaSecret ? mfaSetupData.secret : '•'.repeat(mfaSetupData.secret.length)}
+                                        </code>
+                                        <button
+                                            type="button"
+                                            className="btn btn-link btn-sm p-0 ms-2 align-baseline"
+                                            onClick={() => setShowMfaSecret(v => !v)}
+                                        >
+                                            <i className={`bi ${showMfaSecret ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                                            {showMfaSecret ? ' Hide' : ' Show'}
+                                        </button>
                                     </div>
 
                                     {/* Code input */}
