@@ -119,10 +119,12 @@ public class PaymentsController : ControllerBase
             return NotFound(new { error = "Invoice not found", code = "INVOICE_NOT_FOUND" });
 
         // Student-ownership: student may only view payments on their own invoice.
+        if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
         if (callerRole == "Student")
         {
             var student = await _studentRepository.GetByIdAsync(invoice.StudentID);
-            if (student?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
+            if (student?.UserID != callerId)
                 return StatusCode(403, new { error = "You may only view payments on your own invoices", code = "PAYMENT_FORBIDDEN" });
         }
 

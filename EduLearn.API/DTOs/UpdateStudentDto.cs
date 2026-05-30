@@ -10,7 +10,7 @@ public class UpdateStudentDto
     [RegularExpression(@"^[\p{L}\s'\-\.]+$", ErrorMessage = "Name can only contain letters, spaces, hyphens, apostrophes, and dots")]
     public string Name { get; set; } = null!;
 
-    [MaxLength(10)]
+    [MaxLength(20)]
     [RegularExpression(@"^(Male|Female|Other|Prefer not to say)$", ErrorMessage = "Gender must be Male, Female, Other, or Prefer not to say")]
     public string? Gender { get; set; }
 

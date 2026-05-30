@@ -42,15 +42,11 @@ public class SectionsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var sections = await _sectionRepo.GetAllAsync();
-        var result = new List<SectionResponseDto>();
-        foreach (var s in sections)
-        {
-            var course = await _courseRepo.GetByIdAsync(s.CourseID);
-            var instructor = await _userRepo.GetByIdAsync(s.InstructorID);
-            result.Add(MapToDto(s,
-                course?.Title ?? string.Empty,
-                instructor?.FullName ?? string.Empty));
-        }
+        var courses = (await _courseRepo.GetAllAsync()).ToDictionary(c => c.CourseID);
+        var users = (await _userRepo.GetAllAsync()).ToDictionary(u => u.UserID);
+        var result = sections.Select(s => MapToDto(s,
+            courses.TryGetValue(s.CourseID, out var c) ? c.Title : string.Empty,
+            users.TryGetValue(s.InstructorID, out var u) ? u.FullName : string.Empty)).ToList();
         return Ok(result);
     }
 
@@ -268,14 +264,10 @@ public class SectionsController : ControllerBase
             return NotFound(new { error = "Instructor not found", code = "INSTRUCTOR_NOT_FOUND" });
 
         var sections = await _sectionRepo.GetByInstructorIdAsync(instructorId);
-
-        var result = new List<SectionResponseDto>();
-        foreach (var s in sections)
-        {
-            var course = await _courseRepo.GetByIdAsync(s.CourseID);
-            result.Add(MapToDto(s, course?.Title ?? string.Empty, instructor.FullName));
-        }
-
+        var courses = (await _courseRepo.GetAllAsync()).ToDictionary(c => c.CourseID);
+        var result = sections.Select(s => MapToDto(s,
+            courses.TryGetValue(s.CourseID, out var c) ? c.Title : string.Empty,
+            instructor.FullName)).ToList();
         return Ok(result);
     }
 

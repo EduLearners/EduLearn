@@ -114,7 +114,7 @@ public class AssessmentsController : ControllerBase
 
     /// <summary>
     /// Update an existing assessment. Instructor and ITAdmin only.
-    /// Draft and Published assessments may be modified. Closed/Archived are locked.
+    /// Only Draft assessments can be updated. Published, Closed, and Archived are locked.
     /// </summary>
     [HttpPut("{id}")]
     [Authorize(Roles = "Instructor,ITAdmin")]

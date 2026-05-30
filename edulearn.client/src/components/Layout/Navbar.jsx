@@ -38,7 +38,10 @@ export default function Navbar() {
 
     const handleLogout = () => {
         authService.logout();
-        navigate('/login');
+        // replace: true so the authenticated pages are dropped from the history
+        // stack — the browser Back button cannot return into a protected area
+        // after sign-out. Paired with the bfcache guard in main.jsx.
+        navigate('/login', { replace: true });
     };
 
     // Initials shown inside the avatar circle (e.g. "DpAkash" → "D")
@@ -87,6 +90,9 @@ export default function Navbar() {
                     {/* Clickable avatar pill */}
                     <button
                         onClick={() => setOpen(!open)}
+                        aria-haspopup="menu"
+                        aria-expanded={open}
+                        aria-label="User menu"
                         className="btn d-flex align-items-center gap-2 text-white"
                         style={{
                             backgroundColor: open ? 'rgba(255,255,255,0.15)' : 'transparent',
@@ -121,6 +127,7 @@ export default function Navbar() {
                     {/* Dropdown panel */}
                     {open && (
                         <div
+                            role="menu"
                             className="position-absolute end-0 mt-2 bg-white rounded shadow-lg"
                             style={{ minWidth: 260, zIndex: 1050 }}
                         >
@@ -155,6 +162,7 @@ export default function Navbar() {
                             {/* Actions */}
                             <div>
                                 <button
+                                    role="menuitem"
                                     className="btn btn-link w-100 text-start text-decoration-none text-dark px-3 py-2"
                                     onClick={() => { setOpen(false); navigate('/profile'); }}
                                 >
@@ -163,6 +171,7 @@ export default function Navbar() {
                                 </button>
 
                                 <button
+                                    role="menuitem"
                                     className="btn btn-link w-100 text-start text-decoration-none text-dark px-3 py-2 border-top"
                                     onClick={() => { setOpen(false); navigate('/dashboard'); }}
                                 >
@@ -171,6 +180,7 @@ export default function Navbar() {
                                 </button>
 
                                 <button
+                                    role="menuitem"
                                     className="btn btn-link w-100 text-start text-decoration-none text-danger px-3 py-2 border-top"
                                     onClick={handleLogout}
                                 >

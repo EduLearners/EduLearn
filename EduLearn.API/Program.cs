@@ -60,10 +60,22 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// CORS
+// CORS — open in Development; locked to configured origins elsewhere.
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        }
+        else
+        {
+            var allowed = builder.Configuration
+                .GetSection("Cors:AllowedOrigins").Get<string[]>()
+                ?? Array.Empty<string>();
+            policy.WithOrigins(allowed).AllowAnyHeader().AllowAnyMethod();
+        }
+    }));
 
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -153,21 +165,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
 
-                var endpoint = $"{context.Request.Method} {context.Request.Path}";
-                var errorMessage = "Authentication required. Please login at POST /api/auth/login to get a JWT token.";
-
+                var errorMessage = "You need to sign in to continue.";
                 if (!string.IsNullOrEmpty(context.ErrorDescription) &&
                     context.ErrorDescription.Contains("expired"))
                 {
-                    errorMessage = "Your JWT token has expired. Please login again at POST /api/auth/login to get a new token.";
+                    errorMessage = "Your session has expired. Please sign in again.";
                 }
+
+                var isExpired = !string.IsNullOrEmpty(context.ErrorDescription) &&
+                    context.ErrorDescription.Contains("expired");
 
                 var response = new
                 {
                     error = errorMessage,
-                    endpoint = endpoint,
-                    statusCode = 401,
-                    timestamp = DateTime.UtcNow
+                    code = isExpired ? "TOKEN_EXPIRED" : "AUTH_REQUIRED",
+                    statusCode = 401
                 };
 
                 await context.Response.WriteAsync(JsonSerializer.Serialize(response));
@@ -178,16 +190,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 context.Response.StatusCode = 403;
                 context.Response.ContentType = "application/json";
 
-                var userRole = context.Principal?.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown";
-                var endpoint = $"{context.Request.Method} {context.Request.Path}";
-
                 var response = new
                 {
-                    error = $"User role '{userRole}' is not allowed to access '{endpoint}'",
-                    role = userRole,
-                    endpoint = endpoint,
-                    statusCode = 403,
-                    timestamp = DateTime.UtcNow
+                    error = "You don't have permission to perform this action.",
+                    code = "FORBIDDEN",
+                    statusCode = 403
                 };
 
                 await context.Response.WriteAsync(JsonSerializer.Serialize(response));

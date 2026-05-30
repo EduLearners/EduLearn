@@ -10,8 +10,9 @@ import Loading from '../Loading';
 import StatusBadge from '../StatusBadge';
 import axiosClient from '../../api/axiosClient';
 import './RoleDashboard.css';
-
-const TERM = '2026-Spring';
+import ErrorAlert from '../ErrorAlert';
+import { logger } from '../../utils/logger';
+import { CURRENT_TERM } from '../../config/academic';
 
 export default function StudentDashboard() {
     const navigate = useNavigate();
@@ -21,12 +22,14 @@ export default function StudentDashboard() {
     const [upcomingAssessments, setUpcomingAssessments] = useState([]);
     const [stats, setStats] = useState({});
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const today = new Date();
 
     useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {
         setLoading(true);
+        setError(null);
         const s = {};
         try {
             // Resolve student record from JWT
@@ -92,7 +95,10 @@ export default function StudentDashboard() {
                     s.unread = d?.items?.length ?? (Array.isArray(d) ? d.length : 0);
                 }
             }
-        } catch { }
+        } catch (err) {
+            logger.error('StudentDashboard load failed:', err);
+            setError(err);
+        }
         setStats(s);
         setLoading(false);
     };
@@ -121,10 +127,11 @@ export default function StudentDashboard() {
 
     return (
         <div className="role-dashboard">
+            {error && <ErrorAlert error={error} onDismiss={() => setError(null)} />}
             {/* Hero */}
             <div className="rd-hero">
                 <div style={{ position: 'relative', zIndex: 1 }}>
-                    <span className="rd-hero-badge">Student · {TERM}</span>
+                    <span className="rd-hero-badge">Student · {CURRENT_TERM}</span>
                     <div className="rd-hero-title">Welcome back, {username}! 👋</div>
                     <p className="rd-hero-sub">
                         {today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -140,7 +147,10 @@ export default function StudentDashboard() {
                         <div
                             className="rd-stat-card"
                             style={{ '--rd-accent': card.accent, cursor: 'pointer' }}
+                            role="button"
+                            tabIndex={0}
                             onClick={() => card.path && navigate(card.path)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.path && navigate(card.path); } }}
                         >
                             <div>
                                 <div className="rd-stat-label">{card.label}</div>

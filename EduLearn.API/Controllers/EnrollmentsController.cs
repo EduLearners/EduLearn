@@ -61,7 +61,9 @@ public class EnrollmentsController : ControllerBase
         // HARDENING (C-22): If caller is a Student, dto.StudentID must equal caller's own record.
         // Registrar/ITAdmin may pass any StudentID (they're doing bulk enrollment).
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
-        if (callerRole == "Student" && student.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
+        if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
+        if (callerRole == "Student" && student.UserID != callerId)
             return StatusCode(403, new { error = "Students may only enroll themselves", code = "ENROLLMENT_FORBIDDEN" });
 
         // BUG-2 FIX (PRD §14.1): Validate prerequisites BEFORE reserving a seat.
@@ -237,10 +239,12 @@ public class EnrollmentsController : ControllerBase
             // HARDENING (C-21): If caller is a Student, enrollment must belong to them.
             // Registrar/ITAdmin may drop any enrollment.
             var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+            if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+                return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
             if (callerRole == "Student")
             {
                 var owner = await _studentRepo.GetByIdAsync(enrollment.StudentID);
-                if (owner?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
+                if (owner?.UserID != callerId)
                 {
                     await transaction.RollbackAsync(cancellationToken);
                     return StatusCode(403, new { error = "You may only drop your own enrollments", code = "ENROLLMENT_FORBIDDEN" });
@@ -352,10 +356,12 @@ public class EnrollmentsController : ControllerBase
     {
         // HARDENING (C-14/F-4): Student role may only read their own enrollments.
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
         if (callerRole == "Student")
         {
             var target = await _studentRepo.GetByIdAsync(studentId);
-            if (target?.UserID != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"))
+            if (target?.UserID != callerId)
                 return StatusCode(403, new { error = "You may only view your own enrollments", code = "ENROLLMENT_FORBIDDEN" });
         }
 

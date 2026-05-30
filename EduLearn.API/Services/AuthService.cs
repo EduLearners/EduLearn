@@ -158,6 +158,17 @@ public class AuthService
         var user = isEmail
             ? await _userRepository.GetByEmailAsync(dto.UsernameOrEmail)
             : await _userRepository.GetByUsernameAsync(dto.UsernameOrEmail);
+
+        // SQL Server's default collation is case-insensitive, so GetByUsernameAsync
+        // matches 'Admin' to a stored 'admin'. Enforce an exact, case-sensitive match
+        // on the username path (emails remain case-insensitive by convention). Done
+        // BEFORE the BCrypt check below so the C-24 timing-equality guard still runs.
+        if (!isEmail && user != null &&
+            !string.Equals(user.Username, dto.UsernameOrEmail, StringComparison.Ordinal))
+        {
+            user = null;
+        }
+
         // HARDENING (C-24): Always run BCrypt.Verify — against a dummy hash when the user
         // does not exist — so response time for "user not found" matches "wrong password".
         // Without this, valid usernames respond ~300ms slower than invalid ones, leaking

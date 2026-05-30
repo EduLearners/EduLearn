@@ -175,7 +175,8 @@ public class TranscriptsController : ControllerBase
         if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
-        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
 
         if (callerRole == "Student" && student.UserID != callerId)
             return StatusCode(403, new { error = "You may only view your own transcripts", code = "TRANSCRIPT_FORBIDDEN" });
@@ -210,7 +211,8 @@ public class TranscriptsController : ControllerBase
         if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
-        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
 
         if (callerRole == "Student" && student.UserID != callerId)
             return StatusCode(403, new { error = "You may only view your own transcripts", code = "TRANSCRIPT_FORBIDDEN" });
@@ -278,7 +280,8 @@ public class TranscriptsController : ControllerBase
 
         // Ownership check: students can only download their own transcript
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
-        var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
         if (callerRole == "Student" && student.UserID != callerId)
             return StatusCode(403, new { error = "You may only download your own transcript", code = "TRANSCRIPT_FORBIDDEN" });
 
