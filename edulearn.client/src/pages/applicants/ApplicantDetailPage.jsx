@@ -427,10 +427,7 @@ export default function ApplicantDetailPage() {
                                         <form onSubmit={handleCreateUser} autoComplete="off" id="createUserForm">
                                             <div className="alert alert-info mb-4">
                                                 <i className="bi bi-info-circle me-2"></i>
-                                                This registers a new user with <strong>Student role</strong> 
-                                                {/* <br /> */}
-                                                {/* <strong>After creation</strong>, use the returned <strong>User ID</strong> when
-                                                creating the Student record at <em>Students → New Student</em>. */}
+                                                This registers a new user with <strong>Student role</strong>
                                             </div>
                                             <div className="row g-3">
                                                 <div className="col-md-6">
