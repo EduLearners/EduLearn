@@ -25,7 +25,7 @@ const NAV_ITEMS = [
 
     // ── Instructor ──
     // Can: view/create/update courses, assessments, submissions, grade, contents,
-    //      syllabi, discussions (moderate), grade changes, plagiarism, students, transcripts
+    //      syllabi, discussions (moderate), grade changes, students, transcripts
     { label: 'Courses',       to: '/courses',       icon: 'book',                   roles: ['Instructor'] },
     { label: 'Assessments',   to: '/assessments',   icon: 'file-earmark-check',     roles: ['Instructor'] },
     { label: 'Submissions',   to: '/submissions',   icon: 'cloud-upload',           roles: ['Instructor'] },
@@ -39,7 +39,7 @@ const NAV_ITEMS = [
     { label: 'Tickets',       to: '/tickets',       icon: 'headset',                roles: ['Instructor'] },
 
     // ── Registrar ──
-    // Can: applicants, students, sections, enrollment, transcripts, plagiarism,
+    // Can: applicants, students, sections, enrollment, transcripts,
     //      courses, syllabi, discussions, timetable, programs, notifications, tickets
     { label: 'Applicants',    to: '/applicants',    icon: 'person-plus',            roles: ['Registrar'] },
     { label: 'Students',      to: '/students',      icon: 'people',                 roles: ['Registrar'] },
