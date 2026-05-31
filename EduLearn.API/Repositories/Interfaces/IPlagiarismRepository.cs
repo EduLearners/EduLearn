@@ -1,4 +1,7 @@
-// AGI-04
+// ============================================================
+// AGI-04: IPlagiarismRepository.cs
+// ============================================================
+
 using EduLearn.API.Models;
 
 namespace EduLearn.API.Repositories.Interfaces;

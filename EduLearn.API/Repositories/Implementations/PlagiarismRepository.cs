@@ -1,4 +1,7 @@
-// AGI-04
+// ============================================================
+// AGI-04: PlagiarismRepository.cs
+// ============================================================
+
 using EduLearn.API.Data;
 using EduLearn.API.Models;
 using EduLearn.API.Repositories.Interfaces;
@@ -10,7 +13,10 @@ public class PlagiarismRepository : IPlagiarismRepository
 {
     private readonly AppDbContext _context;
 
-    public PlagiarismRepository(AppDbContext context) => _context = context;
+    public PlagiarismRepository(AppDbContext context)
+    {
+        _context = context;
+    }
 
     public async Task<PlagiarismReport?> GetByIdAsync(int reportId, CancellationToken ct = default)
         => await _context.PlagiarismReports
@@ -50,7 +56,6 @@ public class PlagiarismRepository : IPlagiarismRepository
     {
         _context.PlagiarismReports.Add(report);
         await _context.SaveChangesAsync(ct);
-        // Re-fetch with all includes so the controller can map to DTO immediately
         return (await GetByIdAsync(report.ReportID, ct))!;
     }
 

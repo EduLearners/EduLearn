@@ -30,6 +30,9 @@ public class AppDbContext : DbContext
     public DbSet<Submission> Submissions => Set<Submission>();
     public DbSet<GradeChange> GradeChanges => Set<GradeChange>();
 
+    // ── AGI ──
+    public DbSet<PlagiarismReport> PlagiarismReports => Set<PlagiarismReport>();
+
     // ── Finance ──
     public DbSet<FeeSchedule> FeeSchedules => Set<FeeSchedule>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
@@ -260,6 +263,21 @@ public class AppDbContext : DbContext
             entity.HasOne(gc => gc.ChangedBy)
                   .WithMany()
                   .HasForeignKey(gc => gc.ChangedByFK)
+                  .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<PlagiarismReport>(entity =>
+        {
+            entity.Property(r => r.Status).HasConversion<string>().HasMaxLength(20);
+
+            entity.HasOne(r => r.Submission)
+                  .WithMany()
+                  .HasForeignKey(r => r.SubmissionID)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(r => r.FlaggedBy)
+                  .WithMany()
+                  .HasForeignKey(r => r.FlaggedByUserID)
                   .OnDelete(DeleteBehavior.NoAction);
         });
 
