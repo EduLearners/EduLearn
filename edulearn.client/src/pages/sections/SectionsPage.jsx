@@ -41,6 +41,7 @@ export default function SectionsPage() {
     const [instructors, setInstructors] = useState([]);
     const [rooms, setRooms] = useState([]);
 
+    const [allSections, setAllSections] = useState([]);
     const [filterCourseId, setFilterCourseId] = useState('');
     const [filterTerm, setFilterTerm] = useState('2026-Spring');
 
@@ -57,12 +58,63 @@ export default function SectionsPage() {
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState(null);
 
-    const { role } = authService.getCurrentUser();
+    const { role, userId } = authService.getCurrentUser();
     const canManage = ['Registrar', 'DeptAdmin', 'ITAdmin'].includes(role);
 
     useEffect(() => {
         loadLookups();
+        if (role !== 'Instructor') {
+            loadAllSections();
+        }
     }, []);
+
+    // Auto-load for Instructor: show all their sections immediately on mount
+    useEffect(() => {
+        if (role === 'Instructor' && userId) {
+            loadInstructorSections();
+        }
+    }, [role, userId]);
+
+    // Client-side filter: runs whenever dropdown or allSections changes
+    useEffect(() => {
+        if (!filterCourseId) {
+            setSections(allSections);
+        } else {
+            setSections(
+                allSections.filter(s => String(s.courseID) === String(filterCourseId))
+            );
+        }
+    }, [filterCourseId, allSections]);
+
+    const loadAllSections = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await sectionService.getAll();
+            setAllSections(data || []);
+            setSections(data || []);
+            setHasSearched(true);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadInstructorSections = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await sectionService.getByInstructor(userId);
+            setAllSections(data || []);
+            setSections(data || []);
+            setHasSearched(true);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const loadLookups = async () => {
         try {
@@ -98,18 +150,29 @@ export default function SectionsPage() {
     };
 
     const handleSearch = async () => {
-        if (!filterCourseId || !filterTerm.trim()) {
-            setError({ message: 'Please select a course and enter a term.' });
+        if (!filterTerm.trim()) {
+            setError({ message: 'Please enter a term.' });
             return;
         }
         try {
             setLoading(true);
             setError(null);
-            const data = await sectionService.getByCourseAndTerm(filterCourseId, filterTerm.trim());
+            let data;
+            if (filterCourseId) {
+                data = await sectionService.getByCourseAndTerm(filterCourseId, filterTerm.trim());
+            } else {
+                // No course selected — filter loaded sections by term client-side
+                setSections(allSections.filter(s => s.term === filterTerm.trim()));
+                setHasSearched(true);
+                setLoading(false);
+                return;
+            }
+            setAllSections(data || []);
             setSections(data || []);
             setHasSearched(true);
         } catch (err) {
             if (err.response?.status === 404 && err.response?.data?.code === 'SECTIONS_NOT_FOUND') {
+                setAllSections([]);
                 setSections([]);
                 setHasSearched(true);
             } else {
@@ -124,6 +187,7 @@ export default function SectionsPage() {
         setEditingId(null);
         setForm({ ...emptyForm, courseID: filterCourseId || '', term: filterTerm || '' });
         setFormError(null);
+        setError(null);
         setErrors({});
         setShowModal(true);
     };
@@ -149,6 +213,7 @@ export default function SectionsPage() {
             scheduleTime: time,
         });
         setFormError(null);
+        setError(null);
         setErrors({});
         setShowModal(true);
     };
@@ -235,7 +300,9 @@ export default function SectionsPage() {
                 <div className="card-body">
                     <p className="text-muted small mb-3">
                         <i className="bi bi-info-circle me-2"></i>
-                        Select a course and term to view its sections.
+                        {role === 'Instructor'
+                            ? 'Your sections are shown below. Use the course dropdown to filter.'
+                            : 'All sections are shown below. Use the course dropdown to filter, or enter a term and click Search.'}
                     </p>
                     <div className="row g-3 align-items-end">
                         <div className="col-md-6">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { courseService } from '../../services/courseService';
+import { sectionService } from '../../services/sectionService';
 import { authService } from '../../services/authService';
 import { CourseStatus } from '../../models/Course';
 import Loading from '../../components/Loading';
@@ -9,9 +10,12 @@ import StatusBadge from '../../components/StatusBadge';
 
 export default function CoursesPage() {
     const navigate = useNavigate();
-    const { role } = authService.getCurrentUser();
+    const { role, userId } = authService.getCurrentUser();
+    const isInstructor = role === 'Instructor';
 
-    const [courses, setCourses] = useState([]);
+    const [allCourses, setAllCourses] = useState([]);
+    const [myCourses, setMyCourses]   = useState([]);
+    const [showMyCourses, setShowMyCourses] = useState(isInstructor);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState('');
@@ -29,7 +33,14 @@ export default function CoursesPage() {
             setLoading(true);
             setError(null);
             const data = await courseService.getAll();
-            setCourses(data);
+            setAllCourses(data);
+
+            // For Instructors: derive their courses from assigned sections
+            if (isInstructor && userId) {
+                const sections = await sectionService.getByInstructor(userId).catch(() => []);
+                const myCourseIds = new Set(sections.map(s => s.courseID));
+                setMyCourses(data.filter(c => myCourseIds.has(c.courseID)));
+            }
         } catch (err) {
             setError(err);
         } finally {
@@ -37,7 +48,10 @@ export default function CoursesPage() {
         }
     };
 
-    const filtered = courses.filter(c => {
+    // Active list depends on toggle
+    const activeCourses = (isInstructor && showMyCourses) ? myCourses : allCourses;
+
+    const filtered = activeCourses.filter(c => {
         const matchSearch =
             c.title?.toLowerCase().includes(search.toLowerCase()) ||
             c.code?.toLowerCase().includes(search.toLowerCase());
@@ -50,16 +64,35 @@ export default function CoursesPage() {
             {/* Page Header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
-                    <i className="bi bi-book me-2"></i>Course Catalog
+                    <i className="bi bi-book me-2"></i>
+                    {isInstructor && showMyCourses ? 'My Courses' : 'Course Catalog'}
                 </h2>
-                {canManage && (
-                    <button
-                        className="btn btn-primary-edulearn"
-                        onClick={() => navigate('/courses/new')}
-                    >
-                        <i className="bi bi-plus-lg me-2"></i>New Course
-                    </button>
-                )}
+                <div className="d-flex gap-2">
+                    {/* Toggle button — Instructor only */}
+                    {isInstructor && (
+                        <button
+                            className="btn btn-primary-edulearn"
+                            onClick={() => { setShowMyCourses(v => !v); setSearch(''); setFilterStatus(''); }}
+                            title={showMyCourses ? 'Show all courses' : 'Show only my courses'}
+                        >
+                            <i className={`bi ${
+                                showMyCourses ? 'bi-globe' : 'bi-person-check'
+                            } me-2`}></i>
+                            {showMyCourses
+                                ? `View All Courses (${allCourses.length})`
+                                : `My Courses (${myCourses.length})`
+                            }
+                        </button>
+                    )}
+                    {canManage && (
+                        <button
+                            className="btn btn-primary-edulearn"
+                            onClick={() => navigate('/courses/new')}
+                        >
+                            <i className="bi bi-plus-lg me-2"></i>New Course
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Filters */}
@@ -125,7 +158,10 @@ export default function CoursesPage() {
             {!loading && filtered.length > 0 && (
                 <div className="card shadow-sm">
                     <div className="card-header bg-light d-flex align-items-center justify-content-between">
-                        <strong><i className="bi bi-table me-2"></i>Courses</strong>
+                        <strong>
+                            <i className="bi bi-table me-2"></i>
+                            {isInstructor && showMyCourses ? 'My Assigned Courses' : 'Courses'}
+                        </strong>
                         <small className="text-muted">{filtered.length} result(s)</small>
                     </div>
                     <div className="table-responsive">

@@ -62,7 +62,20 @@ export function getFriendlyError(error) {
             guidance: '' };
     }
 
+    // Final fallback. IMPORTANT: never use error.message here — axios sets it to
+    // "Request failed with status code NNN", which leaks the status code to the
+    // user. Only use a clean backend { error } string (sanitized), else generic.
     return { category: 'unknown', title: 'Something went wrong',
-        message: sanitize(error.response?.data?.error || error.message, 'An unexpected problem occurred.'),
+        message: sanitize(error.response?.data?.error, 'An unexpected problem occurred.'),
         guidance: 'Please try again. If it keeps happening, contact your department admin.' };
+}
+
+// String-returning sibling of getFriendlyError, for places that show a simple
+// one-line status message (e.g. a toast) instead of the full ErrorAlert card.
+// Reuses the exact same status mapping + sanitization so routes and status codes
+// can never reach the user. `fallback` lets callers supply an action-specific
+// default (e.g. "Failed to generate transcript.").
+export function getFriendlySimpleMessage(error, fallback = 'Something went wrong. Please try again.') {
+    const { message } = getFriendlyError(error);
+    return message || fallback;
 }

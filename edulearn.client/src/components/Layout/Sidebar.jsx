@@ -26,6 +26,7 @@ const NAV_ITEMS = [
     // ── Instructor ──
     // Can: view/create/update courses, assessments, submissions, grade, contents,
     //      syllabi, discussions (moderate), grade changes, students, transcripts
+    { label: 'Sections',      to: '/sections',      icon: 'collection',             roles: ['Instructor'] },
     { label: 'Courses',       to: '/courses',       icon: 'book',                   roles: ['Instructor'] },
     { label: 'Assessments',   to: '/assessments',   icon: 'file-earmark-check',     roles: ['Instructor'] },
     { label: 'Submissions',   to: '/submissions',   icon: 'cloud-upload',           roles: ['Instructor'] },

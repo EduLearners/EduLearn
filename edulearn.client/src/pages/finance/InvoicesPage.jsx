@@ -217,7 +217,7 @@ export default function InvoicesPage() {
                 {canManage && (
                     <div className="d-flex gap-2">
                         <button
-                            className="btn btn-outline-primary"
+                            className="btn btn-primary-edulearn"
                             onClick={() => { setErrors({}); setBulkForm({ programID: '', term: '', dueDate: '' }); setBulkResult(null); setShowBulk(true); }}
                         >
                             <i className="bi bi-people me-2"></i>Generate for All

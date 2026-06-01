@@ -93,9 +93,6 @@ function TimetableGrid({ entries, onClickEntry }) {
                                             return (
                                                 <td key={d.key} className="p-1 align-top">
                                                     {entries.map(e => {
-                                                        const startMin = e.parsedSchedule.start.minute;
-                                                        const durationMin = e.parsedSchedule.end.total - e.parsedSchedule.start.total;
-                                                        const height = (durationMin / 60) * 64;
                                                         return (
                                                             <div
                                                                 key={e.sectionID}
@@ -105,8 +102,8 @@ function TimetableGrid({ entries, onClickEntry }) {
                                                                     color: 'white',
                                                                     padding: '6px 8px',
                                                                     borderRadius: 4,
-                                                                    marginTop: (startMin / 60) * 64,
-                                                                    height: height - 4,
+                                                                    marginTop: 0,
+                                                                    height: 56,
                                                                     overflow: 'hidden',
                                                                     cursor: 'pointer',
                                                                     fontSize: 11,
@@ -120,11 +117,9 @@ function TimetableGrid({ entries, onClickEntry }) {
                                                                 <div className="text-truncate" style={{ opacity: 0.9 }}>
                                                                     {e.parsedSchedule.raw.time}
                                                                 </div>
-                                                                {height > 50 && (
-                                                                    <div className="text-truncate" style={{ opacity: 0.85, fontSize: 10 }}>
-                                                                        {e.roomInfo || e.instructorName}
-                                                                    </div>
-                                                                )}
+                                                                <div className="text-truncate" style={{ opacity: 0.85, fontSize: 10 }}>
+                                                                    {e.roomInfo || e.instructorName}
+                                                                </div>
                                                             </div>
                                                         );
                                                     })}

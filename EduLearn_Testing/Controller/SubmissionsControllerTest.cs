@@ -19,6 +19,7 @@ public class SubmissionsControllerTest
     private Mock<IAssessmentRepository> _assessmentRepoMock;
     private Mock<IStudentRepository> _studentRepoMock;
     private Mock<IUserRepository> _userRepoMock;
+    private Mock<ISectionRepository> _sectionRepoMock;
     private Mock<INotificationService> _notificationServiceMock;
     private Mock<AuditLogService> _auditLogServiceMock;
 
@@ -39,6 +40,7 @@ public class SubmissionsControllerTest
         _assessmentRepoMock = new Mock<IAssessmentRepository>();
         _studentRepoMock = new Mock<IStudentRepository>();
         _userRepoMock = new Mock<IUserRepository>();
+        _sectionRepoMock = new Mock<ISectionRepository>();
         _notificationServiceMock = new Mock<INotificationService>();
 
         // AuditLogService requires IAuditLogRepository — mock it
@@ -50,6 +52,7 @@ public class SubmissionsControllerTest
             _assessmentRepoMock.Object,
             _studentRepoMock.Object,
             _userRepoMock.Object,
+            _sectionRepoMock.Object,
             _notificationServiceMock.Object,
             _auditLogServiceMock.Object);
 

@@ -71,6 +71,22 @@ public class TicketsController : ControllerBase
             created.TicketID,
             new { subject = created.Subject, priority = created.Priority.ToString() });
 
+        // NHT-03 ↔ NHT-01: notify support staff (every ITAdmin) that a new
+        // ticket was raised, so it surfaces in their notification bell for
+        // triage. Skip the creator if they are themselves an ITAdmin so no one
+        // is notified about their own ticket.
+        var supportStaff = await _userRepository.GetByRoleAsync(UserRole.ITAdmin);
+        foreach (var admin in supportStaff)
+        {
+            if (admin.UserID == currentUserId) continue;
+            await _notificationService.NotifyAsync(
+                admin.UserID,
+                NotificationCategory.IT,
+                NotificationSeverity.Info,
+                $"New ticket #{created.TicketID} '{created.Subject}' was raised and needs triage.",
+                created.TicketID);
+        }
+
         return CreatedAtAction(
             nameof(GetById),
             new { id = created.TicketID },

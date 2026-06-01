@@ -7,6 +7,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import Loading from '../../components/Loading';
 import StatusBadge from '../../components/StatusBadge';
+import Toast from '../../components/Toast';
 
 const PAYMENT_METHODS = ['BankTransfer', 'Cash', 'Card', 'UPI', 'Cheque'];
 
@@ -28,6 +29,7 @@ export default function PaymentsPage() {
     const [selected, setSelected] = useState(null);
     const [payments, setPayments] = useState([]);
     const [paymentsLoading, setPaymentsLoading] = useState(false);
+    const [searched, setSearched] = useState(false); // track whether a search was performed
 
     // Payment form
     const [showPayment, setShowPayment] = useState(false);
@@ -44,6 +46,7 @@ export default function PaymentsPage() {
         setSelected(null);
         setPayments([]);
         setInvoices([]);
+        setSearched(true);
         setLoading(true);
         try {
             if (searchType === 'invoice') {
@@ -53,8 +56,8 @@ export default function PaymentsPage() {
             } else {
                 const data = await invoiceService.getByStudent(Number(searchId));
                 setInvoices(data || []);
-                // Auto-select first invoice if only one result
-                if (data && data.length === 1) {
+                // Auto-select first invoice always (same behaviour as Invoice ID search)
+                if (data && data.length >= 1) {
                     await handleSelectInvoice(data[0]);
                 }
             }
@@ -86,14 +89,18 @@ export default function PaymentsPage() {
             reference: '',
         });
         setError(null);
+        setErrors({});
         setShowPayment(true);
     };
 
     const handlePayment = async (e) => {
         e.preventDefault();
+        const referenceRequired = payForm.method !== 'Cash';
         const next = {
             amount: validateAmount(payForm.amount, 0.01),
-            reference: validateReference(payForm.reference),
+            reference: referenceRequired && !payForm.reference.trim()
+                ? 'Reference is required for this payment method'
+                : null,
         };
         if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setError(null);
@@ -145,13 +152,13 @@ export default function PaymentsPage() {
                 </h2>
             </div>
 
-            {/* Success Alert */}
-            {success && (
-                <div className="alert alert-success d-flex align-items-center justify-content-between mb-4">
-                    <span><i className="bi bi-check-circle me-2"></i>{success}</span>
-                    <button className="btn-close" onClick={() => setSuccess('')}></button>
-                </div>
-            )}
+            {/* Success toast — top-right, auto-dismiss */}
+            <Toast
+                show={!!success}
+                type="success"
+                message={success}
+                onClose={() => setSuccess('')}
+            />
 
             {/* Search Card */}
             <div className="card shadow-sm mb-4">
@@ -206,6 +213,17 @@ export default function PaymentsPage() {
             </div>
 
             <ErrorAlert error={error} onDismiss={() => setError(null)} />
+
+            {/* Empty state — only shown after a student search that returned nothing */}
+            {searched && !loading && invoices.length === 0 && !error && searchType === 'student' && (
+                <div className="card shadow-sm">
+                    <div className="card-body text-center text-muted py-5">
+                        <i className="bi bi-receipt display-4 d-block mb-3 opacity-25"></i>
+                        <p className="mb-0">No invoices found for Student ID <strong>{searchId}</strong>.</p>
+                        <small>Make sure the Student ID is correct, or try searching by Invoice ID.</small>
+                    </div>
+                </div>
+            )}
 
             {/* Results */}
             {invoices.length > 0 && (
@@ -473,7 +491,7 @@ export default function PaymentsPage() {
                                                         onChange={e => setPayForm({ ...payForm, amount: e.target.value })}
                                                         onBlur={e => setErrors(prev => ({ ...prev, amount: validateAmount(e.target.value, 0.01) }))}
                                                         placeholder={balance > 0 ? balance.toFixed(2) : '0.00'}
-                                                        step="0.01"
+                                                        step="any"
                                                         min="0.01"
                                                         max={balance > 0 ? balance.toFixed(2) : undefined}
                                                         required
@@ -484,9 +502,9 @@ export default function PaymentsPage() {
                                                 {balance > 0 && (
                                                     <div className="form-text">
                                                         <button
-                                                            type="button"
-                                                            className="btn btn-link btn-sm p-0"
-                                                            onClick={() => setPayForm({ ...payForm, amount: balance.toFixed(2) })}
+                                                        type="button"
+                                                        className="btn btn-link btn-sm p-0 text-dark text-decoration-none"
+                                                        onClick={() => setPayForm({ ...payForm, amount: balance.toFixed(2) })}
                                                         >
                                                             Pay full balance ₹{balance.toFixed(2)}
                                                         </button>
@@ -500,7 +518,11 @@ export default function PaymentsPage() {
                                                 <select
                                                     className="form-select"
                                                     value={payForm.method}
-                                                    onChange={e => setPayForm({ ...payForm, method: e.target.value })}
+                                                    onChange={e => setPayForm({
+                                                        ...payForm,
+                                                        method: e.target.value,
+                                                        reference: e.target.value === 'Cash' ? '' : payForm.reference,
+                                                    })}
                                                     required
                                                 >
                                                     {PAYMENT_METHODS.map(m => (
@@ -509,20 +531,45 @@ export default function PaymentsPage() {
                                                 </select>
                                             </div>
                                             <div className="col-12">
-                                                <label className="form-label fw-bold">
-                                                    Reference
-                                                    <small className="text-muted fw-normal ms-2">(optional)</small>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className={`form-control${errors.reference ? ' is-invalid' : ''}`}
-                                                    value={payForm.reference}
-                                                    onChange={e => setPayForm({ ...payForm, reference: e.target.value })}
-                                                    onBlur={e => setErrors(prev => ({ ...prev, reference: validateReference(e.target.value) }))}
-                                                    placeholder="Transaction ID / Cheque number / UPI ref..."
-                                                    maxLength={100}
-                                                />
-                                                {errors.reference && <div className="invalid-feedback">{errors.reference}</div>}
+                                                {(() => {
+                                                    const isRequired = payForm.method !== 'Cash';
+                                                    return (
+                                                        <>
+                                                            <label className="form-label fw-bold">
+                                                                Reference
+                                                                {isRequired
+                                                                    ? <span className="text-danger"> *</span>
+                                                                    : <small className="text-muted fw-normal ms-2">(optional — not needed for Cash)</small>
+                                                                }
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                className={`form-control${errors.reference ? ' is-invalid' : ''}`}
+                                                                value={payForm.reference}
+                                                                onChange={e => setPayForm({ ...payForm, reference: e.target.value })}
+                                                                onBlur={e => {
+                                                                    if (isRequired)
+                                                                        setErrors(prev => ({
+                                                                            ...prev,
+                                                                            reference: !e.target.value.trim()
+                                                                                ? 'Reference is required for this payment method'
+                                                                                : null
+                                                                        }));
+                                                                }}
+                                                                placeholder={
+                                                                    payForm.method === 'UPI'          ? 'UPI reference number' :
+                                                                    payForm.method === 'Cheque'       ? 'Cheque number' :
+                                                                    payForm.method === 'Card'         ? 'POS transaction ID' :
+                                                                    payForm.method === 'BankTransfer' ? 'UTR / NEFT / RTGS transaction ID' :
+                                                                    'Transaction ID / reference...'
+                                                                }
+                                                                maxLength={100}
+                                                                required={isRequired}
+                                                            />
+                                                            {errors.reference && <div className="invalid-feedback">{errors.reference}</div>}
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />

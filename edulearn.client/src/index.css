@@ -91,10 +91,14 @@ body:has(.modal.show) main {
     position: relative !important;
 }
 
-/* Content scrolls internally if too tall */
+/* Content fills up to the viewport; the BODY scrolls while the header and
+   footer stay pinned, so the action buttons (Send/Cancel) are never clipped
+   off-screen on short viewports. */
 .modal-content {
-    max-height: calc(100vh - 48px) !important;
-    overflow-y: auto !important;
+    max-height: calc(100vh - 32px) !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
     border: none !important;
     border-radius: 14px !important;
     box-shadow: 0 16px 48px rgba(15, 30, 60, 0.25) !important;
@@ -102,6 +106,13 @@ body:has(.modal.show) main {
     z-index: 1051 !important;
 }
 
+/* Header and footer must not shrink — they stay visible at all times. */
+.modal-header,
+.modal-footer {
+    flex-shrink: 0;
+}
+
+/* The body is the single scroll region inside a modal. */
 .modal-body {
     overflow-y: auto;
 }
@@ -208,6 +219,37 @@ main > div {
     font-size: 0.8rem;
     color: #6b7280;
     border-radius: 0 0 12px 12px;
+}
+
+/* ============================================================
+   Notifications list — give each row breathing room so the
+   cards don't butt up against each other (flush list-group left
+   them touching with no padding). Each notification becomes a
+   separated, padded, rounded card.
+   ============================================================ */
+.notifications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+}
+
+.notifications-list .list-group-item {
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.notifications-list .list-group-item:hover {
+    box-shadow: 0 2px 10px rgba(24, 60, 110, 0.08);
+    transform: translateY(-1px);
+}
+
+/* Unread accent: thicker navy left border + subtle tint */
+.notifications-list .list-group-item.notification-unread {
+    border-left: 4px solid var(--primary);
+    background: var(--primary-light);
 }
 
 /* KPI card hover */

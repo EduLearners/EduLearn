@@ -189,21 +189,17 @@ export default function CourseFormPage() {
                             </div>
 
                             <div className="col-md-3">
-                                <label className="form-label fw-bold">
-                                    Level
-                                    <small className="text-muted fw-normal ms-2">(e.g. UG / PG)</small>
-                                </label>
-                                <input
-                                    type="text"
-                                    className={`form-control${errors.level ? ' is-invalid' : ''}`}
+                                <label className="form-label fw-bold">Level</label>
+                                <select
+                                    className="form-select"
                                     name="level"
                                     value={form.level}
                                     onChange={handleChange}
-                                    onBlur={e => setErrors(prev => ({ ...prev, level: validateLevel(e.target.value) }))}
-                                    placeholder="e.g. UG"
-                                    maxLength={20}
-                                />
-                                {errors.level && <div className="invalid-feedback">{errors.level}</div>}
+                                >
+                                    <option value="">— Select Level —</option>
+                                    <option value="UG">UG (Undergraduate)</option>
+                                    <option value="PG">PG (Postgraduate)</option>
+                                </select>
                             </div>
 
                             <div className="col-md-3">

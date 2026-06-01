@@ -10,6 +10,8 @@ import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import Toast from '../../components/Toast';
+import { getFriendlySimpleMessage } from '../../utils/errorMessage';
 import axiosClient from '../../api/axiosClient';
 import { validateCourseCode, validateMinLength, validateJson, validatePositiveInteger, validateOptionalPositiveId, validateTerm, validatePositiveId } from '../../utils/validators';
 
@@ -68,6 +70,9 @@ export default function EnrollmentPage() {
     }, []);
 
     // Read URL params AFTER lookups are ready so dropdowns can be pre-selected
+    // locked=1 means navigated from Student Detail — Program + Student ID are read-only
+    const isLocked = searchParams.get('locked') === '1';
+
     useEffect(() => {
         if (loadingLookups) return;
 
@@ -177,9 +182,19 @@ export default function EnrollmentPage() {
                     setSelectedProgramId(String(record.programID));
                 }
             }
-        } catch {
-            const stored = localStorage.getItem('lastStudentId');
-            if (stored) setStudentId(stored);
+        } catch (err) {
+            // FIX A1-01: Handle 404 gracefully instead of infinite "Resolving..." spinner
+            if (err.response?.status === 404) {
+                setEnrollmentsError({
+                    message: "We couldn't find your student record. Please contact the Registrar to link your account to a student profile.",
+                    code: 'STUDENT_RECORD_NOT_FOUND'
+                });
+                // Stop the "Resolving..." spinner by setting a dummy ID
+                setStudentId('-1');
+            } else {
+                const stored = localStorage.getItem('lastStudentId');
+                if (stored) setStudentId(stored);
+            }
         }
     };
 
@@ -237,7 +252,7 @@ export default function EnrollmentPage() {
             const result = await timetableService.validateSection(studentId, section.sectionID);
             setConflictResults({ ...conflictResults, [section.sectionID]: result });
         } catch (err) {
-            setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to check conflict.' });
+            setActionMessage({ type: 'error', text: getFriendlySimpleMessage(err, 'Failed to check conflict.') });
         } finally {
             setActionInProgress(null);
         }
@@ -257,13 +272,17 @@ export default function EnrollmentPage() {
             setConflictResults({});
         } catch (err) {
             const data = err.response?.data;
-            let text = data?.error || err.message || 'Enrollment failed.';
+            // Keep the specific, user-helpful domain messages; fall back to a
+            // sanitized friendly message for everything else.
+            let text;
             if (data?.code === 'PREREQUISITES_NOT_MET' && data.unmetPrerequisites?.length)
                 text = `Prerequisites not met: ${data.unmetPrerequisites.join(', ')}`;
             else if (data?.code === 'SCHEDULE_CONFLICT' && data.conflictingCourseCode)
-                text = `Schedule conflict with ${data.conflictingCourseCode} — ${data.error}`;
+                text = `Schedule conflict with ${data.conflictingCourseCode}. Please choose a different section.`;
             else if (data?.code === 'DUPLICATE_ENROLLMENT')
                 text = 'This student is already enrolled in this section.';
+            else
+                text = getFriendlySimpleMessage(err, 'Enrollment could not be completed. Please try again.');
             setActionMessage({ type: 'error', text });
         } finally {
             setActionInProgress(null);
@@ -282,7 +301,7 @@ export default function EnrollmentPage() {
             setDropConfirm(null);
             await Promise.all([loadEnrollments(), courseId && handleSearchSections()]);
         } catch (err) {
-            setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to drop enrollment.' });
+            setActionMessage({ type: 'error', text: getFriendlySimpleMessage(err, 'Failed to drop enrollment.') });
             setDropConfirm(null);
         } finally {
             setActionInProgress(null);
@@ -297,7 +316,7 @@ export default function EnrollmentPage() {
             const data = await enrollmentService.getBySection(section.sectionID);
             setRosterData(data || []);
         } catch (err) {
-            setActionMessage({ type: 'error', text: err.response?.data?.error || 'Failed to load roster.' });
+            setActionMessage({ type: 'error', text: getFriendlySimpleMessage(err, 'Failed to load roster.') });
             setRosterModal(null);
         } finally {
             setLoadingRoster(false);
@@ -320,14 +339,13 @@ export default function EnrollmentPage() {
                 <i className="bi bi-card-checklist me-2"></i>Enrollment
             </h2>
 
-            {/* Status message */}
-            {actionMessage && (
-                <div className={`alert alert-${actionMessage.type === 'success' ? 'success' : 'danger'} d-flex align-items-center`}>
-                    <i className={`bi bi-${actionMessage.type === 'success' ? 'check-circle' : 'exclamation-triangle'}-fill me-2`}></i>
-                    <div className="flex-grow-1">{actionMessage.text}</div>
-                    <button className="btn-close" onClick={() => setActionMessage(null)}></button>
-                </div>
-            )}
+            {/* Top-right auto-dismissing toast for action results */}
+            <Toast
+                show={!!actionMessage}
+                type={actionMessage?.type}
+                message={actionMessage?.text}
+                onClose={() => setActionMessage(null)}
+            />
 
             {/* Search & Enroll panel */}
             <div className="card shadow-sm mb-4">
@@ -347,10 +365,12 @@ export default function EnrollmentPage() {
                                 className="form-select"
                                 value={selectedProgramId}
                                 onChange={e => {
+                                    if (isLocked) return;
                                     setSelectedProgramId(e.target.value);
                                     setShowAllCourses(false);
                                 }}
-                                disabled={loadingLookups}
+                                disabled={loadingLookups || isLocked}
+                                title={isLocked ? 'Program is pre-set from student profile and cannot be changed here.' : undefined}
                             >
                                 <option value="">— All programs —</option>
                                 {programs.map(p => (
@@ -359,6 +379,11 @@ export default function EnrollmentPage() {
                                     </option>
                                 ))}
                             </select>
+                            {isLocked && (
+                                <div className="form-text text-muted">
+                                    <i className="bi bi-lock-fill me-1"></i>Pre-set from student profile
+                                </div>
+                            )}
                         </div>
 
                         {/* Student ID — hidden for students, visible for staff */}
@@ -371,11 +396,19 @@ export default function EnrollmentPage() {
                                     type="number"
                                     className={`form-control${errors.studentId ? ' is-invalid' : ''}`}
                                     value={studentId}
-                                    onChange={e => setStudentId(e.target.value)}
-                                    onBlur={e => setErrors(prev => ({ ...prev, studentId: validatePositiveId(e.target.value) }))}
+                                    onChange={e => { if (!isLocked) setStudentId(e.target.value); }}
+                                    onBlur={e => { if (!isLocked) setErrors(prev => ({ ...prev, studentId: validatePositiveId(e.target.value) })); }}
                                     placeholder="Who you are enrolling/viewing"
                                     min="1"
+                                    readOnly={isLocked}
+                                    title={isLocked ? 'Student ID is pre-set from student profile and cannot be changed here.' : undefined}
+                                    style={isLocked ? { backgroundColor: '#e9ecef', cursor: 'not-allowed' } : undefined}
                                 />
+                                {isLocked && (
+                                    <div className="form-text text-muted">
+                                        <i className="bi bi-lock-fill me-1"></i>Pre-set from student profile
+                                    </div>
+                                )}
                                 {errors.studentId && <div className="invalid-feedback">{errors.studentId}</div>}
                             </div>
                         )}

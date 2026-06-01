@@ -124,7 +124,7 @@ export default function StudentDetailPage() {
     if (error && !student) {
         return (
             <div>
-                <button className="btn btn-link mb-3" onClick={() => navigate('/students')}>
+                <button className="btn btn-primary-edulearn mb-3" onClick={() => navigate('/students')}>
                     <i className="bi bi-arrow-left me-1"></i>Back to Students
                 </button>
                 <ErrorAlert error={error} />
@@ -136,7 +136,7 @@ export default function StudentDetailPage() {
         <div>
             {/* Back + actions */}
             <div className="d-flex align-items-center justify-content-between mb-4">
-                <button className="btn btn-link p-0" onClick={() => navigate('/students')}>
+                <button className="btn btn-primary-edulearn" onClick={() => navigate('/students')}>
                     <i className="bi bi-arrow-left me-1"></i>Back to Students
                 </button>
 
@@ -370,19 +370,19 @@ export default function StudentDetailPage() {
                         </h6>
                         <div className="d-flex gap-2 flex-wrap">
                             <button
-                                className="btn btn-outline-primary"
+                                className="btn btn-primary-edulearn"
                                 onClick={() => navigate(`/transcripts?studentId=${student.studentID}`)}
                             >
                                 <i className="bi bi-file-earmark-text me-1"></i>View Transcripts
                             </button>
                             <button
-                                className="btn btn-outline-primary"
-                                onClick={() => navigate(`/enrollment?studentId=${student.studentID}&programId=${student.programID || ''}`)}
+                                className="btn btn-primary-edulearn"
+                                onClick={() => navigate(`/enrollment?studentId=${student.studentID}&programId=${student.programID || ''}&locked=1`)}
                             >
                                 <i className="bi bi-card-checklist me-1"></i>Enrollments
                             </button>
                             <button
-                                className="btn btn-outline-primary"
+                                className="btn btn-primary-edulearn"
                                 onClick={() => navigate(`/timetable?studentId=${student.studentID}`)}
                             >
                                 <i className="bi bi-calendar3 me-1"></i>Timetable

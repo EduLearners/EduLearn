@@ -27,7 +27,7 @@ export const SECTION_ROLES = {
     'grade-changes': ['Instructor', 'Auditor', 'ITAdmin'],
     students: ['Instructor', 'Registrar', 'DeptAdmin', 'ITAdmin'],
     applicants: ['Registrar', 'ITAdmin'],
-    sections: ['Registrar', 'DeptAdmin', 'ITAdmin'],
+    sections: ['Instructor', 'Registrar', 'DeptAdmin', 'ITAdmin'],
     rooms: ['DeptAdmin', 'ITAdmin'],
     fees: ['Finance', 'ITAdmin'],
     payments: ['Finance', 'ITAdmin'],

@@ -18,6 +18,7 @@ public class SubmissionsController : ControllerBase
     private readonly IAssessmentRepository _assessmentRepository;
     private readonly IStudentRepository _studentRepository;
     private readonly IUserRepository _userRepository;
+    private readonly ISectionRepository _sectionRepository;
     private readonly INotificationService _notificationService;
     private readonly AuditLogService _auditLogService;
 
@@ -26,6 +27,7 @@ public class SubmissionsController : ControllerBase
         IAssessmentRepository assessmentRepository,
         IStudentRepository studentRepository,
         IUserRepository userRepository,
+        ISectionRepository sectionRepository,
         INotificationService notificationService,
         AuditLogService auditLogService)
     {
@@ -33,6 +35,7 @@ public class SubmissionsController : ControllerBase
         _assessmentRepository = assessmentRepository;
         _studentRepository = studentRepository;
         _userRepository = userRepository;
+        _sectionRepository = sectionRepository;
         _notificationService = notificationService;
         _auditLogService = auditLogService;
     }
@@ -108,11 +111,11 @@ public class SubmissionsController : ControllerBase
     }
 
     /// <summary>
-    /// List all submissions for a given assessment. Instructor and ITAdmin only.
+    /// List all submissions for a given assessment. Students see only their own; Instructors/ITAdmin see all.
     /// Returns 404 if the assessment does not exist.
     /// </summary>
     [HttpGet("assessment/{assessmentId}")]
-    [Authorize(Roles = "Instructor,ITAdmin")]
+    [Authorize(Roles = "Student,Instructor,ITAdmin")]
     public async Task<ActionResult<List<SubmissionResponseDto>>> GetByAssessment(int assessmentId)
     {
         var assessmentExists = await _assessmentRepository.ExistsAsync(assessmentId);
@@ -121,6 +124,20 @@ public class SubmissionsController : ControllerBase
             return NotFound(new { error = "Assessment not found", code = "ASSESSMENT_NOT_FOUND" });
 
         var submissions = await _submissionRepository.GetByAssessmentIdWithDetailsAsync(assessmentId);
+
+        // FIX A1-08: Students can only see their own submissions
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value;
+        if (callerRole == "Student")
+        {
+            var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new InvalidOperationException("NameIdentifier claim missing"));
+
+            var student = await _studentRepository.GetByUserIdAsync(callerId);
+            if (student == null)
+                return Ok(new List<SubmissionResponseDto>()); // No student record = no submissions
+
+            submissions = submissions.Where(s => s.StudentID == student.StudentID).ToList();
+        }
 
         var response = submissions.Select(s => MapToDto(s)).ToList();
         return Ok(response);
@@ -139,6 +156,33 @@ public class SubmissionsController : ControllerBase
 
         if (submission is null)
             return NotFound(new { error = "Submission not found", code = "SUBMISSION_NOT_FOUND" });
+
+        // FIX A1-03 HIGH IDOR: Verify section ownership for Instructors (ITAdmin/Registrar can read any)
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value;
+        if (callerRole == "Instructor")
+        {
+            var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new InvalidOperationException("NameIdentifier claim missing"));
+
+            if (!submission.Assessment.SectionID.HasValue)
+                return BadRequest(new {
+                    error = "Assessment is not linked to a section",
+                    code = "ASSESSMENT_NO_SECTION"
+                });
+
+            var section = await _sectionRepository.GetByIdAsync(submission.Assessment.SectionID.Value);
+            if (section is null)
+                return BadRequest(new {
+                    error = "Section not found",
+                    code = "SECTION_NOT_FOUND"
+                });
+
+            if (section.InstructorID != callerId)
+                return StatusCode(403, new {
+                    error = "You can only view submissions from your own sections",
+                    code = "NOT_YOUR_SECTION"
+                });
+        }
 
         return Ok(MapToDto(submission));
     }
@@ -167,6 +211,29 @@ public class SubmissionsController : ControllerBase
 
         if (grader.Role != UserRole.Instructor && grader.Role != UserRole.ITAdmin)
             return StatusCode(403, new { error = "Only Instructors may grade submissions", code = "NOT_INSTRUCTOR" });
+
+        // FIX A1-02 CRITICAL IDOR: Verify section ownership for Instructors (ITAdmin can grade any)
+        if (grader.Role == UserRole.Instructor)
+        {
+            if (!submission.Assessment.SectionID.HasValue)
+                return BadRequest(new {
+                    error = "Assessment is not linked to a section",
+                    code = "ASSESSMENT_NO_SECTION"
+                });
+
+            var section = await _sectionRepository.GetByIdAsync(submission.Assessment.SectionID.Value);
+            if (section is null)
+                return BadRequest(new {
+                    error = "Section not found",
+                    code = "SECTION_NOT_FOUND"
+                });
+
+            if (section.InstructorID != callerId)
+                return StatusCode(403, new {
+                    error = "You can only grade submissions from your own sections",
+                    code = "NOT_YOUR_SECTION"
+                });
+        }
 
         if (dto.Score > submission.Assessment.MaxScore)
             return BadRequest(new

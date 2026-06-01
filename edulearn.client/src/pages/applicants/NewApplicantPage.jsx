@@ -275,10 +275,14 @@ export default function NewApplicantPage() {
                                     type="text"
                                     className={`form-control${errors.phone ? ' is-invalid' : ''}`}
                                     value={form.phone}
-                                    onChange={handleChange('phone')}
+                                    onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                        setForm(prev => ({ ...prev, phone: digits }));
+                                        setErrors(prev => ({ ...prev, phone: validatePhoneRequired(digits) }));
+                                    }}
                                     onBlur={e => setErrors(prev => ({ ...prev, phone: validatePhoneRequired(e.target.value) }))}
                                     placeholder="9876543210"
-                                    maxLength={15}
+                                    maxLength={10}
                                     required
                                 />
                                 {errors.phone ? (

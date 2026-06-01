@@ -4,6 +4,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -17,6 +18,8 @@ public class DiscussionsControllerTest
     private Mock<IDiscussionRepository> _discussionRepoMock;
     private Mock<ICourseRepository> _courseRepoMock;
     private Mock<IUserRepository> _userRepoMock;
+    private Mock<ISectionRepository> _sectionRepoMock;
+    private Mock<INotificationService> _notificationServiceMock;
 
     // ── Controller under test ──
     private DiscussionsController _controller;
@@ -33,11 +36,15 @@ public class DiscussionsControllerTest
         _discussionRepoMock = new Mock<IDiscussionRepository>();
         _courseRepoMock = new Mock<ICourseRepository>();
         _userRepoMock = new Mock<IUserRepository>();
+        _sectionRepoMock = new Mock<ISectionRepository>();
+        _notificationServiceMock = new Mock<INotificationService>();
 
         _controller = new DiscussionsController(
             _discussionRepoMock.Object,
             _courseRepoMock.Object,
-            _userRepoMock.Object);
+            _userRepoMock.Object,
+            _sectionRepoMock.Object,
+            _notificationServiceMock.Object);
 
         // Simulate logged-in user with UserID = 1
         var claims = new List<Claim>

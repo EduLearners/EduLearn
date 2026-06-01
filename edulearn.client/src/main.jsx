@@ -22,6 +22,20 @@ window.addEventListener('pageshow', (event) => {
     }
 });
 
+// UX fix: prevent the mouse wheel from changing <input type="number"> values.
+// On number inputs that carry a fractional `step` (e.g. step="0.01" on money/score
+// fields), scrolling the wheel while the field is focused snaps the value to the
+// nearest valid step from `min`, and floating-point arithmetic turns a clean 20
+// into 19.99. Blurring the wheel removes the accidental rounding without changing
+// keyboard entry, the spinner arrows, or validation. Capture phase + blur so the
+// event never reaches the input's default wheel handler.
+document.addEventListener('wheel', (event) => {
+    const el = document.activeElement;
+    if (el && el.tagName === 'INPUT' && el.type === 'number' && el === event.target) {
+        el.blur();
+    }
+}, { passive: true });
+
 createRoot(document.getElementById('root')).render(
     <StrictMode>
         <ErrorBoundary>
