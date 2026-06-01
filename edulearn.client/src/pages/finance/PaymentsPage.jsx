@@ -7,6 +7,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import Loading from '../../components/Loading';
 import StatusBadge from '../../components/StatusBadge';
+import Toast from '../../components/Toast';
 
 const PAYMENT_METHODS = ['BankTransfer', 'Cash', 'Card', 'UPI', 'Cheque'];
 
@@ -86,6 +87,7 @@ export default function PaymentsPage() {
             reference: '',
         });
         setError(null);
+        setErrors({});
         setShowPayment(true);
     };
 
@@ -148,13 +150,13 @@ export default function PaymentsPage() {
                 </h2>
             </div>
 
-            {/* Success Alert */}
-            {success && (
-                <div className="alert alert-success d-flex align-items-center justify-content-between mb-4">
-                    <span><i className="bi bi-check-circle me-2"></i>{success}</span>
-                    <button className="btn-close" onClick={() => setSuccess('')}></button>
-                </div>
-            )}
+            {/* Success toast — top-right, auto-dismiss */}
+            <Toast
+                show={!!success}
+                type="success"
+                message={success}
+                onClose={() => setSuccess('')}
+            />
 
             {/* Search Card */}
             <div className="card shadow-sm mb-4">
@@ -476,7 +478,7 @@ export default function PaymentsPage() {
                                                         onChange={e => setPayForm({ ...payForm, amount: e.target.value })}
                                                         onBlur={e => setErrors(prev => ({ ...prev, amount: validateAmount(e.target.value, 0.01) }))}
                                                         placeholder={balance > 0 ? balance.toFixed(2) : '0.00'}
-                                                        step="0.01"
+                                                        step="any"
                                                         min="0.01"
                                                         max={balance > 0 ? balance.toFixed(2) : undefined}
                                                         required

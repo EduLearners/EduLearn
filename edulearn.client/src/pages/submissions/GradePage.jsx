@@ -257,7 +257,7 @@ export default function GradePage() {
                                             onBlur={e => setErrors(prev => ({ ...prev, score: validateScore(e.target.value, submission?.maxScore ?? assessment?.maxScore) }))}
                                             min={0}
                                             max={submission.maxScore ?? assessment?.maxScore ?? 9999}
-                                            step={0.1}
+                                            step="any"
                                             required
                                         />
                                         {errors.score && <div className="invalid-feedback">{errors.score}</div>}

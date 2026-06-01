@@ -6,6 +6,8 @@ import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import ModalPortal from '../../components/ModalPortal';
+import Toast from '../../components/Toast';
+import { getFriendlySimpleMessage } from '../../utils/errorMessage';
 
 export default function TranscriptsPage() {
     const [studentId, setStudentId] = useState(() => localStorage.getItem('lastStudentId') || '');
@@ -63,7 +65,7 @@ export default function TranscriptsPage() {
         } catch (err) {
             setActionMessage({
                 type: 'error',
-                text: err.response?.data?.error || 'Failed to generate transcript.',
+                text: getFriendlySimpleMessage(err, 'Failed to generate transcript.'),
             });
         } finally {
             setActionInProgress(null);
@@ -86,7 +88,7 @@ export default function TranscriptsPage() {
         } catch (err) {
             setActionMessage({
                 type: 'error',
-                text: err.response?.data?.error || 'Failed to publish transcript.',
+                text: getFriendlySimpleMessage(err, 'Failed to publish transcript.'),
             });
         } finally {
             setActionInProgress(null);
@@ -100,12 +102,10 @@ export default function TranscriptsPage() {
             await transcriptService.downloadPdf(t.transcriptID, t.studentName?.replace(/\s+/g, '_') || 'student');
             setActionMessage({ type: 'success', text: 'PDF downloaded successfully.' });
         } catch (err) {
-            setActionMessage({
-                type: 'error',
-                text: err.response?.data?.error || err.response?.data?.code === 'TRANSCRIPT_NOT_ISSUED'
-                    ? 'Only Issued transcripts can be downloaded. Publish it first.'
-                    : 'Failed to download PDF.',
-            });
+            const friendly = err.response?.data?.code === 'TRANSCRIPT_NOT_ISSUED'
+                ? 'Only Issued transcripts can be downloaded. Publish it first.'
+                : getFriendlySimpleMessage(err, 'Failed to download PDF.');
+            setActionMessage({ type: 'error', text: friendly });
         } finally {
             setActionInProgress(null);
         }
@@ -128,14 +128,13 @@ export default function TranscriptsPage() {
                 <i className="bi bi-file-earmark-text me-2"></i>Transcripts
             </h2>
 
-            {/* Top-of-page status message */}
-            {actionMessage && (
-                <div className={`alert alert-${actionMessage.type === 'success' ? 'success' : 'danger'} d-flex align-items-center`}>
-                    <i className={`bi bi-${actionMessage.type === 'success' ? 'check-circle' : 'exclamation-triangle'}-fill me-2`}></i>
-                    <div className="flex-grow-1">{actionMessage.text}</div>
-                    <button className="btn-close" onClick={() => setActionMessage(null)}></button>
-                </div>
-            )}
+            {/* Top-right auto-dismissing toast for action results */}
+            <Toast
+                show={!!actionMessage}
+                type={actionMessage?.type}
+                message={actionMessage?.text}
+                onClose={() => setActionMessage(null)}
+            />
 
             {/* Search panel */}
             <div className="card shadow-sm mb-4">
@@ -239,6 +238,19 @@ export default function TranscriptsPage() {
                                                     Transcript {t.transcriptID}
                                                 </h6>
                                                 <StatusBadge status={t.status} />
+                                                {(() => {
+                                                    const entries = parseEntries(t.entriesJSON);
+                                                    const isStale = t.status !== 'Issued' &&
+                                                        entries.some(e => e.gradePosted && !e.letterGrade);
+                                                    return isStale ? (
+                                                        <span
+                                                            className="badge bg-warning text-dark"
+                                                            title="Grades were updated after this transcript was generated"
+                                                        >
+                                                            <i className="bi bi-exclamation-triangle me-1"></i>Stale
+                                                        </span>
+                                                    ) : null;
+                                                })()}
                                             </div>
                                             <div className="small text-muted">
                                                 <i className="bi bi-person me-1"></i>
@@ -407,8 +419,22 @@ export default function TranscriptsPage() {
                                                                 <td className="text-center">{entry.credits ?? '—'}</td>
                                                                 <td className="text-center">{entry.term || '—'}</td>
                                                                 <td className="text-center">
-                                                                    {entry.gradePosted ? (
-                                                                        <span className="badge bg-success">Posted</span>
+                                                                    {entry.letterGrade ? (
+                                                                        <span className={`badge ${
+                                                                            entry.letterGrade === 'F'                          ? 'bg-danger' :
+                                                                            entry.letterGrade === 'E' || entry.letterGrade === 'D' ? 'bg-warning text-dark' :
+                                                                            'bg-success'
+                                                                        }`}>
+                                                                            {entry.letterGrade}
+                                                                            {entry.percentage != null ? ` · ${Number(entry.percentage).toFixed(1)}%` : ''}
+                                                                        </span>
+                                                                    ) : entry.gradePosted ? (
+                                                                        <span
+                                                                            className="badge bg-warning text-dark"
+                                                                            title="Grade was posted after this transcript was generated — regenerate for updated grade"
+                                                                        >
+                                                                            <i className="bi bi-clock-history me-1"></i>Stale
+                                                                        </span>
                                                                     ) : (
                                                                         <span className="text-muted small">Pending</span>
                                                                     )}
@@ -421,7 +447,33 @@ export default function TranscriptsPage() {
                                         );
                                     })()}
 
-                                    <div className="alert alert-info mb-0 mt-3 py-2">
+                                    {/* Stale warning — shown when gradePosted=true but letterGrade=null */}
+                                    {(() => {
+                                        const entries = parseEntries(detailModal.entriesJSON);
+                                        const hasStale = detailModal.status !== 'Issued' &&
+                                            entries.some(e => e.gradePosted && !e.letterGrade);
+                                        if (!hasStale) return null;
+                                        return (
+                                            <div className="alert alert-warning py-2 mt-3 mb-2">
+                                                <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                                                <strong>Stale transcript</strong> — One or more grades were recorded
+                                                after this transcript was generated. The CGPA shown may be incorrect.
+                                                {canManage && (
+                                                    <button
+                                                        className="btn btn-link btn-sm p-0 ms-2 fw-bold"
+                                                        onClick={() => {
+                                                            setDetailModal(null);
+                                                            setGenerateConfirm(true);
+                                                        }}
+                                                    >
+                                                        Regenerate now →
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    <div className="alert alert-info mb-0 mt-2 py-2">
                                         <i className="bi bi-info-circle me-2"></i>
                                         <small>
                                             This is a preview. {detailModal.status === 'Issued'
