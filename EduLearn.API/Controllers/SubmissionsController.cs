@@ -111,11 +111,11 @@ public class SubmissionsController : ControllerBase
     }
 
     /// <summary>
-    /// List all submissions for a given assessment. Instructor and ITAdmin only.
+    /// List all submissions for a given assessment. Students see only their own; Instructors/ITAdmin see all.
     /// Returns 404 if the assessment does not exist.
     /// </summary>
     [HttpGet("assessment/{assessmentId}")]
-    [Authorize(Roles = "Instructor,ITAdmin")]
+    [Authorize(Roles = "Student,Instructor,ITAdmin")]
     public async Task<ActionResult<List<SubmissionResponseDto>>> GetByAssessment(int assessmentId)
     {
         var assessmentExists = await _assessmentRepository.ExistsAsync(assessmentId);
@@ -124,6 +124,20 @@ public class SubmissionsController : ControllerBase
             return NotFound(new { error = "Assessment not found", code = "ASSESSMENT_NOT_FOUND" });
 
         var submissions = await _submissionRepository.GetByAssessmentIdWithDetailsAsync(assessmentId);
+
+        // FIX A1-08: Students can only see their own submissions
+        var callerRole = User.FindFirst(ClaimTypes.Role)?.Value;
+        if (callerRole == "Student")
+        {
+            var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new InvalidOperationException("NameIdentifier claim missing"));
+
+            var student = await _studentRepository.GetByUserIdAsync(callerId);
+            if (student == null)
+                return Ok(new List<SubmissionResponseDto>()); // No student record = no submissions
+
+            submissions = submissions.Where(s => s.StudentID == student.StudentID).ToList();
+        }
 
         var response = submissions.Select(s => MapToDto(s)).ToList();
         return Ok(response);

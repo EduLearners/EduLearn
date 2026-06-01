@@ -179,9 +179,19 @@ export default function EnrollmentPage() {
                     setSelectedProgramId(String(record.programID));
                 }
             }
-        } catch {
-            const stored = localStorage.getItem('lastStudentId');
-            if (stored) setStudentId(stored);
+        } catch (err) {
+            // FIX A1-01: Handle 404 gracefully instead of infinite "Resolving..." spinner
+            if (err.response?.status === 404) {
+                setEnrollmentsError({
+                    message: "We couldn't find your student record. Please contact the Registrar to link your account to a student profile.",
+                    code: 'STUDENT_RECORD_NOT_FOUND'
+                });
+                // Stop the "Resolving..." spinner by setting a dummy ID
+                setStudentId('-1');
+            } else {
+                const stored = localStorage.getItem('lastStudentId');
+                if (stored) setStudentId(stored);
+            }
         }
     };
 
