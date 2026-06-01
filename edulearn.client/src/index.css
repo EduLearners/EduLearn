@@ -91,10 +91,14 @@ body:has(.modal.show) main {
     position: relative !important;
 }
 
-/* Content scrolls internally if too tall */
+/* Content fills up to the viewport; the BODY scrolls while the header and
+   footer stay pinned, so the action buttons (Send/Cancel) are never clipped
+   off-screen on short viewports. */
 .modal-content {
-    max-height: calc(100vh - 48px) !important;
-    overflow-y: auto !important;
+    max-height: calc(100vh - 32px) !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
     border: none !important;
     border-radius: 14px !important;
     box-shadow: 0 16px 48px rgba(15, 30, 60, 0.25) !important;
@@ -102,6 +106,13 @@ body:has(.modal.show) main {
     z-index: 1051 !important;
 }
 
+/* Header and footer must not shrink — they stay visible at all times. */
+.modal-header,
+.modal-footer {
+    flex-shrink: 0;
+}
+
+/* The body is the single scroll region inside a modal. */
 .modal-body {
     overflow-y: auto;
 }

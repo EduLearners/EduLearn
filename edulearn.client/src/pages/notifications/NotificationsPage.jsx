@@ -5,6 +5,7 @@ import { validatePositiveId, validateNotWhitespace } from '../../utils/validator
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
+import ModalPortal from '../../components/ModalPortal';
 
 const CATEGORIES = ['Enrollment', 'Assessment', 'Finance', 'IT', 'System'];
 const SEVERITIES = ['Info', 'Warning', 'Critical'];
@@ -311,9 +312,12 @@ export default function NotificationsPage() {
                 </div>
             )}
 
-            {/* Test Notification Modal */}
+            {/* Test Notification Modal — rendered through a portal so it is
+                positioned relative to the viewport, not the page-root div
+                (which carries an animation transform that would otherwise
+                become the containing block and clip the modal). */}
             {showTestForm && (
-                <>
+                <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
                         <div className="modal-dialog modal-dialog-centered">
@@ -433,7 +437,7 @@ export default function NotificationsPage() {
                             </div>
                         </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
         </div>
     );
