@@ -57,12 +57,33 @@ export default function SectionsPage() {
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState(null);
 
-    const { role } = authService.getCurrentUser();
+    const { role, userId } = authService.getCurrentUser();
     const canManage = ['Registrar', 'DeptAdmin', 'ITAdmin'].includes(role);
 
     useEffect(() => {
         loadLookups();
     }, []);
+
+    // Auto-load for Instructor: show all their sections immediately on mount
+    useEffect(() => {
+        if (role === 'Instructor' && userId) {
+            loadInstructorSections();
+        }
+    }, [role, userId]);
+
+    const loadInstructorSections = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await sectionService.getByInstructor(userId);
+            setSections(data || []);
+            setHasSearched(true);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const loadLookups = async () => {
         try {
@@ -235,7 +256,9 @@ export default function SectionsPage() {
                 <div className="card-body">
                     <p className="text-muted small mb-3">
                         <i className="bi bi-info-circle me-2"></i>
-                        Select a course and term to view its sections.
+                        {role === 'Instructor'
+                            ? 'Your sections are loaded below. Use the filters to search for any specific course and term.'
+                            : 'Select a course and term to view its sections.'}
                     </p>
                     <div className="row g-3 align-items-end">
                         <div className="col-md-6">

@@ -213,6 +213,32 @@ export default function NewStudentPage() {
         handleUserChange({ target: { value: '' } });
     };
 
+    // Auto-calculate Expected Graduation Term from Entry Term + Program duration
+    useEffect(() => {
+        if (!form.programID || !form.entryTerm) return;
+
+        const selectedProgram = programs.find(
+            p => String(p.programID) === String(form.programID)
+        );
+        if (!selectedProgram?.durationTerms) return;
+
+        // Parse "2026-Fall" → year = 2026, season = "Fall"
+        const parts = form.entryTerm.split('-');
+        if (parts.length < 2) return;
+        const entryYear = parseInt(parts[0], 10);
+        const season = parts[1];
+        if (isNaN(entryYear) || !season) return;
+
+        // durationTerms ÷ 2 = years  (e.g. 8 terms = 4 years)
+        const yearsToAdd = Math.ceil(selectedProgram.durationTerms / 2);
+        const graduationYear = entryYear + yearsToAdd;
+
+        setForm(prev => ({
+            ...prev,
+            expectedGraduationTerm: `${graduationYear}-${season}`
+        }));
+    }, [form.programID, form.entryTerm, programs]);
+
     const handleChange = (field) => (e) => {
         setForm({ ...form, [field]: e.target.value });
     };
@@ -453,18 +479,22 @@ export default function NewStudentPage() {
                                 <label className="form-label fw-bold">
                                     Entry Term <span className="text-danger">*</span>
                                 </label>
-                                <input
-                                    type="text"
-                                    className={`form-control${errors.entryTerm ? ' is-invalid' : ''}`}
+                                <select
+                                    className={`form-select${errors.entryTerm ? ' is-invalid' : ''}`}
                                     value={form.entryTerm}
                                     onChange={handleChange('entryTerm')}
-                                    onBlur={e => setErrors(prev => ({ ...prev, entryTerm: validateTerm(e.target.value) }))}
                                     required
-                                    placeholder="e.g. 2026-Spring"
-                                    maxLength={20}
-                                    pattern="\d{4}-(Spring|Summer|Fall|Winter)"
-                                    title="Format: YYYY-Season (e.g. 2026-Fall)"
-                                />
+                                >
+                                    <option value="">— Select Term —</option>
+                                    {['Spring', 'Summer', 'Fall', 'Winter'].map(season => (
+                                        <option
+                                            key={season}
+                                            value={`${new Date().getFullYear()}-${season}`}
+                                        >
+                                            {new Date().getFullYear()}-{season}
+                                        </option>
+                                    ))}
+                                </select>
                                 {errors.entryTerm && <div className="invalid-feedback">{errors.entryTerm}</div>}
                             </div>
 
@@ -547,10 +577,14 @@ export default function NewStudentPage() {
                                     type="text"
                                     className={`form-control${errors.phone ? ' is-invalid' : ''}`}
                                     value={form.phone}
-                                    onChange={handleChange('phone')}
+                                    onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                        setForm(prev => ({ ...prev, phone: digits }));
+                                        setErrors(prev => ({ ...prev, phone: validatePhone(digits) }));
+                                    }}
                                     onBlur={e => setErrors(prev => ({ ...prev, phone: validatePhone(e.target.value) }))}
                                     placeholder="9876543210"
-                                    maxLength={15}
+                                    maxLength={10}
                                 />
                                 {errors.phone ? (
                                     <div className="invalid-feedback">{errors.phone}</div>
@@ -565,7 +599,11 @@ export default function NewStudentPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    className={`form-control${errors.expectedGraduationTerm ? ' is-invalid' : ''}`}
+                                    className={`form-control${errors.expectedGraduationTerm ? ' is-invalid' : ''} ${
+                                        form.expectedGraduationTerm && form.programID && form.entryTerm
+                                            ? 'bg-light'
+                                            : ''
+                                    }`}
                                     value={form.expectedGraduationTerm}
                                     onChange={handleChange('expectedGraduationTerm')}
                                     onBlur={e => setErrors(prev => ({ ...prev, expectedGraduationTerm: e.target.value ? validateTerm(e.target.value) : null }))}
@@ -574,7 +612,10 @@ export default function NewStudentPage() {
                                     pattern="\d{4}-(Spring|Summer|Fall|Winter)"
                                     title="Format: YYYY-Season (e.g. 2026-Fall)"
                                 />
-                                {errors.expectedGraduationTerm && <div className="invalid-feedback">{errors.expectedGraduationTerm}</div>}
+                                {errors.expectedGraduationTerm
+                                    ? <div className="invalid-feedback">{errors.expectedGraduationTerm}</div>
+                                    : null
+                                }
                             </div>
 
                         </div>

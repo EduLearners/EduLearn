@@ -4,6 +4,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,15 +19,21 @@ public class DiscussionsController : ControllerBase
     private readonly IDiscussionRepository _discussionRepository;
     private readonly ICourseRepository _courseRepository;
     private readonly IUserRepository _userRepository;
+    private readonly ISectionRepository _sectionRepository;
+    private readonly INotificationService _notificationService;
 
     public DiscussionsController(
         IDiscussionRepository discussionRepository,
         ICourseRepository courseRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        ISectionRepository sectionRepository,
+        INotificationService notificationService)
     {
         _discussionRepository = discussionRepository;
         _courseRepository = courseRepository;
         _userRepository = userRepository;
+        _sectionRepository = sectionRepository;
+        _notificationService = notificationService;
     }
 
     /// <summary>
@@ -83,6 +90,20 @@ public class DiscussionsController : ControllerBase
         };
 
         await _discussionRepository.CreateAsync(discussion);
+
+        // Notify all instructors teaching sections of this course
+        var sections = await _sectionRepository.GetByCourseIdAsync(dto.CourseID);
+        var instructorIds = sections.Select(s => s.InstructorID).Distinct();
+        foreach (var instructorId in instructorIds)
+        {
+            await _notificationService.NotifyAsync(
+                userId:   instructorId,
+                category: NotificationCategory.Assessment,
+                severity: NotificationSeverity.Info,
+                message:  $"New discussion '{dto.Title}' started by {caller.FullName} in {course.Title}",
+                entityId: discussion.DiscussionID
+            );
+        }
 
         return StatusCode(StatusCodes.Status201Created, new DiscussionResponseDto
         {
@@ -176,6 +197,23 @@ public class DiscussionsController : ControllerBase
         discussion.PostsJSON = JsonSerializer.Serialize(posts);
 
         await _discussionRepository.UpdateAsync(discussion);
+
+        // Notify instructors when a Student replies
+        if (User.IsInRole("Student"))
+        {
+            var sections = await _sectionRepository.GetByCourseIdAsync(discussion.CourseID);
+            var instructorIds = sections.Select(s => s.InstructorID).Distinct();
+            foreach (var instructorId in instructorIds)
+            {
+                await _notificationService.NotifyAsync(
+                    userId:   instructorId,
+                    category: NotificationCategory.Assessment,
+                    severity: NotificationSeverity.Info,
+                    message:  $"{caller.FullName} replied to discussion '{discussion.Title}' in {discussion.Course.Title}",
+                    entityId: discussion.DiscussionID
+                );
+            }
+        }
 
         return Ok(MapToDto(discussion));
     }
