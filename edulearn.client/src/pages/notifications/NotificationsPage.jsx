@@ -236,11 +236,11 @@ export default function NotificationsPage() {
                             {notifications.length} shown
                         </small>
                     </div>
-                    <div className="list-group list-group-flush">
+                    <div className="list-group notifications-list">
                         {notifications.map(n => (
                             <div
                                 key={n.notificationID}
-                                className={`list-group-item list-group-item-action ${!n.readAt ? 'border-start border-primary border-3 bg-light' : ''}`}
+                                className={`list-group-item list-group-item-action ${!n.readAt ? 'notification-unread' : ''}`}
                             >
                                 <div className="d-flex align-items-start justify-content-between gap-3">
                                     <div className="d-flex align-items-start gap-3">
