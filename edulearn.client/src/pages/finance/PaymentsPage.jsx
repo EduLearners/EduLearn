@@ -29,6 +29,7 @@ export default function PaymentsPage() {
     const [selected, setSelected] = useState(null);
     const [payments, setPayments] = useState([]);
     const [paymentsLoading, setPaymentsLoading] = useState(false);
+    const [searched, setSearched] = useState(false); // track whether a search was performed
 
     // Payment form
     const [showPayment, setShowPayment] = useState(false);
@@ -45,6 +46,7 @@ export default function PaymentsPage() {
         setSelected(null);
         setPayments([]);
         setInvoices([]);
+        setSearched(true);
         setLoading(true);
         try {
             if (searchType === 'invoice') {
@@ -54,8 +56,8 @@ export default function PaymentsPage() {
             } else {
                 const data = await invoiceService.getByStudent(Number(searchId));
                 setInvoices(data || []);
-                // Auto-select first invoice if only one result
-                if (data && data.length === 1) {
+                // Auto-select first invoice always (same behaviour as Invoice ID search)
+                if (data && data.length >= 1) {
                     await handleSelectInvoice(data[0]);
                 }
             }
@@ -211,6 +213,17 @@ export default function PaymentsPage() {
             </div>
 
             <ErrorAlert error={error} onDismiss={() => setError(null)} />
+
+            {/* Empty state — only shown after a student search that returned nothing */}
+            {searched && !loading && invoices.length === 0 && !error && searchType === 'student' && (
+                <div className="card shadow-sm">
+                    <div className="card-body text-center text-muted py-5">
+                        <i className="bi bi-receipt display-4 d-block mb-3 opacity-25"></i>
+                        <p className="mb-0">No invoices found for Student ID <strong>{searchId}</strong>.</p>
+                        <small>Make sure the Student ID is correct, or try searching by Invoice ID.</small>
+                    </div>
+                </div>
+            )}
 
             {/* Results */}
             {invoices.length > 0 && (
