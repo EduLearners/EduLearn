@@ -113,8 +113,11 @@ if ($Reset) {
         'GradeChanges','PlagiarismReports','Payments','Invoices','Scholarships','FeeSchedules',
         'Submissions','Contents','Assessments','Enrollments','Transcripts','Sections',
         'Students','Rooms','Courses','Programs','Applicants','Notifications','Tickets','Discussions','Syllabi'
-    ) | ForEach-Object { "DELETE FROM [$_];" }
-    $sql = "SET NOCOUNT ON; " + ($del -join ' ')
+    ) | ForEach-Object { "IF OBJECT_ID('$_','U') IS NOT NULL DELETE FROM [$_];" }
+    # Disable ALL FK constraints during the wipe so table delete-order/FK cycles
+    # can never block a delete (the earlier ordered-delete left Courses populated
+    # because Syllabi->Courses is deleted after Courses). Re-enable afterwards.
+    $sql = "SET NOCOUNT ON; EXEC sp_MSforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'; " + ($del -join ' ') + " EXEC sp_MSforeachtable 'ALTER TABLE ? WITH CHECK CHECK CONSTRAINT ALL';"
     try {
         sqlcmd -S '(localdb)\MSSQLLocalDB' -d EduLearnDb -b -Q $sql | Out-Null
         Write-Ok "Domain tables cleared"
@@ -167,14 +170,14 @@ if ($rawUsers -and -not ($rawUsers -is [Array])) {
     elseif ($rawUsers.PSObject.Properties.Name -contains 'data') { $rawUsers = $rawUsers.data }
 }
 if (-not $rawUsers -or $rawUsers.Count -eq 0) { Write-Err "No users returned"; exit 1 }
-$global:U = @{}
-foreach ($u in $rawUsers) {
-    $uid = $u.userID; if (-not $uid) { $uid = $u.id }
-    if ($u.username -and $uid) { $global:U[$u.username.ToLower()] = $uid }
+$global:UserMap = @{}
+foreach ($urow in $rawUsers) {
+    $uid = $urow.userID; if (-not $uid) { $uid = $urow.id }
+    if ($urow.username -and $uid) { $global:UserMap[([string]$urow.username).ToLower()] = $uid }
 }
-function UID($name) { $n = $name.ToLower(); if ($global:U.ContainsKey($n)) { return $global:U[$n] } else { return $null } }
+function UID($name) { $n = $name.ToLower(); if ($global:UserMap.ContainsKey($n)) { return $global:UserMap[$n] } else { return $null } }
 $adminId = UID 'admin'; $instrId = UID 'instructor'; $studId = UID 'student'
-Write-Ok "Mapped $($global:U.Count) users (admin=$adminId, instructor=$instrId, student=$studId)"
+Write-Ok "Mapped $($global:UserMap.Count) users (admin=$adminId, instructor=$instrId, student=$studId)"
 if (-not $studId -or -not $instrId) { Write-Err "Missing core user IDs - cannot seed domain data."; exit 1 }
 
 # Tokens for role-gated creates
@@ -214,6 +217,19 @@ $C3 = New-Entity "Course: CS301" Post "/api/courses" $adminTok @{ code="CS301"; 
 $C4 = New-Entity "Course: EE101" Post "/api/courses" $adminTok @{ code="EE101"; title="Circuit Theory"; credits=4; level="100" } "courseID"
 $C5 = New-Entity "Course: MA101" Post "/api/courses" $adminTok @{ code="MA101"; title="Calculus I"; credits=3; level="100" } "courseID"
 $C6 = New-Entity "Course: CS210" Post "/api/courses" $adminTok @{ code="CS210"; title="Databases"; credits=3; level="200" } "courseID"
+# Resolve course IDs by code so a pre-existing course (409 -> null id) never
+# leaves a downstream section/assessment/content with a null courseID.
+$cResp = Api -Method Get -Path "/api/courses" -Token $adminTok
+$cRows = $cResp.data; if ($cRows.items) { $cRows = $cRows.items }
+$CMAP = @{}
+foreach ($crow in $cRows) { if ($crow.code) { $CMAP[[string]$crow.code] = $crow.courseID } }
+if ($CMAP['CS101']) { $C1 = $CMAP['CS101'] }
+if ($CMAP['CS201']) { $C2 = $CMAP['CS201'] }
+if ($CMAP['CS301']) { $C3 = $CMAP['CS301'] }
+if ($CMAP['EE101']) { $C4 = $CMAP['EE101'] }
+if ($CMAP['MA101']) { $C5 = $CMAP['MA101'] }
+if ($CMAP['CS210']) { $C6 = $CMAP['CS210'] }
+Write-Ok "Resolved course IDs: CS101=$C1 CS201=$C2 CS301=$C3 EE101=$C4 MA101=$C5 CS210=$C6"
 
 # ============================================================
 # 7. Rooms (admin)
