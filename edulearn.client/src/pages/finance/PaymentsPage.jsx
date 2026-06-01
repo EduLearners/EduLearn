@@ -91,9 +91,12 @@ export default function PaymentsPage() {
 
     const handlePayment = async (e) => {
         e.preventDefault();
+        const referenceRequired = payForm.method !== 'Cash';
         const next = {
             amount: validateAmount(payForm.amount, 0.01),
-            reference: validateReference(payForm.reference),
+            reference: referenceRequired && !payForm.reference.trim()
+                ? 'Reference is required for this payment method'
+                : null,
         };
         if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setError(null);
@@ -484,9 +487,9 @@ export default function PaymentsPage() {
                                                 {balance > 0 && (
                                                     <div className="form-text">
                                                         <button
-                                                            type="button"
-                                                            className="btn btn-link btn-sm p-0"
-                                                            onClick={() => setPayForm({ ...payForm, amount: balance.toFixed(2) })}
+                                                        type="button"
+                                                        className="btn btn-link btn-sm p-0 text-dark text-decoration-none"
+                                                        onClick={() => setPayForm({ ...payForm, amount: balance.toFixed(2) })}
                                                         >
                                                             Pay full balance ₹{balance.toFixed(2)}
                                                         </button>
@@ -500,7 +503,11 @@ export default function PaymentsPage() {
                                                 <select
                                                     className="form-select"
                                                     value={payForm.method}
-                                                    onChange={e => setPayForm({ ...payForm, method: e.target.value })}
+                                                    onChange={e => setPayForm({
+                                                        ...payForm,
+                                                        method: e.target.value,
+                                                        reference: e.target.value === 'Cash' ? '' : payForm.reference,
+                                                    })}
                                                     required
                                                 >
                                                     {PAYMENT_METHODS.map(m => (
@@ -509,20 +516,45 @@ export default function PaymentsPage() {
                                                 </select>
                                             </div>
                                             <div className="col-12">
-                                                <label className="form-label fw-bold">
-                                                    Reference
-                                                    <small className="text-muted fw-normal ms-2">(optional)</small>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className={`form-control${errors.reference ? ' is-invalid' : ''}`}
-                                                    value={payForm.reference}
-                                                    onChange={e => setPayForm({ ...payForm, reference: e.target.value })}
-                                                    onBlur={e => setErrors(prev => ({ ...prev, reference: validateReference(e.target.value) }))}
-                                                    placeholder="Transaction ID / Cheque number / UPI ref..."
-                                                    maxLength={100}
-                                                />
-                                                {errors.reference && <div className="invalid-feedback">{errors.reference}</div>}
+                                                {(() => {
+                                                    const isRequired = payForm.method !== 'Cash';
+                                                    return (
+                                                        <>
+                                                            <label className="form-label fw-bold">
+                                                                Reference
+                                                                {isRequired
+                                                                    ? <span className="text-danger"> *</span>
+                                                                    : <small className="text-muted fw-normal ms-2">(optional — not needed for Cash)</small>
+                                                                }
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                className={`form-control${errors.reference ? ' is-invalid' : ''}`}
+                                                                value={payForm.reference}
+                                                                onChange={e => setPayForm({ ...payForm, reference: e.target.value })}
+                                                                onBlur={e => {
+                                                                    if (isRequired)
+                                                                        setErrors(prev => ({
+                                                                            ...prev,
+                                                                            reference: !e.target.value.trim()
+                                                                                ? 'Reference is required for this payment method'
+                                                                                : null
+                                                                        }));
+                                                                }}
+                                                                placeholder={
+                                                                    payForm.method === 'UPI'          ? 'UPI reference number' :
+                                                                    payForm.method === 'Cheque'       ? 'Cheque number' :
+                                                                    payForm.method === 'Card'         ? 'POS transaction ID' :
+                                                                    payForm.method === 'BankTransfer' ? 'UTR / NEFT / RTGS transaction ID' :
+                                                                    'Transaction ID / reference...'
+                                                                }
+                                                                maxLength={100}
+                                                                required={isRequired}
+                                                            />
+                                                            {errors.reference && <div className="invalid-feedback">{errors.reference}</div>}
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
