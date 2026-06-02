@@ -33,7 +33,7 @@ export default function EnrollmentPage() {
 
     // Search filters
     const [courseId, setCourseId] = useState('');
-    const [term, setTerm] = useState('2026-Spring');
+    const [term, setTerm] = useState('2026-Fall');
     const [studentId, setStudentId] = useState('');
     const [errors, setErrors] = useState({});
 

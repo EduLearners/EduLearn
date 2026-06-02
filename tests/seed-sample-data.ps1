@@ -206,6 +206,15 @@ if ($already -and -not $Reset) {
 Write-Step "Programs"
 $P1 = New-Entity "Program: B.Tech Computer Science" Post "/api/programs" $adminTok @{ name="B.Tech Computer Science"; degreeType="B.Tech"; durationTerms=8 } "programID"
 $P2 = New-Entity "Program: B.Tech Electrical Engineering" Post "/api/programs" $adminTok @{ name="B.Tech Electrical Engineering"; degreeType="B.Tech"; durationTerms=8 } "programID"
+# Resolve program IDs by name so 409-existing programs never leave null IDs
+$pResp = Api -Method Get -Path "/api/programs" -Token $adminTok
+$pRows = $pResp.data
+if ($pRows -isnot [System.Array] -and $pRows.items) { $pRows = $pRows.items }
+$PMAP = @{}
+foreach ($pr in $pRows) { if ($pr.name) { $PMAP[[string]$pr.name] = $pr.programID } }
+if ($PMAP['B.Tech Computer Science'])      { $P1 = $PMAP['B.Tech Computer Science'] }
+if ($PMAP['B.Tech Electrical Engineering']) { $P2 = $PMAP['B.Tech Electrical Engineering'] }
+Write-Ok "Resolved program IDs: P1=$P1 P2=$P2"
 
 # ============================================================
 # 6. Courses (admin) - incl. a prerequisite chain
@@ -220,7 +229,8 @@ $C6 = New-Entity "Course: CS210" Post "/api/courses" $adminTok @{ code="CS210"; 
 # Resolve course IDs by code so a pre-existing course (409 -> null id) never
 # leaves a downstream section/assessment/content with a null courseID.
 $cResp = Api -Method Get -Path "/api/courses" -Token $adminTok
-$cRows = $cResp.data; if ($cRows.items) { $cRows = $cRows.items }
+$cRows = $cResp.data
+if ($cRows -isnot [System.Array] -and $cRows.items) { $cRows = $cRows.items }
 $CMAP = @{}
 foreach ($crow in $cRows) { if ($crow.code) { $CMAP[[string]$crow.code] = $crow.courseID } }
 if ($CMAP['CS101']) { $C1 = $CMAP['CS101'] }
@@ -257,6 +267,20 @@ foreach ($sd in $studentDefs) {
     } "studentID"
     if ($sid) { $S[$sd.user] = $sid }
 }
+# Resolve student IDs by userID so 409-existing students never leave null IDs
+$stResp = Api -Method Get -Path "/api/students" -Token $adminTok
+$stRows = $stResp.data
+if ($stRows -isnot [System.Array] -and $stRows.items) { $stRows = $stRows.items }
+foreach ($st in $stRows) {
+    $stUID = $st.userID; if (-not $stUID) { $stUID = $st.UserID }
+    $stSID = $st.studentID; if (-not $stSID) { $stSID = $st.StudentID }
+    foreach ($sd in $studentDefs) {
+        if ($stUID -eq (UID $sd.user) -and -not $S[$sd.user]) {
+            $S[$sd.user] = $stSID
+        }
+    }
+}
+Write-Ok "Resolved student IDs: student=$($S['student']) student2=$($S['student2']) student3=$($S['student3']) student4=$($S['student4'])"
 
 # ============================================================
 # 9. Sections (admin) - instructorID must be an Instructor user
@@ -268,6 +292,23 @@ $Sec2 = New-Entity "Section: CS201" Post "/api/sections" $adminTok @{ courseID=$
 $Sec3 = New-Entity "Section: EE101" Post "/api/sections" $adminTok @{ courseID=$C4; term=$Term; instructorID=$instr2; roomID=$R3; capacity=30; scheduleJSON='{"days":"Mon-Wed","time":"09:00-10:30"}' } "sectionID"
 $Sec4 = New-Entity "Section: MA101 (small)" Post "/api/sections" $adminTok @{ courseID=$C5; term=$Term; instructorID=$instr2; roomID=$R2; capacity=2;  scheduleJSON='{"days":"Fri","time":"14:00-16:00"}' } "sectionID"
 $Sec5 = New-Entity "Section: CS210" Post "/api/sections" $adminTok @{ courseID=$C6; term=$Term; instructorID=$instr1; roomID=$R1; capacity=60; scheduleJSON='{"days":"Thu","time":"13:00-15:00"}' } "sectionID"
+# Resolve section IDs by courseID+term so 409-existing sections never leave null IDs
+$secResp = Api -Method Get -Path "/api/sections" -Token $adminTok
+$secRows = $secResp.data
+if ($secRows -isnot [System.Array] -and $secRows.items) { $secRows = $secRows.items }
+$SECMAP = @{}
+foreach ($sr in $secRows) {
+    $sCid = $sr.courseID; if (-not $sCid) { $sCid = $sr.CourseID }
+    $sSid = $sr.sectionID; if (-not $sSid) { $sSid = $sr.SectionID }
+    $sTerm = $sr.term; if (-not $sTerm) { $sTerm = $sr.Term }
+    if ($sCid -and $sSid -and $sTerm -eq $Term) { $SECMAP[[string]$sCid] = $sSid }
+}
+if ($SECMAP[[string]$C1] -and -not $Sec1) { $Sec1 = $SECMAP[[string]$C1] }
+if ($SECMAP[[string]$C2] -and -not $Sec2) { $Sec2 = $SECMAP[[string]$C2] }
+if ($SECMAP[[string]$C4] -and -not $Sec3) { $Sec3 = $SECMAP[[string]$C4] }
+if ($SECMAP[[string]$C5] -and -not $Sec4) { $Sec4 = $SECMAP[[string]$C5] }
+if ($SECMAP[[string]$C6] -and -not $Sec5) { $Sec5 = $SECMAP[[string]$C6] }
+Write-Ok "Resolved section IDs: CS101=$Sec1 CS201=$Sec2 EE101=$Sec3 MA101=$Sec4 CS210=$Sec5"
 
 # ============================================================
 # 10. Enrollments (admin) - multiple students x sections, plus a drop

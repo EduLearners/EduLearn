@@ -6,9 +6,10 @@ import { kpiService } from '../../services/kpiService';
 import { auditLogService } from '../../services/auditLogService';
 import { ticketService } from '../../services/ticketService';
 import Loading from '../Loading';
+import { CURRENT_TERM } from '../../config/academic';
 import './RoleDashboard.css';
 
-const TERM = '2026-Spring';
+const TERM = CURRENT_TERM;
 
 const QUICK_ACTIONS = [
     { label: 'Audit Log',      icon: 'bi-journal-text',           path: '/audit-log'     },

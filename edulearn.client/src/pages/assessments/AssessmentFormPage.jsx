@@ -28,6 +28,7 @@ export default function AssessmentFormPage() {
     // Grading rubric as structured rows: [{criterion, maxPoints}]
     const [rubricRows, setRubricRows] = useState([]);
 
+    const [originalStatus, setOriginalStatus] = useState('Draft');
     const [errors, setErrors] = useState({});
 
     const [mySections, setMySections] = useState([]);
@@ -65,12 +66,14 @@ export default function AssessmentFormPage() {
             setPageLoading(true);
             setError(null);
             const data = await assessmentService.getById(id);
+            const loadedStatus = data.status || 'Draft';
+            setOriginalStatus(loadedStatus);
             setForm({
                 courseID: data.courseID || '',
                 sectionID: data.sectionID || '',
                 title: data.title || '',
                 type: data.type || AssessmentType.ASSIGNMENT,
-                status: data.status || 'Draft',
+                status: loadedStatus,
                 dueAt: data.dueAt ? new Date(data.dueAt).toISOString().slice(0, 16) : '',
                 maxScore: data.maxScore || 100,
                 instructionsURI: data.instructionsURI || '',
@@ -163,7 +166,31 @@ export default function AssessmentFormPage() {
 
         try {
             if (isEditMode) {
-                await assessmentService.update(id, payload);
+                const statusChanged = form.status !== originalStatus;
+
+                // Validate the transition is legal before hitting the API
+                const validTransitions = {
+                    Draft: ['Draft', 'Published'],
+                    Published: ['Published', 'Closed'],
+                    Closed: ['Closed', 'Archived'],
+                    Archived: ['Archived'],
+                };
+                if (statusChanged && !validTransitions[originalStatus]?.includes(form.status)) {
+                    setError({ message: `Invalid status transition: ${originalStatus} → ${form.status}. Valid path: Draft → Published → Closed → Archived` });
+                    setLoading(false);
+                    return;
+                }
+
+                // Update fields only when assessment is still Draft
+                if (originalStatus === 'Draft') {
+                    await assessmentService.update(id, payload);
+                }
+
+                // Transition status if it changed
+                if (statusChanged) {
+                    await assessmentService.updateStatus(id, form.status);
+                }
+
                 setSuccess('Assessment updated successfully.');
                 setTimeout(() => navigate(`/assessments/${id}`), 1200);
             } else {
@@ -214,6 +241,13 @@ export default function AssessmentFormPage() {
             {success && (
                 <div className="alert alert-success">
                     <i className="bi bi-check-circle me-2"></i>{success}
+                </div>
+            )}
+
+            {isEditMode && originalStatus !== 'Draft' && (
+                <div className="alert alert-info mb-3">
+                    <i className="bi bi-info-circle me-2"></i>
+                    This assessment is <strong>{originalStatus}</strong> — field edits are locked. You can only advance the status using the dropdown below.
                 </div>
             )}
 

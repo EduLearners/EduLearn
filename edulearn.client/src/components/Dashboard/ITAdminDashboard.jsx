@@ -9,9 +9,10 @@ import Loading from '../Loading';
 import ErrorAlert from '../ErrorAlert';
 import StatusBadge from '../StatusBadge';
 import axiosClient from '../../api/axiosClient';
+import { CURRENT_TERM } from '../../config/academic';
 import './ITAdminDashboard.css';
 
-const TERM = '2026-Spring';
+const TERM = CURRENT_TERM;
 
 const ALL_ROLES = ['Student', 'Instructor', 'Registrar', 'DeptAdmin', 'Finance', 'ITAdmin', 'Auditor'];
 

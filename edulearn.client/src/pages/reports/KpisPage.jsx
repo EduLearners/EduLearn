@@ -3,6 +3,7 @@ import { kpiService } from '../../services/kpiService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
+import Toast from '../../components/Toast';
 
 export default function KpisPage() {
     const { role } = authService.getCurrentUser();
@@ -43,7 +44,7 @@ export default function KpisPage() {
             // data is now an array of KpiRecalcResultDto
             const changed = data.filter(d => d.changed);
             setSuccess(`${changed.length} of ${data.length} KPIs changed.`);
-            setDeltas(Object.fromEntries(data.map(d => [d.kpiId, d])));
+            setDeltas(Object.fromEntries(data.map(d => [d.kpiId ?? d.kpiID ?? d.kPIID, d])));
             setLastRecalculated(new Date().toISOString());
             await loadKpis(); // reload cards
         } catch (err) {
@@ -78,6 +79,8 @@ export default function KpisPage() {
 
     return (
         <div>
+            <Toast show={!!success} type="success" message={success} onClose={() => setSuccess('')} />
+
             {/* Page Header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
@@ -119,12 +122,6 @@ export default function KpisPage() {
                 </div>
             )}
 
-            {success && (
-                <div className="alert alert-success mb-4">
-                    <i className="bi bi-check-circle me-2"></i>{success}
-                </div>
-            )}
-
             <ErrorAlert error={error} onDismiss={() => setError(null)} />
             {loading && <Loading message="Loading KPIs..." />}
 
@@ -158,16 +155,16 @@ export default function KpisPage() {
                         const variant = getProgressVariant(kpi.currentValue, kpi.target);
 
                         return (
-                            <div key={kpi.kPIID || kpi.kpiID} className="col-md-6">
+                            <div key={kpi.kpiid ?? kpi.kPIID ?? kpi.kpiID} className="col-md-6">
                                 <div className="card shadow-sm h-100">
                                     <div className="card-header bg-light">
                                         <strong>
                                             <i className="bi bi-graph-up me-2"></i>
                                             {kpi.name}
                                         </strong>
-                                        {deltas[kpi.kPIID || kpi.kpiID]?.changed && (
+                                        {deltas[kpi.kpiid ?? kpi.kPIID ?? kpi.kpiID]?.changed && (
                                             <span className="badge bg-success ms-2">
-                                                {deltas[kpi.kPIID || kpi.kpiID].oldValue} &rarr; {deltas[kpi.kPIID || kpi.kpiID].newValue}
+                                                {deltas[kpi.kpiid ?? kpi.kPIID ?? kpi.kpiID].oldValue} &rarr; {deltas[kpi.kpiid ?? kpi.kPIID ?? kpi.kpiID].newValue}
                                             </span>
                                         )}
                                         <span className="badge bg-secondary ms-2 float-end">

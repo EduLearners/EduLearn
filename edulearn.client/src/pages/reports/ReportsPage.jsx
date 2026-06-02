@@ -3,6 +3,7 @@ import { reportService } from '../../services/reportService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
+import Toast from '../../components/Toast';
 
 const REPORT_SCOPES = ['Course', 'Department', 'Institution', 'Student', 'Enrollment'];
 
@@ -113,6 +114,8 @@ export default function ReportsPage() {
 
     return (
         <div>
+            <Toast show={!!success} type="success" message={success} onClose={() => setSuccess('')} />
+
             {/* Page Header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
@@ -180,11 +183,6 @@ export default function ReportsPage() {
                                     </div>
                                 )}
                             </div>
-                            {success && (
-                                <div className="alert alert-success mt-3 mb-0">
-                                    <i className="bi bi-check-circle me-2"></i>{success}
-                                </div>
-                            )}
                             <div className="mt-3">
                                 <button
                                     type="submit"

@@ -83,8 +83,9 @@ const NAV_ITEMS = [
     // Can: reports, KPIs, audit log, grade changes, tickets, notifications (read-only)
     { label: 'Reports',       to: '/reports',       icon: 'file-earmark-bar-graph', roles: ['Auditor'] },
     { label: 'KPIs',          to: '/kpis',          icon: 'bar-chart-line',         roles: ['Auditor'] },
-    { label: 'Audit Log',     to: '/audit-log',     icon: 'journal-text',           roles: ['Auditor'] },
-    { label: 'Grade Changes', to: '/grade-changes', icon: 'arrow-left-right',       roles: ['Auditor'] },
+    { label: 'Audit Log',      to: '/audit-log',      icon: 'journal-text',           roles: ['Auditor'] },
+    { label: 'Audit Packages', to: '/audit-packages', icon: 'archive',               roles: ['Auditor'] },
+    { label: 'Grade Changes',  to: '/grade-changes',  icon: 'arrow-left-right',      roles: ['Auditor'] },
     { label: 'Notifications', to: '/notifications', icon: 'bell',                   roles: ['Auditor'] },
     { label: 'Tickets',       to: '/tickets',       icon: 'headset',                roles: ['Auditor'] },
 
@@ -111,8 +112,9 @@ const NAV_ITEMS = [
     { label: 'Scholarships',  to: '/scholarships',  icon: 'award',                  roles: ['ITAdmin'] },
     { label: 'Reports',       to: '/reports',       icon: 'file-earmark-bar-graph', roles: ['ITAdmin'] },
     { label: 'KPIs',          to: '/kpis',          icon: 'bar-chart-line',         roles: ['ITAdmin'] },
-    { label: 'Audit Log',     to: '/audit-log',     icon: 'journal-text',           roles: ['ITAdmin'] },
-    { label: 'Notifications', to: '/notifications', icon: 'bell',                   roles: ['ITAdmin'] },
+    { label: 'Audit Log',      to: '/audit-log',      icon: 'journal-text',           roles: ['ITAdmin'] },
+    { label: 'Audit Packages', to: '/audit-packages', icon: 'archive',               roles: ['ITAdmin'] },
+    { label: 'Notifications',  to: '/notifications',  icon: 'bell',                  roles: ['ITAdmin'] },
     { label: 'Tickets',       to: '/tickets',       icon: 'headset',                roles: ['ITAdmin'] },
 ];
 

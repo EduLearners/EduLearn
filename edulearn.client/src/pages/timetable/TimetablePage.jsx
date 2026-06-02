@@ -5,6 +5,7 @@ import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import axiosClient from '../../api/axiosClient';
+import { CURRENT_TERM } from '../../config/academic';
 
 // Days shown in the grid header
 const DAYS = [
@@ -256,7 +257,7 @@ export default function TimetablePage() {
     const isInstructor = role === 'Instructor';
     const isAdmin = ['Registrar', 'ITAdmin'].includes(role);
 
-    const [term, setTerm] = useState('2026-Spring');
+    const [term, setTerm] = useState(CURRENT_TERM);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [selectedEntry, setSelectedEntry] = useState(null);

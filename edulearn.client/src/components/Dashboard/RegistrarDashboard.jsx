@@ -12,9 +12,10 @@ import ErrorAlert from '../ErrorAlert';
 import StatusBadge from '../StatusBadge';
 import ModalPortal from '../ModalPortal';
 import axiosClient from '../../api/axiosClient';
+import { CURRENT_TERM } from '../../config/academic';
 import './RoleDashboard.css';
 
-const TERM = '2026-Spring';
+const TERM = CURRENT_TERM;
 
 const QUICK_ACTIONS = [
     { label: 'New Applicant',  icon: 'bi-person-plus',        path: '/applicants/new' },

@@ -22,7 +22,7 @@ function ActivityChart({ logs }) {
         logs.forEach(log => {
             const ts = log.timestamp || log.createdAt;
             if (!ts) return;
-            const t = new Date(ts + 'Z').getTime();
+            const t = new Date(ts.endsWith('Z') ? ts : ts + 'Z').getTime();
             const hoursAgo = Math.floor((now - t) / (1000 * 60 * 60));
             if (hoursAgo >= 0 && hoursAgo < HOURS) {
                 buckets[HOURS - 1 - hoursAgo]++;
@@ -391,7 +391,7 @@ export default function AuditLogPage() {
                                             </td>
                                             <td>
                                                 {log.timestamp || log.createdAt
-                                                    ? new Date((log.timestamp || log.createdAt) + 'Z')
+                                                    ? (() => { const s = log.timestamp || log.createdAt; return new Date(s.endsWith('Z') ? s : s + 'Z'); })()
                                                         .toLocaleString('en-IN', {
                                                             day: 'numeric',
                                                             month: 'short',
@@ -425,7 +425,7 @@ export default function AuditLogPage() {
                                 style={{ borderTop: '1px solid #f1f3f5', background: '#fafbfc' }}
                             >
                                 <button
-                                    className="btn btn-sm btn-outline-primary"
+                                    className="btn btn-sm btn-outline-secondary"
                                     onClick={() => setExpanded(prev => !prev)}
                                     style={{ minWidth: 180 }}
                                 >

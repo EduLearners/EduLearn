@@ -5,9 +5,10 @@ import { invoiceService } from '../../services/invoiceService';
 import { feeService } from '../../services/feeService';
 import { scholarshipService } from '../../services/scholarshipService';
 import Loading from '../Loading';
+import { CURRENT_TERM } from '../../config/academic';
 import './RoleDashboard.css';
 
-const TERM = '2026-Spring';
+const TERM = CURRENT_TERM;
 
 const QUICK_ACTIONS = [
     { label: 'Fee Schedules',    icon: 'bi-cash-stack',    path: '/fees'          },

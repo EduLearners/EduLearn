@@ -10,6 +10,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import StatusBadge from '../../components/StatusBadge';
 import ModalPortal from '../../components/ModalPortal';
 import { validateCourseCode, validateMinLength, validateJson, validatePositiveInteger, validateOptionalPositiveId, validateTerm, validatePositiveId } from '../../utils/validators';
+import { CURRENT_TERM } from '../../config/academic';
 
 const DAYS_OPTIONS = [
     'Mon-Wed-Fri',
@@ -43,7 +44,7 @@ export default function SectionsPage() {
 
     const [allSections, setAllSections] = useState([]);
     const [filterCourseId, setFilterCourseId] = useState('');
-    const [filterTerm, setFilterTerm] = useState('2026-Spring');
+    const [filterTerm, setFilterTerm] = useState(CURRENT_TERM);
 
     const [sections, setSections] = useState([]);
     const [loading, setLoading] = useState(false);

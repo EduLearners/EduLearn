@@ -7,9 +7,10 @@ import { roomService } from '../../services/roomService';
 import { userService } from '../../services/userService';
 import { sectionService } from '../../services/sectionService';
 import Loading from '../Loading';
+import { CURRENT_TERM } from '../../config/academic';
 import './RoleDashboard.css';
 
-const TERM = '2026-Spring';
+const TERM = CURRENT_TERM;
 
 const QUICK_ACTIONS = [
     { label: 'New Program',    icon: 'bi-plus-circle',        path: '/programs/new'  },

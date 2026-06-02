@@ -64,10 +64,10 @@ public class KPIsController : ControllerBase
 
         var seedKpis = new List<KPI>
         {
-            new() { Name = "Active Student Count",        Definition = "Total students with EnrollmentStatus = Active",                   ReportingPeriod = ReportingPeriod.Semester, Target = null },
-            new() { Name = "Section Fill Rate",           Definition = "Average EnrolledCount / Capacity across all sections (as %)",     ReportingPeriod = ReportingPeriod.Semester, Target = 80.00m },
-            new() { Name = "Assessment Published Rate",   Definition = "Published assessments / total assessments (as %)",                ReportingPeriod = ReportingPeriod.Semester, Target = 90.00m },
-            new() { Name = "Enrollment Waitlist Rate",    Definition = "Waitlisted enrollments / total enrollments (as %)",               ReportingPeriod = ReportingPeriod.Semester, Target = null }
+            new() { Name = "Active Student Count",       Definition = "Total students with EnrollmentStatus = Active",                ReportingPeriod = ReportingPeriod.Semester, Target = null,    ComputationKey = KpiComputationKey.ActiveStudentCount },
+            new() { Name = "Section Fill Rate",          Definition = "Average EnrolledCount / Capacity across all sections (as %)",  ReportingPeriod = ReportingPeriod.Semester, Target = 80.00m,  ComputationKey = KpiComputationKey.SectionFillRate },
+            new() { Name = "Assessment Completion Rate", Definition = "Assessments with ≥1 submission / published assessments (as %)", ReportingPeriod = ReportingPeriod.Semester, Target = 90.00m,  ComputationKey = KpiComputationKey.AssessmentCompletionRate },
+            new() { Name = "Invoice Collection Rate",    Definition = "Total payments collected / total invoiced amount (as %)",       ReportingPeriod = ReportingPeriod.Semester, Target = null,    ComputationKey = KpiComputationKey.InvoiceCollectionRate }
         };
 
         await _reportRepository.SeedKPIsAsync(seedKpis, ct);

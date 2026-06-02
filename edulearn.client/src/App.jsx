@@ -58,10 +58,11 @@ const ContentsPage = lazy(() => import('./pages/contents/ContentsPage'));
 const ContentDetailPage = lazy(() => import('./pages/contents/ContentDetailPage'));
 const ContentFormPage = lazy(() => import('./pages/contents/ContentFormPage'));
 
-// RKA — Reports, KPIs, Audit Log
+// RKA — Reports, KPIs, Audit Log, Audit Packages
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
 const KpisPage = lazy(() => import('./pages/reports/KpisPage'));
 const AuditLogPage = lazy(() => import('./pages/reports/AuditLogPage'));
+const AuditPackagesPage = lazy(() => import('./pages/reports/AuditPackagesPage'));
 
 // Grade Changes, Syllabi, Discussions (Vikash)
 const GradeChangesPage = lazy(() => import('./pages/gradechanges/GradeChangesPage'));
@@ -154,6 +155,7 @@ export default function App() {
                         <Route path="/reports" element={<ProtectedRoute allowedRoles={['Auditor', 'ITAdmin']}><ReportsPage /></ProtectedRoute>} />
                         <Route path="/kpis" element={<ProtectedRoute allowedRoles={['Auditor', 'ITAdmin']}><KpisPage /></ProtectedRoute>} />
                         <Route path="/audit-log" element={<ProtectedRoute allowedRoles={['Auditor', 'ITAdmin']}><AuditLogPage /></ProtectedRoute>} />
+                        <Route path="/audit-packages" element={<ProtectedRoute allowedRoles={['Auditor', 'ITAdmin']}><AuditPackagesPage /></ProtectedRoute>} />
 
                         {/* Grade Changes */}
                         <Route path="/grade-changes" element={<GradeChangesPage />} />

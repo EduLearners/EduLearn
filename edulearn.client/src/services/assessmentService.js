@@ -41,9 +41,15 @@ export const assessmentService = {
         return data;
     },
 
-    // PUT /api/assessments/:id
+    // PUT /api/assessments/:id  (Draft only — fields)
     update: async (id, assessmentData) => {
         const { data } = await axiosClient.put(`/assessments/${id}`, assessmentData);
+        return data;
+    },
+
+    // PUT /api/assessments/:id/publish  (status lifecycle: Draft→Published→Closed→Archived)
+    updateStatus: async (id, status) => {
+        const { data } = await axiosClient.put(`/assessments/${id}/publish`, { status });
         return data;
     },
 
