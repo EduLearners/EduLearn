@@ -97,9 +97,6 @@ export default function ApplicantDetailPage() {
         setCreateError(null);
         const next = {
             username: validateUsername(userForm.username),
-            fullName: validateName(userForm.fullName, 'Full name'),
-            email: validateEmail(userForm.email),
-            phone: validatePhone(userForm.phone),
             password: validatePassword(userForm.password),
         };
         if (Object.values(next).some(Boolean)) { setCreateErrors(next); return; }
@@ -455,55 +452,46 @@ export default function ApplicantDetailPage() {
                                                     <label className="form-label fw-bold">
                                                         Full Name <span className="text-danger">*</span>
                                                     </label>
-                                                    <input
-                                                        type="text"
-                                                        className={`form-control${createErrors.fullName ? ' is-invalid' : ''}`}
-                                                        value={userForm.fullName}
-                                                        onChange={e => setUserForm({ ...userForm, fullName: e.target.value })}
-                                                        onBlur={e => setCreateErrors(prev => ({ ...prev, fullName: validateName(e.target.value, 'Full name') }))}
-                                                        placeholder="e.g. Vikash Kumar"
-                                                        maxLength={200}
-                                                        required
-                                                        autoComplete="off"
-                                                    />
-                                                    {createErrors.fullName && <div className="invalid-feedback">{createErrors.fullName}</div>}
+                                                    <div className="input-group">
+                                                        <span className="input-group-text bg-light"><i className="bi bi-lock text-muted"></i></span>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control bg-light"
+                                                            value={userForm.fullName}
+                                                            readOnly
+                                                            style={{ cursor: 'not-allowed' }}
+                                                        />
+                                                    </div>
                                                 </div>
 
                                                 <div className="col-md-6">
                                                     <label className="form-label fw-bold">
                                                         Email <span className="text-danger">*</span>
                                                     </label>
-                                                    <input
-                                                        type="email"
-                                                        className={`form-control${createErrors.email ? ' is-invalid' : ''}`}
-                                                        value={userForm.email}
-                                                        onChange={e => setUserForm({ ...userForm, email: e.target.value.toLowerCase() })}
-                                                        onBlur={e => setCreateErrors(prev => ({ ...prev, email: validateEmail(e.target.value) }))}
-                                                        placeholder="e.g. vikash@example.com"
-                                                        maxLength={255}
-                                                        required
-                                                        autoComplete="off"
-                                                    />
-                                                    {createErrors.email && <div className="invalid-feedback">{createErrors.email}</div>}
+                                                    <div className="input-group">
+                                                        <span className="input-group-text bg-light"><i className="bi bi-lock text-muted"></i></span>
+                                                        <input
+                                                            type="email"
+                                                            className="form-control bg-light"
+                                                            value={userForm.email}
+                                                            readOnly
+                                                            style={{ cursor: 'not-allowed' }}
+                                                        />
+                                                    </div>
                                                 </div>
 
                                                 <div className="col-md-6">
                                                     <label className="form-label fw-bold">Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        className={`form-control ${validatePhone(userForm.phone) ? 'is-invalid' : ''}`}
-                                                        value={userForm.phone}
-                                                        onChange={e => setUserForm({ ...userForm, phone: e.target.value })}
-                                                        placeholder="9876543210"
-                                                        maxLength={15}
-                                                        autoComplete="off"
-                                                    />
-                                                    {validatePhone(userForm.phone) && (
-                                                        <div className="invalid-feedback">
-                                                            <i className="bi bi-exclamation-circle me-1"></i>
-                                                            {validatePhone(userForm.phone)}
-                                                        </div>
-                                                    )}
+                                                    <div className="input-group">
+                                                        <span className="input-group-text bg-light"><i className="bi bi-lock text-muted"></i></span>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control bg-light"
+                                                            value={userForm.phone || '—'}
+                                                            readOnly
+                                                            style={{ cursor: 'not-allowed' }}
+                                                        />
+                                                    </div>
                                                 </div>
 
                                                 <div className="col-md-6">

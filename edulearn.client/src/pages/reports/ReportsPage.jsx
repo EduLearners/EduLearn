@@ -3,7 +3,6 @@ import { reportService } from '../../services/reportService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
-import { validateJson } from '../../utils/validators';
 
 const REPORT_SCOPES = ['Course', 'Department', 'Institution', 'Student', 'Enrollment'];
 
@@ -19,7 +18,7 @@ export default function ReportsPage() {
 
     const [form, setForm] = useState({
         scope: 'Institution',
-        parametersJSON: '',
+        paramValue: '', // single parameter value (ID) for the selected scope
     });
     const [errors, setErrors] = useState({});
 
@@ -42,21 +41,30 @@ export default function ReportsPage() {
         }
     };
 
+    // Scope → parameter key mapping
+    const scopeParamKey = { Course: 'courseId', Department: 'departmentId', Student: 'studentId', Enrollment: 'enrollmentId' };
+
     const handleGenerate = async (e) => {
         e.preventDefault();
-        const next = { parametersJSON: validateJson(form.parametersJSON) };
-        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
+        const paramKey = scopeParamKey[form.scope];
+        // Validate: if scope needs a param, require a value
+        if (paramKey && !form.paramValue) {
+            setErrors({ paramValue: `${form.scope} ID is required` });
+            return;
+        }
+        setErrors({});
         setError(null);
         setSuccess('');
         setGenerating(true);
         try {
-            const payload = {
-                scope: form.scope,
-                parametersJSON: form.parametersJSON || null,
-            };
+            // Build parametersJSON from structured input
+            const parametersJSON = paramKey && form.paramValue
+                ? JSON.stringify({ [paramKey]: Number(form.paramValue) })
+                : null;
+            const payload = { scope: form.scope, parametersJSON };
             await reportService.generate(payload);
             setSuccess('Report generated successfully.');
-            setForm({ scope: 'Institution', parametersJSON: '' });
+            setForm({ scope: 'Institution', paramValue: '' });
             loadReports();
         } catch (err) {
             setError(err);
@@ -138,7 +146,7 @@ export default function ReportsPage() {
                                     <select
                                         className="form-select"
                                         value={form.scope}
-                                        onChange={e => setForm({ ...form, scope: e.target.value })}
+                                        onChange={e => setForm({ scope: e.target.value, paramValue: '' })}
                                         required
                                     >
                                         {REPORT_SCOPES.map(s => (
@@ -146,23 +154,31 @@ export default function ReportsPage() {
                                         ))}
                                     </select>
                                 </div>
-                                <div className="col-md-8">
-                                    <label className="form-label fw-bold">
-                                        Parameters
-                                        <small className="text-muted fw-normal ms-2">
-                                            (optional JSON)
-                                        </small>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className={`form-control font-monospace${errors.parametersJSON ? ' is-invalid' : ''}`}
-                                        value={form.parametersJSON}
-                                        onChange={e => setForm({ ...form, parametersJSON: e.target.value })}
-                                        onBlur={e => setErrors(prev => ({ ...prev, parametersJSON: validateJson(e.target.value) }))}
-                                        placeholder='e.g. {"courseId": 1}'
-                                    />
-                                    {errors.parametersJSON && <div className="invalid-feedback">{errors.parametersJSON}</div>}
-                                </div>
+                                {scopeParamKey[form.scope] ? (
+                                    <div className="col-md-8">
+                                        <label className="form-label fw-bold">
+                                            {form.scope} ID <span className="text-danger">*</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            className={`form-control${errors.paramValue ? ' is-invalid' : ''}`}
+                                            value={form.paramValue}
+                                            onChange={e => { setForm({ ...form, paramValue: e.target.value }); setErrors({}); }}
+                                            placeholder={`Enter ${form.scope} ID…`}
+                                            min={1}
+                                            required
+                                        />
+                                        {errors.paramValue && <div className="invalid-feedback">{errors.paramValue}</div>}
+                                        <div className="form-text">Enter the numeric ID of the {form.scope.toLowerCase()} to report on.</div>
+                                    </div>
+                                ) : (
+                                    <div className="col-md-8 d-flex align-items-center">
+                                        <div className="alert alert-light border mb-0 py-2 w-100 small">
+                                            <i className="bi bi-info-circle me-2"></i>
+                                            <strong>Institution</strong> scope covers all data — no additional parameters needed.
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             {success && (
                                 <div className="alert alert-success mt-3 mb-0">

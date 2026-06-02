@@ -6,7 +6,7 @@ import { authService } from '../../services/authService';
 import { emptyContent, ContentType } from '../../models/Content';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
-import { validateTitle, validateUrl, validateJson, validatePositiveId } from '../../utils/validators';
+import { validateTitle, validateUrl, validatePositiveId } from '../../utils/validators';
 
 export default function ContentFormPage() {
     const { id } = useParams();
@@ -18,6 +18,8 @@ export default function ContentFormPage() {
     const [errors, setErrors] = useState({});
 
     const [form, setForm] = useState(emptyContent());
+    // Metadata as a single description field
+    const [metaDescription, setMetaDescription] = useState('');
     const [myCourses, setMyCourses] = useState([]);      // unique courses from instructor's sections
     const [loadingCourses, setLoadingCourses] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -69,6 +71,13 @@ export default function ContentFormPage() {
                 uri: data.uri || '',
                 metadataJSON: data.metadataJSON || '',
             });
+            // Parse existing metadataJSON into description field
+            if (data.metadataJSON) {
+                try {
+                    const parsed = JSON.parse(data.metadataJSON);
+                    setMetaDescription(parsed.description || '');
+                } catch { /* ignore */ }
+            }
         } catch (err) {
             setError(err);
         } finally {
@@ -82,7 +91,6 @@ export default function ContentFormPage() {
     };
 
     const uriInvalid = form.uri.trim().length > 0 && !!validateUrl(form.uri);
-    const metadataInvalid = form.metadataJSON.trim().length > 0 && !!validateJson(form.metadataJSON);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -92,12 +100,15 @@ export default function ContentFormPage() {
         const next = {
             title: validateTitle(form.title),
             uri: validateUrl(form.uri),
-            metadataJSON: validateJson(form.metadataJSON),
             ...(!isInstructor ? { courseID: validatePositiveId(form.courseID) } : {}),
         };
         if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setLoading(true);
-        const payload = { ...form, courseID: Number(form.courseID) };
+        // Build metadataJSON from description field
+        const metadataJSON = metaDescription.trim()
+            ? JSON.stringify({ description: metaDescription.trim() })
+            : null;
+        const payload = { ...form, courseID: Number(form.courseID), metadataJSON };
         try {
             if (isEditMode) {
                 await contentService.update(id, payload);
@@ -251,32 +262,24 @@ export default function ContentFormPage() {
                                 </div>
                             </div>
 
-                            {/* Metadata JSON */}
+                            {/* Description */}
                             <div className="col-12">
                                 <label className="form-label fw-bold">
-                                    Metadata <small className="text-muted fw-normal ms-2">(optional JSON)</small>
+                                    Description <small className="text-muted fw-normal ms-2">(optional)</small>
                                 </label>
                                 <textarea
-                                    className={`form-control font-monospace ${metadataInvalid || errors.metadataJSON ? 'is-invalid' : ''}`}
-                                    name="metadataJSON"
-                                    value={form.metadataJSON}
-                                    onChange={handleChange}
-                                    onBlur={e => setErrors(prev => ({ ...prev, metadataJSON: validateJson(e.target.value) }))}
-                                    rows={4}
-                                    placeholder='e.g. {"duration": "45 mins", "language": "English"}'
+                                    className="form-control"
+                                    value={metaDescription}
+                                    onChange={e => setMetaDescription(e.target.value)}
+                                    placeholder="Brief description of this content item…"
+                                    rows={3}
+                                    maxLength={500}
                                 />
-                                {errors.metadataJSON && <div className="invalid-feedback">{errors.metadataJSON}</div>}
-                                {!errors.metadataJSON && metadataInvalid && (
-                                    <div className="invalid-feedback">
-                                        <i className="bi bi-exclamation-circle me-1"></i>
-                                        Metadata must be valid JSON.
-                                    </div>
-                                )}
                             </div>
                         </div>
 
                         <div className="d-flex gap-2 mt-4">
-                            <button type="submit" className="btn btn-primary-edulearn" disabled={loading || uriInvalid || metadataInvalid}>
+                            <button type="submit" className="btn btn-primary-edulearn" disabled={loading || uriInvalid}>
                                 {loading
                                     ? <><span className="spinner-border spinner-border-sm me-2"></span>{isEditMode ? 'Saving...' : 'Creating...'}</>
                                     : <><i className="bi bi-check-lg me-2"></i>{isEditMode ? 'Save Changes' : 'Create Content'}</>

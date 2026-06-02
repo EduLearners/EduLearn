@@ -2,6 +2,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -17,17 +18,26 @@ public class AssessmentsController : ControllerBase
     private readonly ICourseRepository _courseRepository;
     private readonly IUserRepository _userRepository;
     private readonly ISectionRepository _sectionRepository;
+    private readonly IEnrollmentRepository _enrollmentRepository;
+    private readonly IStudentRepository _studentRepository;
+    private readonly INotificationService _notificationService;
 
     public AssessmentsController(
         IAssessmentRepository assessmentRepository,
         ICourseRepository courseRepository,
         IUserRepository userRepository,
-        ISectionRepository sectionRepository)
+        ISectionRepository sectionRepository,
+        IEnrollmentRepository enrollmentRepository,
+        IStudentRepository studentRepository,
+        INotificationService notificationService)
     {
         _assessmentRepository = assessmentRepository;
         _courseRepository = courseRepository;
         _userRepository = userRepository;
         _sectionRepository = sectionRepository;
+        _enrollmentRepository = enrollmentRepository;
+        _studentRepository = studentRepository;
+        _notificationService = notificationService;
     }
 
     /// <summary>
@@ -74,6 +84,10 @@ public class AssessmentsController : ControllerBase
         };
 
         await _assessmentRepository.CreateAsync(assessment);
+
+        // Notify enrolled students immediately if created as Published
+        if (assessment.Status == AssessmentStatus.Published)
+            await NotifyEnrolledStudentsAsync(assessment, course.Title);
 
         return CreatedAtAction(nameof(GetById),
             new { id = assessment.AssessmentID },
@@ -180,7 +194,64 @@ public class AssessmentsController : ControllerBase
         assessment.Status = dto.Status;
         await _assessmentRepository.UpdateAsync(assessment);
 
+        // Notify enrolled students when assessment transitions to Published
+        if (dto.Status == AssessmentStatus.Published)
+            await NotifyEnrolledStudentsAsync(assessment, assessment.Course.Title);
+
         return Ok(MapToDto(assessment, assessment.Course.Title, assessment.CreatedBy.FullName));
+    }
+
+    // ── Notify enrolled students when assessment is published ────
+    // If assessment has a specific section → notify students in that section.
+    // If assessment is course-wide (no section) → notify students across all sections of that course.
+    private async Task NotifyEnrolledStudentsAsync(Assessment assessment, string courseTitle)
+    {
+        try
+        {
+            IEnumerable<int> studentIds;
+
+            if (assessment.SectionID.HasValue)
+            {
+                // Section-scoped: only students enrolled in that section
+                var enrollments = await _enrollmentRepository.GetBySectionIdWithDetailsAsync(assessment.SectionID.Value);
+                studentIds = enrollments
+                    .Where(e => e.Status == EnrollmentStatus.Enrolled)
+                    .Select(e => e.Student.UserID);
+            }
+            else
+            {
+                // Course-wide: collect enrolled students from all sections of this course
+                var sections = await _sectionRepository.GetByCourseIdAsync(assessment.CourseID);
+                var userIdSet = new HashSet<int>();
+                foreach (var section in sections)
+                {
+                    var enrollments = await _enrollmentRepository.GetBySectionIdWithDetailsAsync(section.SectionID);
+                    foreach (var e in enrollments.Where(e => e.Status == EnrollmentStatus.Enrolled))
+                        userIdSet.Add(e.Student.UserID);
+                }
+                studentIds = userIdSet;
+            }
+
+            var dueText = assessment.DueAt.HasValue
+                ? $" Due: {assessment.DueAt.Value:MMM dd, yyyy}."
+                : string.Empty;
+
+            var message = $"New {assessment.Type} published: \"{assessment.Title}\" in {courseTitle}.{dueText}";
+
+            foreach (var userId in studentIds)
+            {
+                await _notificationService.NotifyAsync(
+                    userId,
+                    NotificationCategory.Assessment,
+                    NotificationSeverity.Info,
+                    message,
+                    assessment.AssessmentID);
+            }
+        }
+        catch
+        {
+            // Notifications are best-effort — never fail the main request
+        }
     }
 
     // ── shared mapper ────────────────────────────────────────────

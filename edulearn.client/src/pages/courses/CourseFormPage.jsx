@@ -5,7 +5,7 @@ import { authService } from '../../services/authService';
 import { emptyCourse } from '../../models/Course';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
-import { validateCourseCode, validateTitle, validateLevel, validateJson, validatePositiveInteger, validateOptionalPositiveId, validateTerm, validatePositiveId } from '../../utils/validators';
+import { validateCourseCode, validateTitle, validateLevel, validatePositiveInteger, validateOptionalPositiveId, validateTerm, validatePositiveId } from '../../utils/validators';
 
 export default function CourseFormPage() {
     const { id } = useParams();
@@ -19,10 +19,15 @@ export default function CourseFormPage() {
     const [pageLoading, setPageLoading] = useState(isEditMode);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState('');
+    // Prerequisites: array of selected course IDs (numbers)
+    const [prereqIds, setPrereqIds] = useState([]);
+    const [allCourses, setAllCourses] = useState([]);
 
     const canManage = ['Instructor', 'DeptAdmin', 'ITAdmin'].includes(role);
 
     useEffect(() => {
+        // Load all courses for the prerequisite picker
+        courseService.getAll().then(data => setAllCourses(data || [])).catch(() => {});
         if (isEditMode) loadCourse();
     }, [id]);
 
@@ -41,11 +46,27 @@ export default function CourseFormPage() {
                 level: data.level || '',
                 prerequisitesJSON: data.prerequisitesJSON || '',
             });
+            // Parse existing prerequisitesJSON into the UI state
+            if (data.prerequisitesJSON) {
+                try {
+                    const parsed = JSON.parse(data.prerequisitesJSON);
+                    if (Array.isArray(parsed)) setPrereqIds(parsed.map(Number));
+                } catch { /* ignore */ }
+            }
         } catch (err) {
             setError(err);
         } finally {
             setPageLoading(false);
         }
+    };
+
+    // Toggle a course in/out of prerequisites list
+    const togglePrereq = (courseId) => {
+        setPrereqIds(prev =>
+            prev.includes(courseId)
+                ? prev.filter(id => id !== courseId)
+                : [...prev, courseId]
+        );
     };
 
     const handleChange = (e) => {
@@ -62,19 +83,22 @@ export default function CourseFormPage() {
             code: isEditMode ? null : validateCourseCode(form.code),
             title: validateTitle(form.title),
             level: validateLevel(form.level),
-            prerequisitesJSON: validateJson(form.prerequisitesJSON),
         };
         if (Object.values(next).some(Boolean)) { setErrors(next); return; }
+
+        // Build prerequisitesJSON from UI state
+        const prereqJSON = prereqIds.length > 0 ? JSON.stringify(prereqIds) : null;
 
         setLoading(true);
 
         try {
+            const payload = { ...form, prerequisitesJSON: prereqJSON };
             if (isEditMode) {
-                await courseService.update(id, form);
+                await courseService.update(id, payload);
                 setSuccess('Course updated successfully.');
                 setTimeout(() => navigate(`/courses/${id}`), 1200);
             } else {
-                const created = await courseService.create(form);
+                const created = await courseService.create(payload);
                 setSuccess('Course created successfully.');
                 setTimeout(() => navigate(`/courses/${created.courseID || ''}`), 1200);
             }
@@ -228,23 +252,34 @@ export default function CourseFormPage() {
                             </div>
 
                             <div className="col-12">
-                                <label className="form-label fw-bold">
-                                    Prerequisites
-                                    <small className="text-muted fw-normal ms-2">(JSON array of Course IDs)</small>
-                                </label>
-                                <textarea
-                                    className={`form-control font-monospace${errors.prerequisitesJSON ? ' is-invalid' : ''}`}
-                                    name="prerequisitesJSON"
-                                    value={form.prerequisitesJSON}
-                                    onChange={handleChange}
-                                    onBlur={e => setErrors(prev => ({ ...prev, prerequisitesJSON: validateJson(e.target.value) }))}
-                                    rows={4}
-                                    placeholder='e.g. [1, 2] — array of prerequisite Course IDs'
-                                />
-                                {errors.prerequisitesJSON && <div className="invalid-feedback">{errors.prerequisitesJSON}</div>}
+                                <label className="form-label fw-bold">Prerequisites</label>
+                                <div className="border rounded p-3" style={{ maxHeight: 200, overflowY: 'auto' }}>
+                                    {allCourses.filter(c => !isEditMode || String(c.courseID) !== String(id)).length === 0 ? (
+                                        <span className="text-muted small">No other courses available.</span>
+                                    ) : (
+                                        allCourses
+                                            .filter(c => !isEditMode || String(c.courseID) !== String(id))
+                                            .map(c => (
+                                                <div key={c.courseID} className="form-check mb-1">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id={`prereq-${c.courseID}`}
+                                                        checked={prereqIds.includes(c.courseID)}
+                                                        onChange={() => togglePrereq(c.courseID)}
+                                                    />
+                                                    <label className="form-check-label" htmlFor={`prereq-${c.courseID}`}>
+                                                        <strong>{c.code}</strong> — {c.title}
+                                                    </label>
+                                                </div>
+                                            ))
+                                    )}
+                                </div>
                                 <div className="form-text">
-                                    Enter a JSON array of Course IDs (numbers), e.g. <code>[1, 3]</code>.
-                                    Leave blank if there are no prerequisites.
+                                    {prereqIds.length === 0
+                                        ? 'No prerequisites selected — leave unchecked if none required.'
+                                        : <><i className="bi bi-check2-all me-1 text-success"></i>{prereqIds.length} prerequisite(s) selected.</>
+                                    }
                                 </div>
                             </div>
 

@@ -453,10 +453,6 @@ export default function NewStudentPage() {
                                             readOnly
                                             disabled
                                         />
-                                        <div className="form-text text-success">
-                                            <i className="bi bi-check-circle me-1"></i>
-                                            Auto-filled from applicant's program — read only.
-                                        </div>
                                     </>
                                 ) : (
                                     <select
@@ -504,13 +500,15 @@ export default function NewStudentPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    className={`form-control${errors.name ? ' is-invalid' : ''}`}
+                                    className={`form-control${form.userID ? ' bg-light' : ''}${errors.name ? ' is-invalid' : ''}`}
                                     value={form.name}
                                     onChange={handleChange('name')}
                                     onBlur={e => setErrors(prev => ({ ...prev, name: validateName(e.target.value, 'Full name') }))}
                                     required
                                     placeholder="John Doe"
                                     maxLength={100}
+                                    readOnly={!!form.userID}
+                                    style={form.userID ? { cursor: 'not-allowed' } : undefined}
                                 />
                                 {errors.name && <div className="invalid-feedback">{errors.name}</div>}
                             </div>
@@ -537,11 +535,13 @@ export default function NewStudentPage() {
                                 </label>
                                 <input
                                     type="date"
-                                    className={`form-control ${dobInvalid ? 'is-invalid' : ''}`}
+                                    className={`form-control${form.userID ? ' bg-light' : ''} ${dobInvalid ? 'is-invalid' : ''}`}
                                     value={form.dob}
                                     onChange={handleChange('dob')}
                                     required
                                     max={maxDOBString}
+                                    readOnly={!!form.userID}
+                                    style={form.userID ? { cursor: 'not-allowed' } : undefined}
                                 />
                                 {dobInvalid ? (
                                     <div className="invalid-feedback">
@@ -557,15 +557,18 @@ export default function NewStudentPage() {
                                 <label className="form-label fw-bold">Email</label>
                                 <input
                                     type="text"
-                                    className={`form-control${errors.email ? ' is-invalid' : ''}`}
+                                    className={`form-control${form.userID ? ' bg-light' : ''}${errors.email ? ' is-invalid' : ''}`}
                                     value={form.email}
                                     onChange={e => {
+                                        if (form.userID) return;
                                         const val = e.target.value.toLowerCase();
                                         setForm({ ...form, email: val });
                                         if (errors.email) setErrors(prev => ({ ...prev, email: validateEmail(val) }));
                                     }}
-                                    onBlur={e => setErrors(prev => ({ ...prev, email: e.target.value ? validateEmail(e.target.value) : null }))}
+                                    onBlur={e => { if (!form.userID) setErrors(prev => ({ ...prev, email: e.target.value ? validateEmail(e.target.value) : null })); }}
                                     placeholder="e.g. name@gmail.com"
+                                    readOnly={!!form.userID}
+                                    style={form.userID ? { cursor: 'not-allowed' } : undefined}
                                 />
                                 {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                             </div>
@@ -575,16 +578,19 @@ export default function NewStudentPage() {
                                 <label className="form-label fw-bold">Phone</label>
                                 <input
                                     type="text"
-                                    className={`form-control${errors.phone ? ' is-invalid' : ''}`}
+                                    className={`form-control${form.userID ? ' bg-light' : ''}${errors.phone ? ' is-invalid' : ''}`}
                                     value={form.phone}
                                     onChange={e => {
+                                        if (form.userID) return;
                                         const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
                                         setForm(prev => ({ ...prev, phone: digits }));
                                         setErrors(prev => ({ ...prev, phone: validatePhone(digits) }));
                                     }}
-                                    onBlur={e => setErrors(prev => ({ ...prev, phone: validatePhone(e.target.value) }))}
+                                    onBlur={e => { if (!form.userID) setErrors(prev => ({ ...prev, phone: validatePhone(e.target.value) })); }}
                                     placeholder="9876543210"
                                     maxLength={10}
+                                    readOnly={!!form.userID}
+                                    style={form.userID ? { cursor: 'not-allowed' } : undefined}
                                 />
                                 {errors.phone ? (
                                     <div className="invalid-feedback">{errors.phone}</div>

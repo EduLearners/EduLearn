@@ -33,7 +33,14 @@ export default function Navbar() {
         };
         fetchUnread();
         const interval = setInterval(fetchUnread, 60_000);
-        return () => clearInterval(interval);
+
+        // Immediately refresh badge when NotificationsPage marks a notification read
+        window.addEventListener('notifications:read', fetchUnread);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('notifications:read', fetchUnread);
+        };
     }, [username]); // re-runs when user logs in / out
 
     const handleLogout = () => {

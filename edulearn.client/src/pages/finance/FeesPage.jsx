@@ -463,7 +463,7 @@ export default function FeesPage() {
                                                     <label className="form-label fw-bold mb-0">
                                                         Fee Items <span className="text-danger">*</span>
                                                     </label>
-                                                    <button type="button" className="btn btn-sm btn-outline-primary" onClick={addFeeItem}>
+                                                    <button type="button" className="btn btn-sm btn-primary-edulearn" onClick={addFeeItem}>
                                                         <i className="bi bi-plus-lg me-1"></i>Add Item
                                                     </button>
                                                 </div>

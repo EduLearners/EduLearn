@@ -6,7 +6,7 @@ import { authService } from '../../services/authService';
 import { AssessmentType } from '../../models/Assessment';
 import ErrorAlert from '../../components/ErrorAlert';
 import Loading from '../../components/Loading';
-import { validateTitle, validateAmount, validateFutureDate, validateJson, validatePositiveId, validateOptionalUrl } from '../../utils/validators';
+import { validateTitle, validateAmount, validateFutureDate, validatePositiveId, validateOptionalUrl } from '../../utils/validators';
 
 export default function AssessmentFormPage() {
     const { id } = useParams();
@@ -23,9 +23,10 @@ export default function AssessmentFormPage() {
         status: 'Draft',
         dueAt: '',
         maxScore: 100,
-        gradingRubricJSON: '',
         instructionsURI: '',
     });
+    // Grading rubric as structured rows: [{criterion, maxPoints}]
+    const [rubricRows, setRubricRows] = useState([]);
 
     const [errors, setErrors] = useState({});
 
@@ -72,15 +73,32 @@ export default function AssessmentFormPage() {
                 status: data.status || 'Draft',
                 dueAt: data.dueAt ? new Date(data.dueAt).toISOString().slice(0, 16) : '',
                 maxScore: data.maxScore || 100,
-                gradingRubricJSON: data.gradingRubricJSON || '',
                 instructionsURI: data.instructionsURI || '',
             });
+            // Parse existing gradingRubricJSON into rows
+            if (data.gradingRubricJSON) {
+                try {
+                    const parsed = JSON.parse(data.gradingRubricJSON);
+                    if (Array.isArray(parsed)) {
+                        setRubricRows(parsed.map(r => ({
+                            criterion: r.criterion || '',
+                            maxPoints: r.maxPoints ?? '',
+                        })));
+                    }
+                } catch { /* ignore */ }
+            }
         } catch (err) {
             setError(err);
         } finally {
             setPageLoading(false);
         }
     };
+
+    // Rubric row helpers
+    const addRubricRow = () => setRubricRows(prev => [...prev, { criterion: '', maxPoints: '' }]);
+    const removeRubricRow = (idx) => setRubricRows(prev => prev.filter((_, i) => i !== idx));
+    const updateRubricRow = (idx, field, value) =>
+        setRubricRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -122,7 +140,6 @@ export default function AssessmentFormPage() {
             title: validateTitle(form.title),
             maxScore: validateAmount(form.maxScore, 1, 9999),
             dueAt: form.dueAt ? validateFutureDate(form.dueAt) : null,
-            gradingRubricJSON: validateJson(form.gradingRubricJSON),
             instructionsURI: validateOptionalUrl(form.instructionsURI),
             ...(!isInstructor ? { courseID: validatePositiveId(form.courseID) } : {}),
         };
@@ -138,7 +155,9 @@ export default function AssessmentFormPage() {
             status: form.status,
             dueAt: form.dueAt ? new Date(form.dueAt).toISOString() : null,
             maxScore: Number(form.maxScore),
-            gradingRubricJSON: form.gradingRubricJSON || null,
+            gradingRubricJSON: rubricRows.length > 0
+                ? JSON.stringify(rubricRows.map(r => ({ criterion: r.criterion, maxPoints: Number(r.maxPoints) || 0 })))
+                : null,
             instructionsURI: form.instructionsURI.trim() || null,
         };
 
@@ -411,19 +430,70 @@ export default function AssessmentFormPage() {
                             </div>
 
                             <div className="col-12">
-                                <label className="form-label fw-bold">
-                                    Grading Rubric <small className="text-muted fw-normal ms-2">(optional JSON)</small>
-                                </label>
-                                <textarea
-                                    className={`form-control font-monospace${errors.gradingRubricJSON ? ' is-invalid' : ''}`}
-                                    name="gradingRubricJSON"
-                                    value={form.gradingRubricJSON}
-                                    onChange={handleChange}
-                                    onBlur={e => setErrors(prev => ({ ...prev, gradingRubricJSON: validateJson(e.target.value) }))}
-                                    rows={4}
-                                    placeholder='e.g. [{"criterion": "Code Quality", "maxPoints": 40}]'
-                                />
-                                {errors.gradingRubricJSON && <div className="invalid-feedback">{errors.gradingRubricJSON}</div>}
+                                <div className="d-flex align-items-center justify-content-between mb-2">
+                                    <label className="form-label fw-bold mb-0">
+                                        Grading Rubric
+                                        <small className="text-muted fw-normal ms-2">(optional)</small>
+                                    </label>
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-primary"
+                                        onClick={addRubricRow}
+                                    >
+                                        <i className="bi bi-plus-lg me-1"></i>Add Criterion
+                                    </button>
+                                </div>
+                                {rubricRows.length === 0 ? (
+                                    <div className="border rounded p-3 text-center text-muted small">
+                                        <i className="bi bi-list-check me-1"></i>
+                                        No rubric criteria added. Click "Add Criterion" to define grading criteria.
+                                    </div>
+                                ) : (
+                                    <div className="border rounded p-3">
+                                        <div className="row g-2 mb-2">
+                                            <div className="col-7"><small className="text-muted fw-bold text-uppercase">Criterion</small></div>
+                                            <div className="col-3"><small className="text-muted fw-bold text-uppercase">Max Points</small></div>
+                                            <div className="col-2"></div>
+                                        </div>
+                                        {rubricRows.map((row, idx) => (
+                                            <div key={idx} className="row g-2 mb-2 align-items-center">
+                                                <div className="col-7">
+                                                    <input
+                                                        type="text"
+                                                        className="form-control form-control-sm"
+                                                        value={row.criterion}
+                                                        onChange={e => updateRubricRow(idx, 'criterion', e.target.value)}
+                                                        placeholder="e.g. Code Quality"
+                                                        maxLength={100}
+                                                    />
+                                                </div>
+                                                <div className="col-3">
+                                                    <input
+                                                        type="number"
+                                                        className="form-control form-control-sm"
+                                                        value={row.maxPoints}
+                                                        onChange={e => updateRubricRow(idx, 'maxPoints', e.target.value)}
+                                                        placeholder="e.g. 40"
+                                                        min={0}
+                                                    />
+                                                </div>
+                                                <div className="col-2">
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-danger w-100"
+                                                        onClick={() => removeRubricRow(idx)}
+                                                        title="Remove criterion"
+                                                    >
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <div className="form-text mt-1">
+                                            Total rubric points: <strong>{rubricRows.reduce((s, r) => s + (Number(r.maxPoints) || 0), 0)}</strong>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

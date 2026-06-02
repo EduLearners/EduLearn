@@ -405,8 +405,8 @@ export default function UsersPage() {
                 <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
                     <div className="modal fade show d-block" tabIndex="-1">
-                        <div className="modal-dialog modal-dialog-centered modal-lg">
-                            <div className="modal-content">
+                        <div className="modal-dialog modal-dialog-centered modal-lg" style={{ maxHeight: '90vh' }}>
+                            <div className="modal-content" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
                                 <div className="modal-header bg-primary-edulearn text-white">
                                     <h5 className="modal-title">
                                         <i className="bi bi-person-plus me-2"></i>Create New User
@@ -418,8 +418,8 @@ export default function UsersPage() {
                                         disabled={creating}
                                     />
                                 </div>
-                                <form onSubmit={handleCreate}>
-                                    <div className="modal-body">
+                                <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                                    <div className="modal-body" style={{ overflowY: 'auto', flex: 1 }}>
                                         <div className="alert alert-info mb-3">
                                             <i className="bi bi-info-circle me-2"></i>
                                             Privileged roles (Registrar, DeptAdmin, Finance, ITAdmin, Auditor)

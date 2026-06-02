@@ -68,6 +68,10 @@ export default function NotificationsPage() {
         }
     };
 
+    // Tell the Navbar bell to refresh immediately after any read action
+    const dispatchUnreadRefresh = () =>
+        window.dispatchEvent(new CustomEvent('notifications:read'));
+
     const handleMarkRead = async (id) => {
         try {
             await notificationService.markRead(id);
@@ -78,6 +82,7 @@ export default function NotificationsPage() {
                 )
             );
             setUnreadCount(prev => Math.max(0, prev - 1));
+            dispatchUnreadRefresh(); // ← refresh bell badge immediately
         } catch (err) {
             setError(err);
         }
@@ -92,6 +97,7 @@ export default function NotificationsPage() {
             );
             setUnreadCount(0);
             setSuccess('All notifications marked as read.');
+            dispatchUnreadRefresh(); // ← refresh bell badge immediately
         } catch (err) {
             setError(err);
         } finally {

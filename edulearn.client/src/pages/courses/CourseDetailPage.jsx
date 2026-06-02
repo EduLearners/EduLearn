@@ -45,14 +45,14 @@ export default function CourseDetailPage() {
                 <div className="d-flex gap-2">
                     {canManage && course && (
                         <button
-                            className="btn btn-outline-secondary"
+                            className="btn btn-primary-edulearn"
                             onClick={() => navigate(`/courses/${id}/edit`)}
                         >
                             <i className="bi bi-pencil me-2"></i>Edit
                         </button>
                     )}
                     <button
-                        className="btn btn-outline-secondary"
+                        className="btn btn-primary-edulearn"
                         onClick={() => navigate('/courses')}
                     >
                         <i className="bi bi-arrow-left me-1"></i>Back
@@ -129,20 +129,20 @@ export default function CourseDetailPage() {
                         <div className="card-body">
                             <div className="d-flex gap-2 flex-wrap">
                                 <button
-                                    className="btn btn-outline-primary"
+                                    className="btn btn-primary-edulearn"
                                     onClick={() => navigate('/assessments')}
                                 >
                                     <i className="bi bi-file-earmark-text me-2"></i>View Assessments
                                 </button>
                                 <button
-                                    className="btn btn-outline-primary"
+                                    className="btn btn-primary-edulearn"
                                     onClick={() => navigate('/contents')}
                                 >
                                     <i className="bi bi-collection-play me-2"></i>View Contents
                                 </button>
                                 {canManage && (
                                     <button
-                                        className="btn btn-outline-secondary"
+                                        className="btn btn-primary-edulearn"
                                         onClick={() => navigate(`/courses/${id}/edit`)}
                                     >
                                         <i className="bi bi-pencil me-2"></i>Edit Course

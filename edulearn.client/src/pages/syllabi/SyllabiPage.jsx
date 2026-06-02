@@ -8,7 +8,7 @@ import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
 import ModalPortal from '../../components/ModalPortal';
 import axiosClient from '../../api/axiosClient';
-import { validateVersion, validateOptionalUrl, validateJson } from '../../utils/validators';
+import { validateVersion, validateOptionalUrl } from '../../utils/validators';
 
 export default function SyllabiPage() {
     const { role, userId } = authService.getCurrentUser();
@@ -30,10 +30,12 @@ export default function SyllabiPage() {
     const [form, setForm] = useState({
         courseID: '',
         version: '',
-        learningOutcomesJSON: '',
-        assessmentPlanJSON: '',
         syllabusURI: '',
     });
+    // Learning Outcomes: array of plain strings
+    const [outcomes, setOutcomes] = useState([]);
+    // Assessment Plan: array of {type, weight}
+    const [planRows, setPlanRows] = useState([]);
     const [errors, setErrors] = useState({});
 
     const canManage = ['Instructor', 'ITAdmin'].includes(role);
@@ -109,13 +111,9 @@ export default function SyllabiPage() {
 
     const openCreate = () => {
         setEditingId(null);
-        setForm({
-            courseID: selectedCourse,
-            version: '',
-            learningOutcomesJSON: '',
-            assessmentPlanJSON: '',
-            syllabusURI: '',
-        });
+        setForm({ courseID: selectedCourse, version: '', syllabusURI: '' });
+        setOutcomes([]);
+        setPlanRows([]);
         setErrors({});
         setSuccess('');
         setShowForm(true);
@@ -123,13 +121,17 @@ export default function SyllabiPage() {
 
     const openEdit = (s) => {
         setEditingId(s.syllabusID);
-        setForm({
-            courseID: s.courseID,
-            version: s.version || '',
-            learningOutcomesJSON: s.learningOutcomesJSON || '',
-            assessmentPlanJSON: s.assessmentPlanJSON || '',
-            syllabusURI: s.syllabusURI || '',
-        });
+        setForm({ courseID: s.courseID, version: s.version || '', syllabusURI: s.syllabusURI || '' });
+        // Parse learningOutcomesJSON → string array
+        try {
+            const parsed = s.learningOutcomesJSON ? JSON.parse(s.learningOutcomesJSON) : [];
+            setOutcomes(Array.isArray(parsed) ? parsed.map(String) : []);
+        } catch { setOutcomes([]); }
+        // Parse assessmentPlanJSON → [{type, weight}] array
+        try {
+            const parsed = s.assessmentPlanJSON ? JSON.parse(s.assessmentPlanJSON) : [];
+            setPlanRows(Array.isArray(parsed) ? parsed.map(r => ({ type: r.type || '', weight: r.weight ?? '' })) : []);
+        } catch { setPlanRows([]); }
         setErrors({});
         setSuccess('');
         setShowForm(true);
@@ -140,19 +142,19 @@ export default function SyllabiPage() {
         const next = {
             version: validateVersion(form.version),
             syllabusURI: validateOptionalUrl(form.syllabusURI),
-            learningOutcomesJSON: validateJson(form.learningOutcomesJSON),
-            assessmentPlanJSON: validateJson(form.assessmentPlanJSON),
         };
         if (Object.values(next).some(Boolean)) { setErrors(next); return; }
         setError(null);
         setSuccess('');
         setSaving(true);
         try {
+            const validOutcomes = outcomes.filter(o => o.trim());
+            const validPlan = planRows.filter(r => r.type.trim());
             const payload = {
                 courseID: Number(form.courseID),
                 version: form.version,
-                learningOutcomesJSON: form.learningOutcomesJSON || null,
-                assessmentPlanJSON: form.assessmentPlanJSON || null,
+                learningOutcomesJSON: validOutcomes.length > 0 ? JSON.stringify(validOutcomes) : null,
+                assessmentPlanJSON: validPlan.length > 0 ? JSON.stringify(validPlan.map(r => ({ type: r.type, weight: Number(r.weight) || 0 }))) : null,
                 syllabusURI: form.syllabusURI || null,
             };
             if (editingId) {
@@ -501,18 +503,27 @@ export default function SyllabiPage() {
                                                 <label className="form-label fw-bold">
                                                     Learning Outcomes
                                                     <small className="text-muted fw-normal ms-2">
-                                                        (optional JSON)
+                                                        (optional)
                                                     </small>
                                                 </label>
-                                                <textarea
-                                                    className={`form-control font-monospace${errors.learningOutcomesJSON ? ' is-invalid' : ''}`}
-                                                    value={form.learningOutcomesJSON}
-                                                    onChange={e => setForm({ ...form, learningOutcomesJSON: e.target.value })}
-                                                    onBlur={e => setErrors(prev => ({ ...prev, learningOutcomesJSON: validateJson(e.target.value) }))}
-                                                    rows={3}
-                                                    placeholder='e.g. ["Understand X", "Apply Y"]'
-                                                />
-                                                {errors.learningOutcomesJSON && <div className="invalid-feedback">{errors.learningOutcomesJSON}</div>}
+                                                {outcomes.map((o, idx) => (
+                                                    <div key={idx} className="input-group input-group-sm mb-1">
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            value={o}
+                                                            onChange={e => setOutcomes(prev => prev.map((x, i) => i === idx ? e.target.value : x))}
+                                                            placeholder={`Outcome ${idx + 1}…`}
+                                                            maxLength={200}
+                                                        />
+                                                        <button type="button" className="btn btn-outline-danger" onClick={() => setOutcomes(prev => prev.filter((_, i) => i !== idx))}>
+                                                            <i className="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                <button type="button" className="btn btn-sm btn-outline-secondary mt-1" onClick={() => setOutcomes(prev => [...prev, ''])}>
+                                                    <i className="bi bi-plus-lg me-1"></i>Add Outcome
+                                                </button>
                                             </div>
 
                                             {/* Assessment Plan */}
@@ -520,18 +531,40 @@ export default function SyllabiPage() {
                                                 <label className="form-label fw-bold">
                                                     Assessment Plan
                                                     <small className="text-muted fw-normal ms-2">
-                                                        (optional JSON)
+                                                        (optional)
                                                     </small>
                                                 </label>
-                                                <textarea
-                                                    className={`form-control font-monospace${errors.assessmentPlanJSON ? ' is-invalid' : ''}`}
-                                                    value={form.assessmentPlanJSON}
-                                                    onChange={e => setForm({ ...form, assessmentPlanJSON: e.target.value })}
-                                                    onBlur={e => setErrors(prev => ({ ...prev, assessmentPlanJSON: validateJson(e.target.value) }))}
-                                                    rows={3}
-                                                    placeholder='e.g. [{"type": "Quiz", "weight": 20}]'
-                                                />
-                                                {errors.assessmentPlanJSON && <div className="invalid-feedback">{errors.assessmentPlanJSON}</div>}
+                                                {planRows.length > 0 && (
+                                                    <div className="row g-1 mb-1">
+                                                        <div className="col-7"><small className="text-muted">Type</small></div>
+                                                        <div className="col-3"><small className="text-muted">Weight (%)</small></div>
+                                                        <div className="col-2"></div>
+                                                    </div>
+                                                )}
+                                                {planRows.map((row, idx) => (
+                                                    <div key={idx} className="row g-1 mb-1 align-items-center">
+                                                        <div className="col-7">
+                                                            <input type="text" className="form-control form-control-sm" value={row.type}
+                                                                onChange={e => setPlanRows(prev => prev.map((r, i) => i === idx ? { ...r, type: e.target.value } : r))}
+                                                                placeholder="e.g. Quiz, Assignment" maxLength={50} />
+                                                        </div>
+                                                        <div className="col-3">
+                                                            <input type="number" className="form-control form-control-sm" value={row.weight}
+                                                                onChange={e => setPlanRows(prev => prev.map((r, i) => i === idx ? { ...r, weight: e.target.value } : r))}
+                                                                placeholder="20" min={0} max={100} />
+                                                        </div>
+                                                        <div className="col-2">
+                                                            <button type="button" className="btn btn-sm btn-outline-danger w-100"
+                                                                onClick={() => setPlanRows(prev => prev.filter((_, i) => i !== idx))}>
+                                                                <i className="bi bi-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                <button type="button" className="btn btn-sm btn-outline-secondary mt-1"
+                                                    onClick={() => setPlanRows(prev => [...prev, { type: '', weight: '' }])}>
+                                                    <i className="bi bi-plus-lg me-1"></i>Add Plan Item
+                                                </button>
                                             </div>
 
                                         </div>
