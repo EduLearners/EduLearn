@@ -1,10 +1,12 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import AppLayout from './components/Layout/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicOnlyRoute from './components/PublicOnlyRoute';
 import Loading from './components/Loading';
+import { detectBackend } from './api/backendConfig';
+import axiosClient from './api/axiosClient';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const MfaSetupPage = lazy(() => import('./pages/MfaSetupPage'));
@@ -84,6 +86,91 @@ const UsersPage = lazy(() => import('./pages/users/UsersPage'));
 const UserDetailPage = lazy(() => import('./pages/users/UserDetailPage'));
 
 export default function App() {
+    // Backend detection state
+    const [backendReady, setBackendReady] = useState(false);
+    const [backendError, setBackendError] = useState(null);
+
+    // Detect backend port on mount
+    useEffect(() => {
+        async function initBackend() {
+            try {
+                const backendUrl = await detectBackend();
+                axiosClient.defaults.baseURL = `${backendUrl}/api`;
+                setBackendReady(true);
+            } catch (error) {
+                setBackendError(error.message);
+            }
+        }
+
+        initBackend();
+    }, []);
+
+    // Show error if backend not reachable
+    if (backendError) {
+        return (
+            <div style={{
+                padding: '2rem',
+                textAlign: 'center',
+                fontFamily: 'system-ui, sans-serif',
+                maxWidth: '600px',
+                margin: '4rem auto'
+            }}>
+                <h2 style={{ color: '#d32f2f' }}>Backend Connection Error</h2>
+                <p style={{ fontSize: '1.1rem', margin: '1rem 0' }}>{backendError}</p>
+                <p style={{ margin: '1.5rem 0' }}>Please ensure the backend is running on either:</p>
+                <ul style={{
+                    listStyle: 'none',
+                    padding: 0,
+                    fontSize: '0.95rem',
+                    textAlign: 'left',
+                    maxWidth: '400px',
+                    margin: '1rem auto'
+                }}>
+                    <li style={{ margin: '0.5rem 0' }}>
+                        • <code style={{ background: '#f5f5f5', padding: '0.25rem 0.5rem', borderRadius: '3px' }}>
+                            http://localhost:5000
+                        </code> (dotnet run --launch-profile http)
+                    </li>
+                    <li style={{ margin: '0.5rem 0' }}>
+                        • <code style={{ background: '#f5f5f5', padding: '0.25rem 0.5rem', borderRadius: '3px' }}>
+                            https://localhost:5001
+                        </code> (dotnet run --launch-profile https)
+                    </li>
+                </ul>
+                <button
+                    onClick={() => window.location.reload()}
+                    style={{
+                        marginTop: '1.5rem',
+                        padding: '0.75rem 2rem',
+                        fontSize: '1rem',
+                        background: '#1976d2',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                    }}
+                >
+                    Retry Connection
+                </button>
+            </div>
+        );
+    }
+
+    // Show loading during detection
+    if (!backendReady) {
+        return (
+            <div style={{
+                padding: '2rem',
+                textAlign: 'center',
+                fontFamily: 'system-ui, sans-serif',
+                margin: '4rem auto'
+            }}>
+                <p style={{ fontSize: '1.1rem' }}>🔍 Detecting backend...</p>
+            </div>
+        );
+    }
+
+    // Normal app render after detection succeeds
     return (
         <BrowserRouter>
             <Suspense fallback={<Loading message="Loading..." />}>
