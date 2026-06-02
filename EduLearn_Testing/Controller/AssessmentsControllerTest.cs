@@ -4,6 +4,7 @@ using EduLearn.API.DTOs;
 using EduLearn.API.Models;
 using EduLearn.API.Models.Enums;
 using EduLearn.API.Repositories.Interfaces;
+using EduLearn.API.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -18,6 +19,9 @@ public class AssessmentsControllerTest
     private Mock<ICourseRepository> _courseRepoMock;
     private Mock<IUserRepository> _userRepoMock;
     private Mock<ISectionRepository> _sectionRepoMock;
+    private Mock<IEnrollmentRepository> _enrollmentRepoMock;
+    private Mock<IStudentRepository> _studentRepoMock;
+    private Mock<INotificationService> _notificationServiceMock;
 
     // ── Controller under test ──
     private AssessmentsController _controller;
@@ -34,13 +38,19 @@ public class AssessmentsControllerTest
         _courseRepoMock = new Mock<ICourseRepository>();
         _userRepoMock = new Mock<IUserRepository>();
         _sectionRepoMock = new Mock<ISectionRepository>();
+        _enrollmentRepoMock = new Mock<IEnrollmentRepository>();
+        _studentRepoMock = new Mock<IStudentRepository>();
+        _notificationServiceMock = new Mock<INotificationService>();
 
-        // Create the controller with all 4 mocked dependencies
+        // Create the controller with all 7 mocked dependencies
         _controller = new AssessmentsController(
             _assessmentRepoMock.Object,
             _courseRepoMock.Object,
             _userRepoMock.Object,
-            _sectionRepoMock.Object);
+            _sectionRepoMock.Object,
+            _enrollmentRepoMock.Object,
+            _studentRepoMock.Object,
+            _notificationServiceMock.Object);
 
         // Simulate a logged-in Instructor with UserID = 1
         // This is what JWT middleware does in production — populates User claims
