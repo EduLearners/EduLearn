@@ -92,6 +92,33 @@ Empty body, negative credits, 500-char title, negative payment amount, SQL-injec
 
 ---
 
+## Phase 2 — Role Journey Deep Flows (all 7 roles)
+
+| Role | Flow tested | Result |
+|---|---|---|
+| **Student** | Login, dashboard, enrollment (term=2026-Fall default ✅), notifications mark-all-read (badge 14→0 live ✅), tickets page | ✅ PASS |
+| **Instructor** | Assessment edit — status dropdown wired to `PUT /{id}/publish` + transition guard + lock banner (A1-10 ✅); owns sections 1,2,5 | ✅ PASS |
+| **Registrar** | Transcript list (CGPA 9.00/10.00 — 10-pt scale ✅), PDF download (131KB valid `%PDF`, SRA-03 ✅), generate for student 2 (Draft, GPA=8, R-4/R-5 ✅), Student generate → 403 | ✅ PASS |
+| **DeptAdmin** | Timetable deep-link → "Access denied" graceful (EnrollmentViewPolicy excludes DeptAdmin ✅); course form uses 8 prereq **checkboxes**, no JSON textarea ✅ | ✅ PASS |
+| **Finance** | Invoice lookup by Student ID → shows Paid invoice ₹45,000; "Generate"/"Generate for All" both `btn-primary-edulearn` ✅ | ✅ PASS |
+| **ITAdmin** | Create User modal — portaled to body, full form, submit button **not clipped** (bottom 633 ≤ 666 ✅); test notification `POST /notifications/test` → 201, unread 7→8 ✅; Student test → 403 | ✅ PASS |
+| **Auditor** | KPIs read-only with 4 real values (Active=8, Fill=3.06%, Completion=66.67%, Collection=65.08% — `ComputationKey` ✅), **no** recalc button (recalc correctly 403 — read-only); Audit Log chart canvas renders (8151 px, double-Z fix ✅); IST timestamps ✅; show-all = `btn-outline-secondary` ✅ | ✅ PASS |
+
+### Task 2.8 — RKA Audit Packages regression (deep)
+| Check | Result |
+|---|---|
+| Empty-date validation | ✅ "Start/End date is required", no API call |
+| End-before-start validation | ✅ "End date must be after start date", no API call |
+| Valid generate (empty range) | ✅ Package row created, "0 reports / No reports in range", no error |
+| PDF download | ✅ 200 `application/pdf` 132KB, magic `%PDF-` |
+| JSON download | ✅ 200 `application/json`, valid body |
+| Authz | ✅ Student/Finance/Instructor → 403; ITAdmin → 201 |
+| Deep-link guard | ✅ Student `/audit-packages` → "Access denied" page |
+
+> **KPI authorization clarification:** Auditor receives 403 on `POST /api/kpis/seed` and `/recalculate`. This is **correct by design** — only ITAdmin recalculates KPIs; Auditor is read-only. (The audit plan's note that Auditor may recalculate was inaccurate.) KPIs were seeded/recalculated as ITAdmin and returned real values.
+
+---
+
 ## Phase 3 — Chaos & Resilience Results
 
 | Test | Result | Evidence |
