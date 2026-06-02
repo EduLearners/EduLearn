@@ -1,6 +1,6 @@
 # ============================================================
-# seed-sample-data.ps1 - Comprehensive, fully-linked sample data
-# for MANUAL testing of EduLearn across all 7 roles.
+# seed-sample-data.ps1 - Comprehensive, fully-linked RICH sample data
+# for MANUAL + deep/edge testing of EduLearn across all 7 roles.
 #
 # Creates (in dependency order):
 #   role accounts + extra students/instructors -> programs -> courses
@@ -8,6 +8,18 @@
 #   -> content -> submissions(+grading) -> applicants -> fees
 #   -> scholarships -> invoices -> payments -> notifications
 #   -> tickets -> transcripts
+#
+# RICH/EDGE coverage deliberately seeded for thorough auditing:
+#   * 3 programs; 9 courses incl. a 0-credit seminar and two prerequisite chains
+#   * 8 sections engineered into 3 capacity states:
+#       FULL = CS401 (cap 3, 3 enrolled), WAITLIST = MA201 (cap 1, 2 enrolled),
+#       EMPTY = SEM100 (cap 25, 0 enrolled)
+#   * 9 linked students + 1 intentionally UNLINKED Student-role account (A1-01 repro)
+#   * assessments in ALL 4 statuses: Draft, Published, Closed, Archived
+#   * invoices across Paid / PartiallyPaid / Pending / Overdue-candidate (past due)
+#   * payments using ALL 5 methods: BankTransfer, Cash, Card, UPI, Cheque
+#   * tickets in Open / InProgress / Resolved
+#   * boundary data: a unicode student name, an emoji notification, a 200-char ticket
 #
 # Every row is created through the REAL API as the correctly-authorised
 # role, so the data is exactly what the app would produce.
@@ -148,7 +160,17 @@ $accounts = @(
     @{ Username="student2";    FullName="Aarav Sharma";    Email="student2@edulearn.local";    Role="Student";    Password="Student@123"  },
     @{ Username="student3";    FullName="Diya Patel";      Email="student3@edulearn.local";    Role="Student";    Password="Student@123"  },
     @{ Username="student4";    FullName="Rohan Mehta";     Email="student4@edulearn.local";    Role="Student";    Password="Student@123"  },
-    @{ Username="instructor2"; FullName="Meera Iyer";      Email="instructor2@edulearn.local"; Role="Instructor"; Password="Instructor@123" }
+    @{ Username="student5";    FullName="Ishaan Gupta";    Email="student5@edulearn.local";    Role="Student";    Password="Student@123"  },
+    @{ Username="student6";    FullName="Ananya Reddy";    Email="student6@edulearn.local";    Role="Student";    Password="Student@123"  },
+    @{ Username="student7";    FullName="Vivaan Joshi";    Email="student7@edulearn.local";    Role="Student";    Password="Student@123"  },
+    @{ Username="student8";    FullName="Saanvi Rao";      Email="student8@edulearn.local";    Role="Student";    Password="Student@123"  },
+    # Boundary: unicode + emoji full name (verifies rendering + nvarchar handling)
+    @{ Username="student9";    FullName="Zoe Unicode";     Email="student9@edulearn.local";    Role="Student";    Password="Student@123"  },
+    # A1-01 repro: a Student-role account that is intentionally NOT linked to a Student record.
+    # Logging in as this user and opening /enrollment exercises the "no linked student record" path.
+    @{ Username="studentnolink"; FullName="Unlinked Student"; Email="studentnolink@edulearn.local"; Role="Student"; Password="Student@123" },
+    @{ Username="instructor2"; FullName="Meera Iyer";      Email="instructor2@edulearn.local"; Role="Instructor"; Password="Instructor@123" },
+    @{ Username="instructor3"; FullName="Arjun Nair";      Email="instructor3@edulearn.local"; Role="Instructor"; Password="Instructor@123" }
 )
 foreach ($a in $accounts) {
     New-Entity -Desc "$($a.Role) / $($a.Username)" -Method Post -Path "/api/users" -Token $adminTok -IdField "userID" -Body @{
@@ -206,6 +228,7 @@ if ($already -and -not $Reset) {
 Write-Step "Programs"
 $P1 = New-Entity "Program: B.Tech Computer Science" Post "/api/programs" $adminTok @{ name="B.Tech Computer Science"; degreeType="B.Tech"; durationTerms=8 } "programID"
 $P2 = New-Entity "Program: B.Tech Electrical Engineering" Post "/api/programs" $adminTok @{ name="B.Tech Electrical Engineering"; degreeType="B.Tech"; durationTerms=8 } "programID"
+$P3 = New-Entity "Program: B.Sc Mathematics" Post "/api/programs" $adminTok @{ name="B.Sc Mathematics"; degreeType="B.Sc"; durationTerms=6 } "programID"
 # Resolve program IDs by name so 409-existing programs never leave null IDs
 $pResp = Api -Method Get -Path "/api/programs" -Token $adminTok
 $pRows = $pResp.data
@@ -214,7 +237,8 @@ $PMAP = @{}
 foreach ($pr in $pRows) { if ($pr.name) { $PMAP[[string]$pr.name] = $pr.programID } }
 if ($PMAP['B.Tech Computer Science'])      { $P1 = $PMAP['B.Tech Computer Science'] }
 if ($PMAP['B.Tech Electrical Engineering']) { $P2 = $PMAP['B.Tech Electrical Engineering'] }
-Write-Ok "Resolved program IDs: P1=$P1 P2=$P2"
+if ($PMAP['B.Sc Mathematics'])             { $P3 = $PMAP['B.Sc Mathematics'] }
+Write-Ok "Resolved program IDs: P1=$P1 P2=$P2 P3=$P3"
 
 # ============================================================
 # 6. Courses (admin) - incl. a prerequisite chain
@@ -226,6 +250,10 @@ $C3 = New-Entity "Course: CS301" Post "/api/courses" $adminTok @{ code="CS301"; 
 $C4 = New-Entity "Course: EE101" Post "/api/courses" $adminTok @{ code="EE101"; title="Circuit Theory"; credits=4; level="100" } "courseID"
 $C5 = New-Entity "Course: MA101" Post "/api/courses" $adminTok @{ code="MA101"; title="Calculus I"; credits=3; level="100" } "courseID"
 $C6 = New-Entity "Course: CS210" Post "/api/courses" $adminTok @{ code="CS210"; title="Databases"; credits=3; level="200" } "courseID"
+$C7 = New-Entity "Course: CS401 (deep prereq)" Post "/api/courses" $adminTok @{ code="CS401"; title="Operating Systems"; credits=4; level="400"; prerequisitesJSON="[$C3]" } "courseID"
+$C8 = New-Entity "Course: MA201" Post "/api/courses" $adminTok @{ code="MA201"; title="Linear Algebra"; credits=3; level="200"; prerequisitesJSON="[$C5]" } "courseID"
+# Boundary: a 0-credit course (seminar) to exercise credit/GPA math with a zero divisor
+$C9 = New-Entity "Course: SEM100 (0-credit)" Post "/api/courses" $adminTok @{ code="SEM100"; title="Professional Seminar"; credits=0; level="100"; description="Non-credit seminar." } "courseID"
 # Resolve course IDs by code so a pre-existing course (409 -> null id) never
 # leaves a downstream section/assessment/content with a null courseID.
 $cResp = Api -Method Get -Path "/api/courses" -Token $adminTok
@@ -239,7 +267,10 @@ if ($CMAP['CS301']) { $C3 = $CMAP['CS301'] }
 if ($CMAP['EE101']) { $C4 = $CMAP['EE101'] }
 if ($CMAP['MA101']) { $C5 = $CMAP['MA101'] }
 if ($CMAP['CS210']) { $C6 = $CMAP['CS210'] }
-Write-Ok "Resolved course IDs: CS101=$C1 CS201=$C2 CS301=$C3 EE101=$C4 MA101=$C5 CS210=$C6"
+if ($CMAP['CS401']) { $C7 = $CMAP['CS401'] }
+if ($CMAP['MA201']) { $C8 = $CMAP['MA201'] }
+if ($CMAP['SEM100']) { $C9 = $CMAP['SEM100'] }
+Write-Ok "Resolved course IDs: CS101=$C1 CS201=$C2 CS301=$C3 EE101=$C4 MA101=$C5 CS210=$C6 CS401=$C7 MA201=$C8 SEM100=$C9"
 
 # ============================================================
 # 7. Rooms (admin)
@@ -248,16 +279,28 @@ Write-Step "Rooms"
 $R1 = New-Entity "Room: Main-101" Post "/api/rooms" $adminTok @{ building="Main"; roomNumber="101"; capacity=60; resourcesJSON='{"projector":true}' } "roomID"
 $R2 = New-Entity "Room: Main-102" Post "/api/rooms" $adminTok @{ building="Main"; roomNumber="102"; capacity=40 } "roomID"
 $R3 = New-Entity "Room: Science-201" Post "/api/rooms" $adminTok @{ building="Science"; roomNumber="201"; capacity=30; resourcesJSON='{"lab":true}' } "roomID"
+$R4 = New-Entity "Room: Science-202" Post "/api/rooms" $adminTok @{ building="Science"; roomNumber="202"; capacity=25; resourcesJSON='{"lab":true,"projector":true}' } "roomID"
+$R5 = New-Entity "Room: Annexe-A1" Post "/api/rooms" $adminTok @{ building="Annexe"; roomNumber="A1"; capacity=120 } "roomID"
 
 # ============================================================
 # 8. Students (admin) - each links a User(role=Student) by userID
 # ============================================================
 Write-Step "Students"
+# Boundary name: real unicode (umlaut/diacritics) built from char codes so the .ps1
+# stays ASCII on disk (PowerShell 5.1 + BOM-less UTF-8 can corrupt literal unicode).
+# Produces "Zoe" + e-diaeresis + " " + U + diaeresis + "niversity" => "Zoë Üniversity".
+$uniName = "Zo" + [char]0x00EB + " " + [char]0x00DC + "niversity"
 $studentDefs = @(
     @{ user="student";  name="Test Student"; dob="2004-03-12"; gender="Male";              prog=$P1 },
     @{ user="student2"; name="Aarav Sharma"; dob="2004-07-22"; gender="Male";              prog=$P1 },
     @{ user="student3"; name="Diya Patel";   dob="2005-01-09"; gender="Female";            prog=$P1 },
-    @{ user="student4"; name="Rohan Mehta";  dob="2003-11-30"; gender="Prefer not to say"; prog=$P2 }
+    @{ user="student4"; name="Rohan Mehta";  dob="2003-11-30"; gender="Prefer not to say"; prog=$P2 },
+    @{ user="student5"; name="Ishaan Gupta"; dob="2004-09-15"; gender="Male";              prog=$P1 },
+    @{ user="student6"; name="Ananya Reddy"; dob="2005-04-02"; gender="Female";            prog=$P2 },
+    @{ user="student7"; name="Vivaan Joshi"; dob="2004-12-19"; gender="Male";              prog=$P3 },
+    @{ user="student8"; name="Saanvi Rao";   dob="2005-06-25"; gender="Female";            prog=$P3 },
+    @{ user="student9"; name=$uniName;       dob="2004-02-29"; gender="Female";            prog=$P1 }
+    # NOTE: 'studentnolink' is intentionally absent here -> no Student record (A1-01 repro).
 )
 $S = @{}
 foreach ($sd in $studentDefs) {
@@ -280,7 +323,7 @@ foreach ($st in $stRows) {
         }
     }
 }
-Write-Ok "Resolved student IDs: student=$($S['student']) student2=$($S['student2']) student3=$($S['student3']) student4=$($S['student4'])"
+Write-Ok "Resolved student IDs: student=$($S['student']) student2=$($S['student2']) student3=$($S['student3']) student4=$($S['student4']) student5=$($S['student5']) student6=$($S['student6']) student7=$($S['student7']) student8=$($S['student8']) student9=$($S['student9'])"
 
 # ============================================================
 # 9. Sections (admin) - instructorID must be an Instructor user
@@ -292,6 +335,14 @@ $Sec2 = New-Entity "Section: CS201" Post "/api/sections" $adminTok @{ courseID=$
 $Sec3 = New-Entity "Section: EE101" Post "/api/sections" $adminTok @{ courseID=$C4; term=$Term; instructorID=$instr2; roomID=$R3; capacity=30; scheduleJSON='{"days":"Mon-Wed","time":"09:00-10:30"}' } "sectionID"
 $Sec4 = New-Entity "Section: MA101 (small)" Post "/api/sections" $adminTok @{ courseID=$C5; term=$Term; instructorID=$instr2; roomID=$R2; capacity=2;  scheduleJSON='{"days":"Fri","time":"14:00-16:00"}' } "sectionID"
 $Sec5 = New-Entity "Section: CS210" Post "/api/sections" $adminTok @{ courseID=$C6; term=$Term; instructorID=$instr1; roomID=$R1; capacity=60; scheduleJSON='{"days":"Thu","time":"13:00-15:00"}' } "sectionID"
+$instr3 = UID 'instructor3'
+# Capacity-state sections for edge testing:
+#   Sec6 CS401 cap=3  -> will be filled to capacity (FULL)
+#   Sec7 MA201 cap=1  -> will be over-filled (1 Enrolled + 1 Waitlisted)
+#   Sec8 SEM100 cap=25 -> left with ZERO enrollments (EMPTY)
+$Sec6 = New-Entity "Section: CS401 (fills full)" Post "/api/sections" $adminTok @{ courseID=$C7; term=$Term; instructorID=$instr3; roomID=$R4; capacity=3;  scheduleJSON='{"days":"Mon","time":"16:00-18:00"}' } "sectionID"
+$Sec7 = New-Entity "Section: MA201 (waitlist)" Post "/api/sections" $adminTok @{ courseID=$C8; term=$Term; instructorID=$instr3; roomID=$R5; capacity=1;  scheduleJSON='{"days":"Wed","time":"08:00-09:30"}' } "sectionID"
+$Sec8 = New-Entity "Section: SEM100 (empty)" Post "/api/sections" $adminTok @{ courseID=$C9; term=$Term; instructorID=$instr2; roomID=$R4; capacity=25; scheduleJSON='{"days":"Fri","time":"10:00-11:00"}' } "sectionID"
 # Resolve section IDs by courseID+term so 409-existing sections never leave null IDs
 $secResp = Api -Method Get -Path "/api/sections" -Token $adminTok
 $secRows = $secResp.data
@@ -308,7 +359,10 @@ if ($SECMAP[[string]$C2] -and -not $Sec2) { $Sec2 = $SECMAP[[string]$C2] }
 if ($SECMAP[[string]$C4] -and -not $Sec3) { $Sec3 = $SECMAP[[string]$C4] }
 if ($SECMAP[[string]$C5] -and -not $Sec4) { $Sec4 = $SECMAP[[string]$C5] }
 if ($SECMAP[[string]$C6] -and -not $Sec5) { $Sec5 = $SECMAP[[string]$C6] }
-Write-Ok "Resolved section IDs: CS101=$Sec1 CS201=$Sec2 EE101=$Sec3 MA101=$Sec4 CS210=$Sec5"
+if ($SECMAP[[string]$C7] -and -not $Sec6) { $Sec6 = $SECMAP[[string]$C7] }
+if ($SECMAP[[string]$C8] -and -not $Sec7) { $Sec7 = $SECMAP[[string]$C8] }
+if ($SECMAP[[string]$C9] -and -not $Sec8) { $Sec8 = $SECMAP[[string]$C9] }
+Write-Ok "Resolved section IDs: CS101=$Sec1 CS201=$Sec2 EE101=$Sec3 MA101=$Sec4 CS210=$Sec5 CS401=$Sec6 MA201=$Sec7 SEM100=$Sec8"
 
 # ============================================================
 # 10. Enrollments (admin) - multiple students x sections, plus a drop
@@ -325,10 +379,24 @@ Enroll "student2" $Sec1 "CS101" | Out-Null
 $dropId = Enroll "student2" $Sec4 "MA101"
 Enroll "student3" $Sec2 "CS201" | Out-Null
 Enroll "student4" $Sec3 "EE101" | Out-Null
+Enroll "student5" $Sec1 "CS101" | Out-Null
+Enroll "student6" $Sec3 "EE101" | Out-Null
+Enroll "student9" $Sec5 "CS210" | Out-Null
 if ($dropId) {
     $d = Api -Method Delete -Path "/api/enrollment/$dropId/drop" -Token $adminTok
     if ($d.ok -or $d.status -eq 204) { Write-Ok "Dropped enrollment $dropId (student2 -> MA101)" } else { Write-Err "Drop failed [HTTP $($d.status)]: $($d.error)" }
 }
+
+# --- Capacity-state enrollments -------------------------------------------------
+# FULL: Sec6 (CS401) capacity=3 -> enroll exactly 3 students
+Enroll "student"  $Sec6 "CS401" | Out-Null
+Enroll "student2" $Sec6 "CS401" | Out-Null
+Enroll "student3" $Sec6 "CS401" | Out-Null
+# WAITLIST: Sec7 (MA201) capacity=1 -> 1st Enrolled, 2nd should be Waitlisted by the API
+Enroll "student7" $Sec7 "MA201" | Out-Null
+$wl = Enroll "student8" $Sec7 "MA201"
+if ($wl) { Write-Ok "student8 -> MA201 enroll attempt id=$wl (expected Waitlisted; capacity=1)" }
+# Sec8 (SEM100) is left with ZERO enrollments (EMPTY-section edge case) on purpose.
 
 # ============================================================
 # 11. Assessments (admin, createdByFK=instructor) - Draft + Published
@@ -338,13 +406,24 @@ $A1 = New-Entity "Assessment: CS101 Quiz 1" Post "/api/assessments" $adminTok @{
 $A2 = New-Entity "Assessment: CS101 Assignment 1" Post "/api/assessments" $adminTok @{ courseID=$C1; sectionID=$Sec1; title="CS101 Assignment 1"; type="Assignment"; dueAt="2026-10-15T23:59:00Z"; maxScore=100; createdByFK=$instr1; instructionsURI="https://lms.example/cs101-a1" } "assessmentID"
 $A3 = New-Entity "Assessment: CS201 Midterm" Post "/api/assessments" $adminTok @{ courseID=$C2; sectionID=$Sec2; title="CS201 Midterm"; type="Exam"; dueAt="2026-11-01T23:59:00Z"; maxScore=100; createdByFK=$instr1 } "assessmentID"
 $A4 = New-Entity "Assessment: EE101 Quiz (Draft)" Post "/api/assessments" $adminTok @{ courseID=$C4; sectionID=$Sec3; title="EE101 Quiz 1"; type="Quiz"; dueAt="2026-10-20T23:59:00Z"; maxScore=30; createdByFK=$instr2 } "assessmentID"
-# Publish A1, A2, A3 (leave A4 Draft for lifecycle testing)
-foreach ($pair in @(@($A1,"CS101 Quiz 1"), @($A2,"CS101 Assignment 1"), @($A3,"CS201 Midterm"))) {
-    if ($pair[0]) {
-        $pr = Api -Method Put -Path "/api/assessments/$($pair[0])/publish" -Token $adminTok -Body @{ status="Published" }
-        if ($pr.ok) { Write-Ok "Published: $($pair[1])" } else { Write-Err "Publish '$($pair[1])' [HTTP $($pr.status)]: $($pr.error)" }
+$A5 = New-Entity "Assessment: CS210 Project (->Closed)" Post "/api/assessments" $adminTok @{ courseID=$C6; sectionID=$Sec5; title="CS210 Project"; type="Assignment"; dueAt="2026-09-10T23:59:00Z"; maxScore=100; createdByFK=$instr1 } "assessmentID"
+$A6 = New-Entity "Assessment: CS101 Old Exam (->Archived)" Post "/api/assessments" $adminTok @{ courseID=$C1; sectionID=$Sec1; title="CS101 Practice Exam"; type="Exam"; dueAt="2026-08-01T23:59:00Z"; maxScore=100; createdByFK=$instr1 } "assessmentID"
+
+# Status transition helper: walks an assessment along Draft->Published->Closed->Archived
+function Advance-Assessment($id, $label, [string[]]$path) {
+    if (-not $id) { return }
+    foreach ($target in $path) {
+        $pr = Api -Method Put -Path "/api/assessments/$id/publish" -Token $adminTok -Body @{ status=$target }
+        if ($pr.ok) { Write-Ok "$label -> $target" } else { Write-Err "$label -> $target [HTTP $($pr.status)]: $($pr.error)"; break }
     }
 }
+# Publish A1, A2, A3 (leave A4 Draft for lifecycle testing)
+Advance-Assessment $A1 "CS101 Quiz 1"       @("Published")
+Advance-Assessment $A2 "CS101 Assignment 1" @("Published")
+Advance-Assessment $A3 "CS201 Midterm"      @("Published")
+# A5 ends Closed; A6 ends Archived -> all four AssessmentStatus values now present in seed
+Advance-Assessment $A5 "CS210 Project"      @("Published","Closed")
+Advance-Assessment $A6 "CS101 Practice Exam" @("Published","Closed","Archived")
 
 # ============================================================
 # 12. Content (admin, uploadedByFK=instructor)
@@ -400,8 +479,10 @@ if ($ap1) {
 # ============================================================
 Write-Step "Fees"
 $feeItems = '[{"item":"Tuition","amount":50000},{"item":"Lab","amount":5000}]'
+$feeItemsP3 = '[{"item":"Tuition","amount":40000},{"item":"Library","amount":3000}]'
 New-Entity "Fee: CS program $Term" Post "/api/fees" $finTok @{ programID=$P1; term=$Term; feeItemsJSON=$feeItems; effectiveFrom="2026-01-01"; effectiveTo="2026-12-31" } "feeID" | Out-Null
 New-Entity "Fee: EE program $Term" Post "/api/fees" $finTok @{ programID=$P2; term=$Term; feeItemsJSON=$feeItems; effectiveFrom="2026-01-01"; effectiveTo="2026-12-31" } "feeID" | Out-Null
+New-Entity "Fee: Math program $Term" Post "/api/fees" $finTok @{ programID=$P3; term=$Term; feeItemsJSON=$feeItemsP3; effectiveFrom="2026-01-01"; effectiveTo="2026-12-31" } "feeID" | Out-Null
 
 # ============================================================
 # 16. Scholarships (finance) - validFrom in the past so it applies
@@ -410,52 +491,93 @@ Write-Step "Scholarships"
 if ($S["student"]) {
     New-Entity "Scholarship: Merit (student)" Post "/api/scholarships" $finTok @{ studentID=$S["student"]; awardType="Merit"; amount=10000; validFrom="2026-01-01"; validTo="2026-12-31" } "scholarshipID" | Out-Null
 }
+if ($S["student3"]) {
+    New-Entity "Scholarship: Need-based (student3)" Post "/api/scholarships" $finTok @{ studentID=$S["student3"]; awardType="Need"; amount=5000; validFrom="2026-01-01"; validTo="2026-12-31" } "scholarshipID" | Out-Null
+}
 
 # ============================================================
 # 17. Invoices (finance) - term matches fees + active scholarships
 # ============================================================
-Write-Step "Invoices"
+Write-Step "Invoices + Payments"
+# Data-driven plan covering every InvoiceStatus + all 5 PaymentMethod values.
+#   pay  = full | partial | none   (amount is derived from the invoice's real amountDue)
+#   due  = future (normal) | past (overdue candidate)
+# Methods rotate across BankTransfer, Cash, Card, UPI, Cheque so each appears at least once.
+$invoicePlan = @(
+    @{ key="student";  due="2026-08-15"; pay="full";    method="BankTransfer"; note="Paid (full)" },
+    @{ key="student2"; due="2026-08-15"; pay="partial"; method="Card";         note="PartiallyPaid" },
+    @{ key="student3"; due="2026-08-15"; pay="full";    method="Cash";         note="Paid (full, has scholarship)" },
+    @{ key="student4"; due="2026-08-15"; pay="none";    method=$null;          note="Pending (unpaid)" },
+    @{ key="student5"; due="2026-08-15"; pay="partial"; method="UPI";          note="PartiallyPaid" },
+    @{ key="student6"; due="2026-08-15"; pay="full";    method="Cheque";       note="Paid (full)" },
+    @{ key="student7"; due="2026-02-01"; pay="none";    method=$null;          note="Overdue candidate (past due, unpaid)" },
+    @{ key="student8"; due="2026-02-01"; pay="partial"; method="Cash";         note="Overdue candidate (past due, partial)" },
+    @{ key="student9"; due="2026-08-15"; pay="none";    method=$null;          note="Pending (unicode-name student)" }
+)
 $INV = @{}
-foreach ($sk in @("student","student2","student4")) {
-    if ($S[$sk]) {
-        $r = Api -Method Post -Path "/api/invoices/generate" -Token $finTok -Body @{ studentID=$S[$sk]; term=$Term; dueDate="2026-08-15" }
-        if ($r.ok) { $INV[$sk] = $r.data.invoiceID; Write-Ok "Invoice $sk (id=$($r.data.invoiceID), amountDue=$($r.data.amountDue))" }
-        else { Write-Err "Invoice $sk [HTTP $($r.status)]: $($r.error)" }
-    }
-}
+$payN = 0
+foreach ($plan in $invoicePlan) {
+    $sk = $plan.key
+    if (-not $S[$sk]) { continue }
+    $r = Api -Method Post -Path "/api/invoices/generate" -Token $finTok -Body @{ studentID=$S[$sk]; term=$Term; dueDate=$plan.due }
+    if (-not $r.ok) { Write-Err "Invoice $sk [HTTP $($r.status)]: $($r.error)"; continue }
+    $INV[$sk] = $r.data.invoiceID
+    $due = [decimal]$r.data.amountDue
+    Write-Ok "Invoice $sk (id=$($INV[$sk]), amountDue=$due, due=$($plan.due)) -> target: $($plan.note)"
 
-# ============================================================
-# 18. Payments (finance) - one full, one partial
-# ============================================================
-Write-Step "Payments"
-if ($INV["student"])  { New-Entity "Payment: student full"     Post "/api/payments" $finTok @{ invoiceID=$INV["student"];  amount=45000; method="BankTransfer"; reference="TXN-SEED-1" } "paymentID" | Out-Null }
-if ($INV["student2"]) { New-Entity "Payment: student2 partial" Post "/api/payments" $finTok @{ invoiceID=$INV["student2"]; amount=20000; method="Card";         reference="TXN-SEED-2" } "paymentID" | Out-Null }
+    if ($plan.pay -eq "none" -or $due -le 0) { continue }
+    $amt = if ($plan.pay -eq "full") { $due } else { [math]::Floor($due / 2) }
+    if ($amt -le 0) { continue }
+    $payN++
+    New-Entity ("Payment: {0} {1} ({2}) = {3}" -f $sk, $plan.pay, $plan.method, $amt) `
+        Post "/api/payments" $finTok @{ invoiceID=$INV[$sk]; amount=$amt; method=$plan.method; reference=("TXN-SEED-{0}" -f $payN) } "paymentID" | Out-Null
+}
 
 # ============================================================
 # 19. Notifications (admin /test)
 # ============================================================
 Write-Step "Notifications"
-New-Entity "Notification -> student"    Post "/api/notifications/test" $adminTok @{ userID=(UID 'student');    category="System";     severity="Info";    message="Welcome to EduLearn (seed)." } "notificationID" | Out-Null
-New-Entity "Notification -> instructor" Post "/api/notifications/test" $adminTok @{ userID=(UID 'instructor'); category="Assessment"; severity="Warning"; message="Grading window opens soon (seed)." } "notificationID" | Out-Null
+# Emoji message (graduation cap U+1F393) built from a surrogate-safe code point so the
+# .ps1 stays ASCII on disk but a real emoji is stored — verifies UI + DB unicode handling.
+$emojiMsg = "Congratulations on enrolling " + [System.Char]::ConvertFromUtf32(0x1F393) + " (seed)."
+New-Entity "Notification -> student (System)"     Post "/api/notifications/test" $adminTok @{ userID=(UID 'student');    category="System";     severity="Info";     message="Welcome to EduLearn (seed)." } "notificationID" | Out-Null
+New-Entity "Notification -> instructor (Assess.)" Post "/api/notifications/test" $adminTok @{ userID=(UID 'instructor'); category="Assessment"; severity="Warning";  message="Grading window opens soon (seed)." } "notificationID" | Out-Null
+New-Entity "Notification -> student (Finance)"    Post "/api/notifications/test" $adminTok @{ userID=(UID 'student');    category="Finance";    severity="Critical"; message="Invoice payment overdue (seed)." } "notificationID" | Out-Null
+New-Entity "Notification -> student2 (Enroll.)"   Post "/api/notifications/test" $adminTok @{ userID=(UID 'student2');   category="Enrollment"; severity="Info";     message=$emojiMsg } "notificationID" | Out-Null
+New-Entity "Notification -> admin (IT)"           Post "/api/notifications/test" $adminTok @{ userID=(UID 'admin');      category="IT";         severity="Warning";  message="Scheduled maintenance tonight (seed)." } "notificationID" | Out-Null
 
 # ============================================================
 # 20. Tickets (student creates; admin assigns + resolves)
 # ============================================================
 Write-Step "Tickets"
+# Resolved: create -> assign (InProgress) -> resolve
 $tk1 = $null
-if ($stuTok) { $tk1 = New-Entity "Ticket: portal access" Post "/api/tickets" $stuTok @{ subject="Cannot open Timetable"; description="Timetable page shows nothing for 2026-Fall."; priority="High" } "ticketID" }
+if ($stuTok) { $tk1 = New-Entity "Ticket: portal access (->Resolved)" Post "/api/tickets" $stuTok @{ subject="Cannot open Timetable"; description="Timetable page shows nothing for 2026-Fall."; priority="High" } "ticketID" }
 if ($tk1) {
     $as = Api -Method Put -Path "/api/tickets/$tk1/assign" -Token $adminTok -Body @{ assignedToUserId=(UID 'admin') }
-    if ($as.ok) { Write-Ok "Ticket $tk1 assigned to admin" } else { Write-Err "Assign [HTTP $($as.status)]: $($as.error)" }
+    if ($as.ok) { Write-Ok "Ticket $tk1 assigned to admin (InProgress)" } else { Write-Err "Assign [HTTP $($as.status)]: $($as.error)" }
     $rs = Api -Method Put -Path "/api/tickets/$tk1/resolve" -Token $adminTok -Body @{ resolutionURI="https://kb.example/timetable"; resolutionNote="Cleared cache; resolved." }
     if ($rs.ok) { Write-Ok "Ticket $tk1 resolved" } else { Write-Err "Resolve [HTTP $($rs.status)]: $($rs.error)" }
 }
+# Open: create only, leave unassigned (status stays Open)
+if ($stuTok) { New-Entity "Ticket: grade query (Open, Medium)" Post "/api/tickets" $stuTok @{ subject="Grade not visible"; description="My CS101 Quiz 1 grade is not showing on the submissions page."; priority="Medium" } "ticketID" | Out-Null }
+# InProgress: create -> assign, do NOT resolve
+$tk3 = $null
+$stu3Tok = Get-Token "student3" "Student@123"
+if ($stu3Tok) { $tk3 = New-Entity "Ticket: login issue (->InProgress, Critical)" Post "/api/tickets" $stu3Tok @{ subject="MFA loop"; description="Stuck on MFA verification screen after login."; priority="Critical" } "ticketID" }
+if ($tk3) {
+    $as3 = Api -Method Put -Path "/api/tickets/$tk3/assign" -Token $adminTok -Body @{ assignedToUserId=(UID 'admin') }
+    if ($as3.ok) { Write-Ok "Ticket $tk3 assigned to admin (InProgress, left unresolved)" } else { Write-Err "Assign [HTTP $($as3.status)]: $($as3.error)" }
+}
+# Boundary: a 200-char description to stress text rendering/wrapping
+$longDesc = ("A" * 200)
+if ($stuTok) { New-Entity "Ticket: long description (Low, 200 chars)" Post "/api/tickets" $stuTok @{ subject="Long description test"; description=$longDesc; priority="Low" } "ticketID" | Out-Null }
 
 # ============================================================
 # 21. Transcripts (registrar) - generate for 2, publish 1
 # ============================================================
 Write-Step "Transcripts"
-foreach ($sk in @("student","student2")) {
+foreach ($sk in @("student","student2","student3","student5","student9")) {
     if ($S[$sk]) {
         $tr = Api -Method Post -Path "/api/transcripts/generate/$($S[$sk])" -Token $regTok -Body @{}
         if ($tr.ok) {
@@ -479,17 +601,30 @@ Write-Host "============================================================" -Foreg
 Write-Host " EduLearn manual-test accounts (MFA disabled, direct login)" -ForegroundColor White
 Write-Host "============================================================" -ForegroundColor White
 Write-Host (" {0,-12} {1,-12} {2}" -f "ROLE","USERNAME","PASSWORD") -ForegroundColor White
-Write-Host " ITAdmin      admin        Admin@123"
-Write-Host " Student      student      Student@123   (enrolled, graded, invoiced, transcript)"
-Write-Host " Student      student2     Student@123"
-Write-Host " Student      student3     Student@123"
-Write-Host " Student      student4     Student@123   (EE program)"
-Write-Host " Instructor   instructor   Instructor@123"
-Write-Host " Instructor   instructor2  Instructor@123"
-Write-Host " Registrar    registrar    Registrar@123"
-Write-Host " DeptAdmin    deptadmin    DeptAdmin@123"
-Write-Host " Finance      finance      Finance@123"
-Write-Host " Auditor      auditor      Auditor@123"
+Write-Host " ITAdmin      admin          Admin@123"
+Write-Host " Student      student        Student@123   (enrolled, graded, invoiced PAID, transcript published)"
+Write-Host " Student      student2       Student@123   (PartiallyPaid invoice, dropped MA101)"
+Write-Host " Student      student3       Student@123   (Paid invoice, need-based scholarship)"
+Write-Host " Student      student4       Student@123   (EE program, Pending invoice)"
+Write-Host " Student      student5       Student@123   (PartiallyPaid via UPI)"
+Write-Host " Student      student6       Student@123   (EE program, Paid via Cheque)"
+Write-Host " Student      student7       Student@123   (Math program, OVERDUE candidate, waitlist MA201)"
+Write-Host " Student      student8       Student@123   (Math program, OVERDUE partial)"
+Write-Host " Student      student9       Student@123   (UNICODE name; transcript)"
+Write-Host " Student      studentnolink  Student@123   (NO linked Student record -> A1-01 repro)"
+Write-Host " Instructor   instructor     Instructor@123"
+Write-Host " Instructor   instructor2    Instructor@123"
+Write-Host " Instructor   instructor3    Instructor@123 (teaches CS401-full, MA201-waitlist)"
+Write-Host " Registrar    registrar      Registrar@123"
+Write-Host " DeptAdmin    deptadmin      DeptAdmin@123"
+Write-Host " Finance      finance        Finance@123"
+Write-Host " Auditor      auditor        Auditor@123"
+Write-Host "============================================================" -ForegroundColor White
+Write-Host " Rich data: 3 programs, 9 courses (incl. 0-credit + prereq chains), 8 sections" -ForegroundColor White
+Write-Host "   (FULL=CS401, WAITLIST=MA201 cap1, EMPTY=SEM100), 9 linked students + 1 unlinked," -ForegroundColor White
+Write-Host "   assessments in all 4 statuses (Draft/Published/Closed/Archived)," -ForegroundColor White
+Write-Host "   invoices Paid/PartiallyPaid/Pending/Overdue, payments via all 5 methods," -ForegroundColor White
+Write-Host "   tickets Open/InProgress/Resolved + boundary unicode/emoji/200-char data." -ForegroundColor White
 Write-Host "============================================================" -ForegroundColor White
 Write-Host " Frontend: http://localhost:5173/login   Swagger: $ApiBase/swagger" -ForegroundColor White
 Write-Host " Term seeded: $Term" -ForegroundColor White

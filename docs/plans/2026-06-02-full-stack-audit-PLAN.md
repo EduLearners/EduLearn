@@ -175,65 +175,125 @@ These are NEW or CHANGED behaviors. Each must be tested as part of the relevant 
 
 # PHASES
 
-## Phase 0 — Setup & Rich Seed
+## Phase 0 — Setup, Latest Code, Clean DB & Rich Seed
 
-**Files:** none modified (uses existing `tests/seed-sample-data.ps1`, optionally adds `tests/seed-volume-data.ps1`).
+**Files:** none modified (uses existing `tests/seed-sample-data.ps1`). Goal of this phase: a **known-clean, fully-migrated, richly-seeded environment on the latest committed code**, with both servers up and every role able to log in. Do not start Phase 1 until the Phase 0 exit checklist passes.
 
-- [ ] **Step 1: Confirm you are on the right copy + branch**
+- [ ] **Step 1: Confirm the correct working copy**
 
-Run:
 ```powershell
-cd "C:\Users\2487421\OneDrive - Cognizant\Desktop\Vikash\EduLearn"; git rev-parse --abbrev-ref HEAD; git status --short
+cd "C:\Users\2487421\OneDrive - Cognizant\Desktop\Vikash\EduLearn"; git rev-parse --show-toplevel; git rev-parse --abbrev-ref HEAD
 ```
-Expected: branch `Transh_fixing`. If working tree is dirty, note it in the report (audit runs against committed state).
+Expected: toplevel path ends in `...\Vikash\EduLearn`, branch `Transh_fixing`. If the path is the `ProjectWork` copy or the branch differs, STOP — you are in the wrong place.
 
-- [ ] **Step 2: Apply database migrations (3 new ones landed in `8063848`)**
+- [ ] **Step 2: Pull the latest implementation cleanly**
 
-The API does NOT auto-run migrations on startup. Commit `8063848` added `20260602000001_AddAssessmentInstructionsURI`, `20260602000002_WidenStudentGender`, `20260602000003_AddKpiComputationKey`. Apply them before starting:
+First check for uncommitted work so a pull can't clobber it:
 ```powershell
-cd "C:\Users\2487421\OneDrive - Cognizant\Desktop\Vikash\EduLearn"; dotnet ef database update --project EduLearn.API --startup-project EduLearn.API
+git status --short
 ```
-(or run `migrate-database.bat`). Expected: ends "Done." with no error. Then confirm the 3 migrations are listed as applied:
+- If output is EMPTY (clean tree): fast-forward to remote.
+  ```powershell
+  git fetch origin; git pull --ff-only origin Transh_fixing
+  ```
+- If the tree is DIRTY: do NOT discard it blindly. Stash, pull, then restore:
+  ```powershell
+  git stash push -u -m "audit-preflight"; git fetch origin; git pull --ff-only origin Transh_fixing; git stash pop
+  ```
+  If `git stash pop` reports a conflict, STOP and report to the user — do not force anything.
+- If `--ff-only` fails because local has diverging commits, STOP and report (don't rebase/merge unasked). 
+
+Then record the exact commit under test (goes in the report header):
+```powershell
+git log --oneline -1; git rev-parse HEAD
+```
+
+- [ ] **Step 3: Restore dependencies (in case the pull changed them)**
+
+There is no `.sln` — the repo has two projects (`EduLearn.API`, `EduLearn_Testing`). Restore the API project and install client deps:
+```powershell
+dotnet restore "C:\Users\2487421\OneDrive - Cognizant\Desktop\Vikash\EduLearn\EduLearn.API\EduLearn.API.csproj"
+cd "C:\Users\2487421\OneDrive - Cognizant\Desktop\Vikash\EduLearn\edulearn.client"; npm install
+```
+Expected: both complete without errors. (If `dotnet-ef` is missing in the next step, install it once: `dotnet tool install --global dotnet-ef`.)
+
+- [ ] **Step 4: Stop any running backend (so the DB isn't locked for the drop)**
+
+```powershell
+$pid5001 = (Get-NetTCPConnection -LocalPort 5001 -ErrorAction SilentlyContinue).OwningProcess
+if ($pid5001) { Stop-Process -Id $pid5001 -Force; "stopped $pid5001" } else { "no backend running" }
+```
+
+- [ ] **Step 5: DROP the database for a guaranteed-clean slate**
+
+This removes ALL prior data and schema so the seed is reproducible and no stale rows survive:
+```powershell
+cd "C:\Users\2487421\OneDrive - Cognizant\Desktop\Vikash\EduLearn"; dotnet ef database drop --force --project EduLearn.API --startup-project EduLearn.API
+```
+Expected: "Successfully dropped database 'EduLearnDb'." (If it says the database doesn't exist, that's fine — continue.)
+
+- [ ] **Step 6: Re-create the schema by applying ALL migrations**
+
+The API does NOT auto-migrate on startup. This rebuilds the schema from scratch, including the 3 migrations from `8063848` (`20260602000001_AddAssessmentInstructionsURI`, `20260602000002_WidenStudentGender`, `20260602000003_AddKpiComputationKey`):
+```powershell
+dotnet ef database update --project EduLearn.API --startup-project EduLearn.API
+```
+Expected: ends "Done." with no error. Verify no migration is pending:
 ```powershell
 dotnet ef migrations list --project EduLearn.API --startup-project EduLearn.API
 ```
-Expected: the three `20260602000001..3` entries appear WITHOUT a "(pending)" marker.
+Expected: every migration listed (incl. the three `20260602000001..3`) WITHOUT a "(pending)" marker.
 
-- [ ] **Step 3: Start backend (background) and wait for listen**
+- [ ] **Step 7: Start the backend (background) and wait for listen**
 
 Run (background): `cd "C:\Users\2487421\OneDrive - Cognizant\Desktop\Vikash\EduLearn\EduLearn.API"; dotnet run`
-Then poll: `Get-NetTCPConnection -LocalPort 5001 -ErrorAction SilentlyContinue | Select State`
-Expected: a `Listen` row appears within ~30s.
+On first boot against the fresh DB, `DbInitializer.SeedDefaultAdminAsync` plants `admin / Admin@123` (this is expected, not a finding). Poll until up:
+```powershell
+Get-NetTCPConnection -LocalPort 5001 -ErrorAction SilentlyContinue | Select State
+```
+Expected: a `Listen` row within ~30s. If the backend exits instead of listening, capture its console output — a startup crash is a 🔴 finding.
 
-- [ ] **Step 4: Reseed base data from scratch**
+- [ ] **Step 8: Run the rich clean seed**
 
-Run:
 ```powershell
 cd "C:\Users\2487421\OneDrive - Cognizant\Desktop\Vikash\EduLearn"; powershell -ExecutionPolicy Bypass -File tests\seed-sample-data.ps1 -Reset
 ```
-Expected: cyan `==>` step lines, green `OK` lines, ends without a red `ERR`. If it errors on null courseIDs or leftover Courses, see the seed-bug notes in `memory/edulearn_audit_2026-06.md` (FK-disable around wipe; resolve course IDs by code).
+Expected: cyan `==>` step lines, green `OK` lines, ends WITHOUT any red `ERR`. **Any red `ERR` line is itself a finding** — capture the HTTP status + body and log it. (Seed-bug history if it fails on null courseIDs/leftover Courses: see `memory/edulearn_audit_2026-06.md` — FK-disable around the wipe, resolve course IDs by code.)
 
-- [ ] **Step 5: Generate RICH multi-record volume**
+- [ ] **Step 9: Verify the rich/edge dataset landed**
 
-The base seed makes one linked set. For volume testing, create additional records THROUGH THE API as the correctly-authorized role (mirror the `Api` helper pattern at the top of `seed-sample-data.ps1`). Target volume — create a `tests/seed-volume-data.ps1` that adds:
-  - **≥3 programs**, **≥8 courses** (incl. one 0-credit and one with prerequisites), **≥6 sections** spread across 3 capacity states: **full** (enrolled == capacity), **waitlisted** (enrolled > capacity with waitlist), **empty** (0 enrolled).
-  - **≥12 students** spread across enrollment states: Enrolled, Waitlisted, Dropped, Completed.
-  - **≥10 assessments** covering all 4 statuses: Draft, Published, Closed, Archived.
-  - **≥15 invoices**: Paid, PartiallyPaid, Overdue (due date in the past), Unpaid.
-  - **payments** via all 5 methods: Cash, Card, BankTransfer, Cheque, Online.
-  - **≥2 scholarships**, **≥5 tickets** (Open/InProgress/Resolved), **≥1 student with NO linked Student record** (to reproduce A1-01), and **one record each with a unicode/emoji name and a 200-char name** (boundary data).
+Confirm the seed's closing summary reports all of the below (this is the volume the rest of the audit depends on). Spot-check 2–3 via the API (e.g. `GET /api/programs`, `GET /api/sections`) with the admin token to be sure counts match, not just that the script claimed success:
+  - **3 programs** (CS / EE / Math); **9 courses** incl. a **0-credit** seminar (`SEM100`) and two prerequisite chains (CS101→CS201→CS301→CS401, MA101→MA201).
+  - **8 sections** in 3 capacity states: **FULL** = `CS401` (cap 3, 3 enrolled), **WAITLIST** = `MA201` (cap 1, 2 enrolled → 1 Enrolled + 1 Waitlisted), **EMPTY** = `SEM100` (cap 25, 0 enrolled).
+  - **9 linked students** + **1 intentionally UNLINKED** Student-role account `studentnolink` (reproduces A1-01). Enrollment states present: Enrolled, Waitlisted, Dropped. (NOTE: `EnrollmentStatus` has only these three — there is no "Completed".)
+  - **Assessments in all 4 statuses**: Draft (`EE101 Quiz`), Published (CS101 Quiz/Assignment, CS201 Midterm), Closed (`CS210 Project`), Archived (`CS101 Practice Exam`).
+  - **Invoices** across **Paid / PartiallyPaid / Pending / Overdue-candidate** (past due date). **Payments via all 5 methods**: `BankTransfer, Cash, Card, UPI, Cheque` (the valid `PaymentMethod` enum — there is NO "Online").
+  - **2 scholarships** (Merit + Need), **4 tickets** (Open / InProgress / Resolved + a 200-char boundary), and **boundary data**: a unicode student name (`student9` = "Zoë Üniversity"), an emoji notification (🎓), and a 200-char ticket description.
 
-Run it, expect all-green. If any create returns 4xx/5xx, that itself is a finding — log it. NOTE: the seed term is `2026-Fall` (matches `CURRENT_TERM` after `8063848`) — keep volume data on the same term so the UI defaults surface it.
+If you need EVEN MORE volume (e.g. pagination stress on a specific list), add records through the API mirroring the `Api`/`New-Entity` helpers at the top of the seed script — do NOT hand-edit the DB. Keep extra data on term `2026-Fall` (matches `CURRENT_TERM`) so the UI defaults surface it.
 
-- [ ] **Step 6: Start frontend (background) and confirm**
+- [ ] **Step 10: Start the frontend (background) and confirm it renders**
 
 Run (background): `cd "C:\Users\2487421\OneDrive - Cognizant\Desktop\Vikash\EduLearn\edulearn.client"; npm run dev`
-Then load Chrome DevTools tools (ToolSearch query in Orientation), `new_page` → `http://localhost:5173`, `take_screenshot`. Expected: EduLearn landing/login renders.
+Load the Chrome DevTools tools (ToolSearch query in Orientation), `new_page` → `http://localhost:5173`, `take_screenshot`. Expected: EduLearn landing/login renders, no red console errors (`list_console_messages`).
 
-- [ ] **Step 7: Create the master report file** (see Phase 5 for the template). Commit it empty-but-templated so progress is tracked:
+- [ ] **Step 11: Pre-flight login smoke for ALL 7 roles**
+
+Before deep testing, confirm every role can authenticate and lands on its dashboard (catches a broken build/login early). In the browser, log in + out as each of `student, instructor, registrar, deptadmin, finance, auditor, admin`. Expected: each reaches its dashboard; sidebar shows that role's nav items; no console errors. Any role that can't log in is a 🔴 finding — stop and report before continuing.
+
+- [ ] **Step 12: Create the master report file** (template in Phase 5) and commit it so progress is tracked:
 ```powershell
 cd "C:\Users\2487421\OneDrive - Cognizant\Desktop\Vikash\EduLearn"; git add docs/AUDIT-2026-06-FINAL.md; git commit -m "docs: start final full-stack audit report"
 ```
+
+### Phase 0 exit checklist (ALL must be true before Phase 1)
+- [ ] On `...\Vikash\EduLearn`, branch `Transh_fixing`, fast-forwarded to latest; commit SHA recorded in the report.
+- [ ] `dotnet restore` + `npm install` clean.
+- [ ] DB dropped, re-created, and `dotnet ef migrations list` shows zero pending.
+- [ ] Backend listening on :5001; frontend serving on :5173; no startup crash.
+- [ ] Rich seed ran with zero red `ERR`; dataset verified (Step 9).
+- [ ] All 7 roles log in and reach their dashboard (Step 11).
+- [ ] Master report file created and committed.
 
 ---
 
@@ -455,14 +515,14 @@ For each of these critical forms — **login, enrollment, payment, grade submiss
 - [ ] **Step 2: Severity rubric** — 🔴 Critical = data corruption, auth bypass/IDOR, app-breaking crash. 🟠 High = security/data issue with a precondition. 🟡 Medium = wrong behavior, dead UI, missing validation. 🔵 Low = cosmetic, perf, polish.
 - [ ] **Step 3: Final commit + push.**
 ```powershell
-cd "C:\Users\2487421\OneDrive - Cognizant\Desktop\Vikash\EduLearn"; git add docs/AUDIT-2026-06-FINAL.md tests/seed-volume-data.ps1; git commit -m "docs: final full-stack audit report — 7 roles, backend+frontend, chaos, wiring"; git push origin Transh_fixing
+cd "C:\Users\2487421\OneDrive - Cognizant\Desktop\Vikash\EduLearn"; git add docs/AUDIT-2026-06-FINAL.md; git commit -m "docs: final full-stack audit report — 7 roles, backend+frontend, chaos, wiring"; git push origin Transh_fixing
 ```
 - [ ] **Step 4: Present a summary to the user** — totals by severity, the must-fix list, and ask whether to proceed to a fix pass (which would be a NEW plan, not part of this report-only audit).
 
 ---
 
 ## Operating rules (for the whole run)
-- **Report-only.** Never edit application code. The only files you create are the report and the optional volume-seed script. If you find a 🔴 you think must be fixed immediately, STOP and ask the user — do not fix unilaterally.
+- **Report-only.** Never edit application code. The only file you create is the master report (the rich seed already lives in `tests/seed-sample-data.ps1`). If you find a 🔴 you think must be fixed immediately, STOP and ask the user — do not fix unilaterally.
 - **No assumptions / no hallucinations.** Every finding must be backed by a live observation (network status, console message, screenshot, or DOM read). If you can't reproduce it, don't log it as a bug.
 - **Append-as-you-go.** Write each finding to the report the moment you confirm it, and commit at the end of every Task. If context gets long, checkpoint and continue — never degrade into guessing.
 - **Keep the browser visible and narrated.** The user watches. Briefly say what you're about to test before each page.
