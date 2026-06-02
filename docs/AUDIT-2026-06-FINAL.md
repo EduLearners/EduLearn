@@ -19,8 +19,8 @@
 | 🔴 Critical | 0 | — |
 | 🟠 High | 0 | — |
 | 🟡 Medium | 1 | F-03 |
-| 🔵 Low/Info | 2 | A1-06, F-02 |
-| **Total real findings** | **3** | |
+| 🔵 Low/Info | 3 | A1-06, F-02, F-04 |
+| **Total real findings** | **4** | |
 | ✅ Verified FIXED | 4 | A1-02, A1-03, A1-10, A1-01 |
 | ❌ False positives (retracted) | 1 | F-01 |
 
@@ -131,12 +131,31 @@ Empty body, negative credits, 500-char title, negative payment amount, SQL-injec
 
 ---
 
-## Phase 4 — Wiring Matrix
+## Phase 4 — Backend ↔ Frontend Wiring Matrix (full cross-match)
 
-- All 28 frontend services map to a backend controller. **No dangling calls.**
-- `contentService.js` → `/content/upload` is valid (`ContentsController.cs:35` has `[HttpPost("upload")]`).
-- `auditPackageService.js`, `plagiarismService.js`, `timetableService.js`, `transcriptService.js` all correctly wired.
-- **Orphan (acceptable):** `HealthController` (`/api/health`) has no frontend service — it is an ITAdmin-only diagnostic endpoint, intentionally not surfaced in the UI.
+**Method:** Scraped the live Swagger spec (`/swagger/v1/swagger.json`) → **121 endpoints** across 29 controllers. Extracted **every** `axiosClient.get/post/put/delete` call from all 28 service files. Cross-matched both directions.
+
+### Active call coverage
+Every endpoint the UI **actually invokes** maps 1:1 to a real backend route — verbs and paths all match. Confirmed live in Phases 1–3 (transcripts, kpis, invoices, audit-packages, submissions, notifications, etc. all returned well-formed JSON the UI rendered). **No active dangling calls.**
+
+### Orphan endpoints (backend route, no UI caller)
+| Endpoint | Assessment |
+|---|---|
+| `GET /api/Health` | ITAdmin-only diagnostic — intentionally not surfaced in UI. **Acceptable.** |
+| `GET /api/Courses/{id}/check-prerequisites/{studentId}` | No frontend caller. Prerequisite enforcement happens **server-side at enroll time** (verified: seed produced `PREREQUISITES_NOT_MET` 422s). The standalone pre-check endpoint is simply unused by the UI. **Info — not a defect.** |
+
+### Dead frontend service methods (defined, never called → dangling path, but zero runtime impact)
+`assessmentService` declares three methods whose paths **do not exist** on the backend and which are **never invoked** anywhere in the app (verified by grep — zero call sites):
+| Method | Declared path | Status |
+|---|---|---|
+| `assessmentService.getBySection` | `GET /assessments/section/{id}` | Dead. Real flow uses `enrollmentService.getBySection`. |
+| `assessmentService.submit` | `POST /assessments/{id}/submissions` | Dead. Real flow uses `submissionService.submit` → `POST /submissions`. |
+| `assessmentService.grade` | `PUT /assessments/{id}/submissions/{sid}/grade` | Dead. Real flow uses `submissionService` → `POST /submissions/{id}/grade`. |
+
+> These would 404 **if** called, but no code path calls them. **Recommend deleting** the three dead methods to prevent a future caller wiring to a non-existent route. Logged as **F-04 (Low / cleanup)**.
+
+### Correctly-wired spot confirmations
+`contentService → POST /content/upload` (`ContentsController.cs:35` `[HttpPost("upload")]`) ✅; `auditPackageService`, `plagiarismService`, `timetableService`, `transcriptService`, `userService` (invite/mfa-reset/status/password) all map to real routes ✅.
 
 ---
 
@@ -151,7 +170,8 @@ The audit plan specifies driving a **visible external Chrome** via the `chrome-d
 1. **F-03 (Medium)** — Fix `getFriendlyError` ordering in `errorMessage.js` so custom `{message, code}` objects surface their own message instead of the generic "Connection problem". This restores the A1-01 helpful text and fixes the same class of mislabeling across all pages.
 2. **F-02 (Low)** — Stop StudentDashboard from calling roster-only `GET /api/sections/{id}`; use a student-scoped source for section detail.
 3. **A1-06 (Low)** — Add server-side pagination to `/api/users` + a client paginator.
-4. **Phase 3.2** — Re-run network offline/throttle chaos once a Chrome DevTools-capable browser is connected.
+4. **F-04 (Low/cleanup)** — Delete the 3 dead `assessmentService` methods (`getBySection`, `submit`, `grade`) that point at non-existent routes.
+5. **Phase 3.2** — Re-run network offline/throttle chaos once a Chrome DevTools-capable browser is connected.
 
 ---
 
