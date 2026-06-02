@@ -19,8 +19,8 @@
 | 🔴 Critical | 0 | — |
 | 🟠 High | 0 | — |
 | 🟡 Medium | 1 | F-03 |
-| 🔵 Low/Info | 3 | A1-06, F-02, F-04 |
-| **Total real findings** | **4** | |
+| 🔵 Low/Info | 5 | A1-06, F-02, F-04, F-05, F-06 |
+| **Total real findings** | **6** | |
 | ✅ Verified FIXED | 4 | A1-02, A1-03, A1-10, A1-01 |
 | ❌ False positives (retracted) | 1 | F-01 |
 
@@ -73,6 +73,33 @@
 - **Impact:** The `.catch(() => null)` swallows the error so the dashboard does **not** break — but (a) it generates avoidable 403 noise on every student dashboard load, and (b) section-detail enrichment (schedule/room) silently fails to display for students.
 - **Suggested fix:** Use a student-scoped endpoint (or include section summary in the enrollment payload) instead of the roster-only `GET /api/sections/{id}`.
 - **Status:** OPEN
+
+---
+
+## KPI Accuracy Verification (`/kpis`)
+
+All 4 KPI values were independently recomputed from raw data (live API) and **match exactly**:
+
+| KPI | Displayed | Recomputed | Verdict |
+|---|---|---|---|
+| Active Student Count | 8 | 8 students, all `Active` | ✅ Exact |
+| Section Fill Rate | 3.06% | Σenrolled 6 / Σcap 196 ×100 = 3.06 | ✅ Exact |
+| Invoice Collection Rate | 65.08% | ₹205,000 / ₹315,000 ×100 = 65.08 | ✅ Exact |
+| Assessment Completion Rate | 66.67% | 2 w/ subs / 3 published ×100 = 66.67 | ✅ Exact |
+
+Values are arithmetically correct. Two definition-vs-implementation nuances logged below (F-05, F-06).
+
+### [F-05] 🔵 Low — Section Fill Rate label says "Average" but code is capacity-weighted
+- **Location:** `ReportRepository.cs:151` `ComputeSectionFillRateAsync` + KPI definition text.
+- **Detail:** Definition reads *"Average EnrolledCount / Capacity across all sections (as %)"*, implying the **mean of per-section fill rates** (= 1.91% for current data). The code computes the **pooled** `Σenrolled / Σcapacity` (= 3.06%). Both are valid metrics, but the displayed value doesn't match the wording.
+- **Fix:** Reconcile — either change the definition text to "Overall fill rate (total enrolled / total capacity)" or change the formula to average per-section ratios.
+- **Status:** OPEN (value is internally correct; label is misleading)
+
+### [F-06] 🔵 Low — Assessment Completion Rate numerator not scoped to Published
+- **Location:** `ReportRepository.cs:166` `ComputeAssessmentCompletionAsync`.
+- **Detail:** Numerator is `Submissions.Select(AssessmentID).Distinct().Count()` — distinct assessment IDs across **all** submissions; denominator is `Count(status==Published)`. If a submission ever exists on a Closed/Archived assessment, the numerator counts it while the denominator doesn't → ratio could exceed 100% or misrepresent the metric. Accurate today (subs exist only on published assessments 1 & 2 → 2/3).
+- **Fix:** Restrict the numerator to distinct assessment IDs whose assessment is Published.
+- **Status:** OPEN (latent correctness risk; accurate for current data)
 
 ---
 
@@ -171,7 +198,9 @@ The audit plan specifies driving a **visible external Chrome** via the `chrome-d
 2. **F-02 (Low)** — Stop StudentDashboard from calling roster-only `GET /api/sections/{id}`; use a student-scoped source for section detail.
 3. **A1-06 (Low)** — Add server-side pagination to `/api/users` + a client paginator.
 4. **F-04 (Low/cleanup)** — Delete the 3 dead `assessmentService` methods (`getBySection`, `submit`, `grade`) that point at non-existent routes.
-5. **Phase 3.2** — Re-run network offline/throttle chaos once a Chrome DevTools-capable browser is connected.
+5. **F-05 (Low)** — Reconcile Section Fill Rate definition text vs the capacity-weighted formula.
+6. **F-06 (Low)** — Scope Assessment Completion Rate numerator to Published assessments only.
+7. **Phase 3.2** — Re-run network offline/throttle chaos once a Chrome DevTools-capable browser is connected.
 
 ---
 
