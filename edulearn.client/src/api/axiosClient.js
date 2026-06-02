@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-// Base axios instance — uses Vite proxy to reach https://localhost:5001/api
+// Base axios instance — baseURL is set dynamically by backendConfig.detectBackend()
+// on app mount after detecting which port (5000 or 5001) is running.
 // phase4-fix-13: add 15 s timeout so requests don't hang indefinitely
 const axiosClient = axios.create({
-    baseURL: '/api',
+    // baseURL will be set dynamically: axiosClient.defaults.baseURL = `${url}/api`
     headers: { 'Content-Type': 'application/json' },
     timeout: 15000,
 });
