@@ -15,8 +15,7 @@ export default function PaymentsPage() {
     const { role } = authService.getCurrentUser();
     const canManage = ['Finance', 'ITAdmin'].includes(role);
 
-    // Search
-    const [searchType, setSearchType] = useState('invoice'); // 'invoice' | 'student'
+    const [searchType, setSearchType] = useState('invoice');
     const [searchId, setSearchId] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -24,14 +23,12 @@ export default function PaymentsPage() {
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState({});
 
-    // Invoice + payment state
     const [invoices, setInvoices] = useState([]);
     const [selected, setSelected] = useState(null);
     const [payments, setPayments] = useState([]);
     const [paymentsLoading, setPaymentsLoading] = useState(false);
-    const [searched, setSearched] = useState(false); // track whether a search was performed
+    const [searched, setSearched] = useState(false);
 
-    // Payment form
     const [showPayment, setShowPayment] = useState(false);
     const [payForm, setPayForm] = useState({
         invoiceID: '',
@@ -56,7 +53,6 @@ export default function PaymentsPage() {
             } else {
                 const data = await invoiceService.getByStudent(Number(searchId));
                 setInvoices(data || []);
-                // Auto-select first invoice always (same behaviour as Invoice ID search)
                 if (data && data.length >= 1) {
                     await handleSelectInvoice(data[0]);
                 }
@@ -82,12 +78,7 @@ export default function PaymentsPage() {
     };
 
     const openPaymentModal = (invoice) => {
-        setPayForm({
-            invoiceID: invoice.invoiceID,
-            amount: '',
-            method: 'BankTransfer',
-            reference: '',
-        });
+        setPayForm({ invoiceID: invoice.invoiceID, amount: '', method: 'BankTransfer', reference: '' });
         setError(null);
         setErrors({});
         setShowPayment(true);
@@ -115,7 +106,6 @@ export default function PaymentsPage() {
             });
             setSuccess(`Payment of ₹${Number(payForm.amount).toFixed(2)} recorded successfully for Invoice #${payForm.invoiceID}.`);
             setShowPayment(false);
-            // Refresh
             if (selected) {
                 const updatedPayments = await paymentService.getByInvoice(selected.invoiceID);
                 setPayments(updatedPayments || []);
@@ -145,14 +135,12 @@ export default function PaymentsPage() {
 
     return (
         <div>
-            {/* Page Header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
                     <i className="bi bi-credit-card me-2"></i>Payments
                 </h2>
             </div>
 
-            {/* Success toast — top-right, auto-dismiss */}
             <Toast
                 show={!!success}
                 type="success"
@@ -160,7 +148,6 @@ export default function PaymentsPage() {
                 onClose={() => setSuccess('')}
             />
 
-            {/* Search Card */}
             <div className="card shadow-sm mb-4">
                 <div className="card-header bg-light">
                     <strong><i className="bi bi-search me-2"></i>Find Invoice</strong>
@@ -168,7 +155,6 @@ export default function PaymentsPage() {
                 <div className="card-body">
                     <form onSubmit={handleSearch}>
                         <div className="row g-3 align-items-end">
-                            {/* Search Type Toggle */}
                             <div className="col-md-3">
                                 <label className="form-label fw-bold">Search By</label>
                                 <select
@@ -177,7 +163,7 @@ export default function PaymentsPage() {
                                     onChange={e => { setSearchType(e.target.value); setSearchId(''); }}
                                 >
                                     <option value="invoice">Invoice ID</option>
-                                     <option value="student">Student ID</option>
+                                    <option value="student">Student ID</option>
                                 </select>
                             </div>
                             <div className="col-md-6">
@@ -214,7 +200,6 @@ export default function PaymentsPage() {
 
             <ErrorAlert error={error} onDismiss={() => setError(null)} />
 
-            {/* Empty state — only shown after a student search that returned nothing */}
             {searched && !loading && invoices.length === 0 && !error && searchType === 'student' && (
                 <div className="card shadow-sm">
                     <div className="card-body text-center text-muted py-5">
@@ -225,10 +210,8 @@ export default function PaymentsPage() {
                 </div>
             )}
 
-            {/* Results */}
             {invoices.length > 0 && (
                 <div className="row g-4">
-                    {/* Invoice List — show when multiple invoices */}
                     {invoices.length > 1 && (
                         <div className="col-md-4">
                             <div className="card shadow-sm">
@@ -264,7 +247,6 @@ export default function PaymentsPage() {
                         </div>
                     )}
 
-                    {/* Invoice Detail + Payments */}
                     <div className={invoices.length > 1 ? 'col-md-8' : 'col-12'}>
                         {!selected ? (
                             <div className="card shadow-sm d-flex align-items-center justify-content-center" style={{ minHeight: 200 }}>
@@ -275,7 +257,6 @@ export default function PaymentsPage() {
                             </div>
                         ) : (
                             <>
-                                {/* Invoice Summary Card */}
                                 <div className="card shadow-sm mb-4">
                                     <div className="card-header bg-primary-edulearn text-white d-flex align-items-center justify-content-between">
                                         <strong>
@@ -295,7 +276,6 @@ export default function PaymentsPage() {
                                         </div>
                                     </div>
                                     <div className="card-body">
-                                        {/* Summary Row */}
                                         <div className="row g-3 mb-4">
                                             <div className="col-md-3">
                                                 <dt className="text-muted small text-uppercase">Student</dt>
@@ -310,14 +290,13 @@ export default function PaymentsPage() {
                                                 <dd className="mb-0">{new Date(selected.dueDate).toLocaleDateString()}</dd>
                                             </div>
                                             <div className="col-md-3">
-                                                <dt className="text-muted small text-uppercase">Amount Due</dt>
+                                                <dt className="text-muted small text-uppercase">Amount</dt>
                                                 <dd className="fw-bold fs-5 mb-0" style={{ color: '#A32D2D' }}>
                                                     ₹{Number(selected.amountDue).toFixed(2)}
                                                 </dd>
                                             </div>
                                         </div>
 
-                                        {/* Balance Summary */}
                                         <div className="row g-3 mb-3">
                                             <div className="col-md-4">
                                                 <div className="p-3 rounded bg-light border text-center">
@@ -341,7 +320,6 @@ export default function PaymentsPage() {
                                             </div>
                                         </div>
 
-                                        {/* Line Items */}
                                         <label className="form-label text-muted small text-uppercase">Fee Breakdown</label>
                                         <div className="table-responsive">
                                             <table className="table table-bordered table-sm mb-0">
@@ -365,7 +343,7 @@ export default function PaymentsPage() {
                                                         </tr>
                                                     ))}
                                                     <tr className="table-light fw-bold">
-                                                        <td colSpan={3}>Total Amount Due</td>
+                                                        <td colSpan={3}>Total Amount</td>
                                                         <td className="text-end">₹{Number(selected.amountDue).toFixed(2)}</td>
                                                     </tr>
                                                 </tbody>
@@ -374,7 +352,6 @@ export default function PaymentsPage() {
                                     </div>
                                 </div>
 
-                                {/* Payment History */}
                                 <div className="card shadow-sm">
                                     <div className="card-header bg-light d-flex align-items-center justify-content-between">
                                         <strong>
@@ -417,9 +394,7 @@ export default function PaymentsPage() {
                                                         <tr key={p.paymentID}>
                                                             <td><code>#{p.paymentID}</code></td>
                                                             <td className="fw-bold text-success">₹{Number(p.amount).toFixed(2)}</td>
-                                                            <td>
-                                                                <span className="badge bg-secondary">{p.method}</span>
-                                                            </td>
+                                                            <td><span className="badge bg-secondary">{p.method}</span></td>
                                                             <td>{p.reference || '—'}</td>
                                                             <td><StatusBadge status={p.status} /></td>
                                                             <td>
@@ -446,7 +421,6 @@ export default function PaymentsPage() {
                 </div>
             )}
 
-            {/* Record Payment Modal */}
             {showPayment && (
                 <ModalPortal>
                     <div className="modal-backdrop fade show"></div>
@@ -467,7 +441,6 @@ export default function PaymentsPage() {
                                 </div>
                                 <form onSubmit={handlePayment}>
                                     <div className="modal-body">
-                                        {/* Balance info banner */}
                                         {selected && (
                                             <div className="alert alert-info py-2 mb-3">
                                                 <div className="d-flex justify-content-between">
@@ -502,9 +475,9 @@ export default function PaymentsPage() {
                                                 {balance > 0 && (
                                                     <div className="form-text">
                                                         <button
-                                                        type="button"
-                                                        className="btn btn-link btn-sm p-0 text-dark text-decoration-none"
-                                                        onClick={() => setPayForm({ ...payForm, amount: balance.toFixed(2) })}
+                                                            type="button"
+                                                            className="btn btn-link btn-sm p-0 text-dark text-decoration-none"
+                                                            onClick={() => setPayForm({ ...payForm, amount: balance.toFixed(2) })}
                                                         >
                                                             Pay full balance ₹{balance.toFixed(2)}
                                                         </button>

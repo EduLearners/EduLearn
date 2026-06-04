@@ -54,10 +54,8 @@ export default function InvoicesPage() {
     const canManage = ['Finance', 'ITAdmin'].includes(role);
     const isStudent = role === 'Student';
 
-    // FIX: Today's date string for minimum due date validation
     const todayString = new Date().toISOString().split('T')[0];
 
-    // FIX: Compute balance so payment modal can enforce max = outstanding balance
     const totalPaid = payments
         .filter(p => p.status === 'Completed')
         .reduce((sum, p) => sum + Number(p.amount), 0);
@@ -68,6 +66,12 @@ export default function InvoicesPage() {
             programService.getAll()
                 .then(d => setPrograms(d || []))
                 .catch(() => {});
+
+            setLoading(true);
+            invoiceService.getAll()
+                .then(data => setInvoices(data || []))
+                .catch(() => {})
+                .finally(() => setLoading(false));
         }
     }, []);
 
@@ -118,7 +122,9 @@ export default function InvoicesPage() {
         setPayments([]);
         setLoading(true);
         try {
-            const data = await invoiceService.getByStudent(studentId);
+            const data = studentId
+                ? await invoiceService.getByStudent(studentId)
+                : await invoiceService.getAll();
             setInvoices(data || []);
         } catch (err) {
             setError(err);
@@ -239,17 +245,14 @@ export default function InvoicesPage() {
                         <form onSubmit={handleSearch}>
                             <div className="row g-3 align-items-end">
                                 <div className="col-md-8">
-                                    <label className="form-label fw-bold">
-                                        Student ID <span className="text-danger">*</span>
-                                    </label>
+                                    <label className="form-label fw-bold">Student ID</label>
                                     <input
                                         type="number"
                                         className="form-control"
                                         value={studentId}
                                         onChange={e => setStudentId(e.target.value)}
-                                        placeholder="Enter student ID..."
+                                        placeholder="Enter student ID to filter, or leave blank for all..."
                                         min="1"
-                                        required
                                     />
                                 </div>
                                 <div className="col-md-4">
@@ -301,7 +304,7 @@ export default function InvoicesPage() {
                                             <div>
                                                 <div className="fw-bold">Invoice #{inv.invoiceID}</div>
                                                 <small className={selected?.invoiceID === inv.invoiceID ? 'text-white-50' : 'text-muted'}>
-                                                    {inv.term}
+                                                    {inv.studentName} · {inv.term}
                                                 </small>
                                             </div>
                                             <div className="text-end">
@@ -497,7 +500,6 @@ export default function InvoicesPage() {
                                                 <label className="form-label fw-bold">
                                                     Due Date <span className="text-danger">*</span>
                                                 </label>
-                                                {/* FIX: min prevents past dates being submitted */}
                                                 <input
                                                     type="date"
                                                     className="form-control"
@@ -579,7 +581,6 @@ export default function InvoicesPage() {
                                                 <label className="form-label fw-bold">
                                                     Due Date <span className="text-danger">*</span>
                                                 </label>
-                                                {/* FIX: min prevents past dates */}
                                                 <input
                                                     type="date"
                                                     className="form-control"
@@ -631,7 +632,6 @@ export default function InvoicesPage() {
                                                 </label>
                                                 <div className={`input-group${errors.payAmount ? ' has-validation' : ''}`}>
                                                     <span className="input-group-text">₹</span>
-                                                    {/* FIX: max enforces outstanding balance cap, consistent with PaymentsPage */}
                                                     <input
                                                         type="number"
                                                         className={`form-control${errors.payAmount ? ' is-invalid' : ''}`}

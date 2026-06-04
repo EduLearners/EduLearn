@@ -62,7 +62,9 @@ export default function LoginPage() {
                         <p className="text-muted mb-0">University Management System</p>
                     </div>
 
-                    <form onSubmit={handleLogin}>
+                    {/* autoComplete="off" on form + inputs prevents browser from
+                        auto-filling saved credentials on the login page */}
+                    <form onSubmit={handleLogin} autoComplete="off">
                         <div className="mb-3">
                             <label className="form-label">Username or Email</label>
                             <div className="input-group has-validation">
@@ -78,7 +80,7 @@ export default function LoginPage() {
                                     maxLength={256}
                                     required
                                     autoFocus
-                                    autoComplete="username"
+                                    autoComplete="off"
                                 />
                                 {errors.usernameOrEmail && <div className="invalid-feedback">{errors.usernameOrEmail}</div>}
                             </div>
@@ -99,7 +101,7 @@ export default function LoginPage() {
                                     placeholder="Enter password"
                                     maxLength={256}
                                     required
-                                    autoComplete="current-password"
+                                    autoComplete="new-password"
                                 />
                                 {errors.password && <div className="invalid-feedback">{errors.password}</div>}
                             </div>

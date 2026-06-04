@@ -16,7 +16,6 @@ const PRIORITY_VARIANT = {
     Critical: 'dark',
 };
 
-// Role-specific issue categories
 const ROLE_CATEGORIES = {
     Student: [
         'Enrollment not reflecting',
@@ -62,7 +61,6 @@ const ROLE_CATEGORIES = {
     ],
 };
 
-// Parse category from subject string: "[Category] Subject"
 const parseCategory = (subject) => {
     const match = subject?.match(/^\[(.+?)\]\s*(.*)$/);
     return match ? { category: match[1], subject: match[2] } : { category: '', subject: subject || '' };
@@ -91,19 +89,14 @@ export default function TicketsPage() {
     const categories = ROLE_CATEGORIES[role] || [];
 
     const [assignForm, setAssignForm] = useState({ assignedToUserId: '' });
-    const [resolveForm, setResolveForm] = useState({
-        resolutionURI: '',
-        resolutionNote: '',
-    });
+    const [resolveForm, setResolveForm] = useState({ resolutionURI: '', resolutionNote: '' });
     const [createErrors, setCreateErrors] = useState({});
     const [assignErrors, setAssignErrors] = useState({});
     const [resolveErrors, setResolveErrors] = useState({});
 
     const isITAdmin = role === 'ITAdmin';
 
-    useEffect(() => {
-        loadTickets();
-    }, []);
+    useEffect(() => { loadTickets(); }, []);
 
     const loadTickets = async () => {
         try {
@@ -129,7 +122,6 @@ export default function TicketsPage() {
         setSuccess('');
         setSaving(true);
         try {
-            // Prepend category as [Category] prefix in subject so it's stored in DB
             const subjectWithCategory = createForm.category
                 ? `[${createForm.category}] ${createForm.subject}`
                 : createForm.subject;
@@ -172,7 +164,14 @@ export default function TicketsPage() {
 
     const handleResolve = async (e) => {
         e.preventDefault();
-        const next = { resolutionURI: validateOptionalUrl(resolveForm.resolutionURI) };
+        const next = {
+            resolutionURI: !resolveForm.resolutionURI.trim()
+                ? 'Resolution URL is required'
+                : validateOptionalUrl(resolveForm.resolutionURI),
+            resolutionNote: !resolveForm.resolutionNote.trim()
+                ? 'Resolution Note is required'
+                : null,
+        };
         if (Object.values(next).some(Boolean)) { setResolveErrors(next); return; }
         setError(null);
         setSaving(true);
@@ -191,15 +190,11 @@ export default function TicketsPage() {
 
     return (
         <div>
-            {/* Page Header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
                 <h2 className="text-primary-edulearn mb-0">
                     <i className="bi bi-headset me-2"></i>Support Tickets
                 </h2>
-                <button
-                    className="btn btn-primary-edulearn"
-                    onClick={() => setShowCreate(true)}
-                >
+                <button className="btn btn-primary-edulearn" onClick={() => setShowCreate(true)}>
                     <i className="bi bi-plus-lg me-2"></i>New Ticket
                 </button>
             </div>
@@ -227,10 +222,7 @@ export default function TicketsPage() {
                     <div className="col-md-4">
                         <div className="card shadow-sm">
                             <div className="card-header bg-light">
-                                <strong>
-                                    <i className="bi bi-list me-2"></i>
-                                    Tickets ({tickets.length})
-                                </strong>
+                                <strong><i className="bi bi-list me-2"></i>Tickets ({tickets.length})</strong>
                             </div>
                             <div className="list-group list-group-flush" style={{ maxHeight: 600, overflowY: 'auto' }}>
                                 {tickets.map(t => (
@@ -240,26 +232,24 @@ export default function TicketsPage() {
                                         onClick={() => setSelected(t)}
                                     >
                                         <div className="d-flex align-items-center justify-content-between mb-1">
-                                        <span className="fw-bold small text-truncate me-2">
-                                        {t.ticketID} {parseCategory(t.subject).subject || t.subject}
-                                        </span>
-                                        <span className={`badge bg-${PRIORITY_VARIANT[t.priority] || 'secondary'} flex-shrink-0`}>
-                                        {t.priority}
-                                        </span>
+                                            <span className="fw-bold small text-truncate me-2">
+                                                {t.ticketID} {parseCategory(t.subject).subject || t.subject}
+                                            </span>
+                                            <span className={`badge bg-${PRIORITY_VARIANT[t.priority] || 'secondary'} flex-shrink-0`}>
+                                                {t.priority}
+                                            </span>
                                         </div>
-                                            {parseCategory(t.subject).category && (
-                                                <div className="mb-1">
-                                                    <span className="badge rounded-pill" style={{ background: selected?.ticketID === t.ticketID ? 'rgba(255,255,255,0.2)' : '#e8f0fc', color: selected?.ticketID === t.ticketID ? '#fff' : '#1a3c6e', fontSize: '0.7rem' }}>
-                                                        <i className="bi bi-tag me-1"></i>{parseCategory(t.subject).category}
-                                                    </span>
-                                                </div>
-                                            )}
+                                        {parseCategory(t.subject).category && (
+                                            <div className="mb-1">
+                                                <span className="badge rounded-pill" style={{ background: selected?.ticketID === t.ticketID ? 'rgba(255,255,255,0.2)' : '#e8f0fc', color: selected?.ticketID === t.ticketID ? '#fff' : '#1a3c6e', fontSize: '0.7rem' }}>
+                                                    <i className="bi bi-tag me-1"></i>{parseCategory(t.subject).category}
+                                                </span>
+                                            </div>
+                                        )}
                                         <div className="d-flex align-items-center gap-2">
                                             <StatusBadge status={t.status} />
                                             <small className={selected?.ticketID === t.ticketID ? 'text-white-50' : 'text-muted'}>
-                                                {t.createdAt
-                                                    ? new Date(t.createdAt).toLocaleDateString()
-                                                    : ''}
+                                                {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}
                                             </small>
                                         </div>
                                     </button>
@@ -280,31 +270,16 @@ export default function TicketsPage() {
                         ) : (
                             <div className="card shadow-sm">
                                 <div className="card-header bg-primary-edulearn text-white d-flex align-items-center justify-content-between">
-                                    <strong>
-                                        <i className="bi bi-ticket me-2"></i>
-                                        Ticket #{selected.ticketID}
-                                    </strong>
+                                    <strong><i className="bi bi-ticket me-2"></i>Ticket #{selected.ticketID}</strong>
                                     <div className="d-flex gap-2 align-items-center">
                                         <StatusBadge status={selected.status} />
                                         {isITAdmin && selected.status === 'Open' && (
-                                            <button
-                                                className="btn btn-light btn-sm"
-                                                onClick={() => {
-                                                    setAssignForm({ assignedToUserId: '' });
-                                                    setShowAssign(true);
-                                                }}
-                                            >
+                                            <button className="btn btn-light btn-sm" onClick={() => { setAssignForm({ assignedToUserId: '' }); setShowAssign(true); }}>
                                                 <i className="bi bi-person-check me-1"></i>Assign
                                             </button>
                                         )}
                                         {isITAdmin && (selected.status === 'Open' || selected.status === 'InProgress') && (
-                                            <button
-                                                className="btn btn-success btn-sm"
-                                                onClick={() => {
-                                                    setResolveForm({ resolutionURI: '', resolutionNote: '' });
-                                                    setShowResolve(true);
-                                                }}
-                                            >
+                                            <button className="btn btn-success btn-sm" onClick={() => { setResolveForm({ resolutionURI: '', resolutionNote: '' }); setShowResolve(true); }}>
                                                 <i className="bi bi-check-circle me-1"></i>Resolve
                                             </button>
                                         )}
@@ -314,7 +289,6 @@ export default function TicketsPage() {
                                     <h5 className="fw-bold mb-3">{parseCategory(selected.subject).subject || selected.subject}</h5>
 
                                     <div className="row g-3 mb-3">
-                                        {/* Category badge — shown if subject contains [Category] prefix */}
                                         {parseCategory(selected.subject).category && (
                                             <div className="col-12">
                                                 <dt className="text-muted small">Category</dt>
@@ -336,7 +310,17 @@ export default function TicketsPage() {
                                         </div>
                                         <div className="col-md-4">
                                             <dt className="text-muted small">Created By</dt>
-                                            <dd>{selected.createdByUsername}</dd>
+                                            <dd>
+                                                <div className="fw-bold">{selected.createdByFullName || selected.createdByUsername}</div>
+                                                <small className="text-muted">
+                                                    {selected.createdByRole && (
+                                                        <span className="badge me-1" style={{ background: '#e8f0fc', color: '#1a3c6e', fontSize: 10 }}>
+                                                            {selected.createdByRole}
+                                                        </span>
+                                                    )}
+                                                    #{selected.createdByUserID} · {selected.createdByUsername}
+                                                </small>
+                                            </dd>
                                         </div>
                                         <div className="col-md-4">
                                             <dt className="text-muted small">Assigned To</dt>
@@ -344,19 +328,11 @@ export default function TicketsPage() {
                                         </div>
                                         <div className="col-md-4">
                                             <dt className="text-muted small">Created At</dt>
-                                            <dd>
-                                                {selected.createdAt
-                                                    ? new Date(selected.createdAt).toLocaleString()
-                                                    : '—'}
-                                            </dd>
+                                            <dd>{selected.createdAt ? new Date(selected.createdAt).toLocaleString() : '—'}</dd>
                                         </div>
                                         <div className="col-md-4">
                                             <dt className="text-muted small">Last Updated</dt>
-                                            <dd>
-                                                {selected.updatedAt
-                                                    ? new Date(selected.updatedAt).toLocaleString()
-                                                    : '—'}
-                                            </dd>
+                                            <dd>{selected.updatedAt ? new Date(selected.updatedAt).toLocaleString() : '—'}</dd>
                                         </div>
                                     </div>
 
@@ -369,12 +345,9 @@ export default function TicketsPage() {
 
                                     {selected.resolutionURI && (
                                         <div>
-                                            <dt className="text-muted small text-uppercase mb-1">
-                                                Resolution
-                                            </dt>
+                                            <dt className="text-muted small text-uppercase mb-1">Resolution</dt>
                                             <a href={selected.resolutionURI} target="_blank" rel="noreferrer" className="btn btn-outline-success btn-sm">
-                                                <i className="bi bi-box-arrow-up-right me-2"></i>
-                                                View Resolution
+                                                <i className="bi bi-box-arrow-up-right me-2"></i>View Resolution
                                             </a>
                                         </div>
                                     )}
@@ -393,113 +366,45 @@ export default function TicketsPage() {
                         <div className="modal-dialog modal-dialog-centered modal-lg">
                             <div className="modal-content">
                                 <div className="modal-header bg-primary-edulearn text-white">
-                                    <h5 className="modal-title">
-                                        <i className="bi bi-plus-circle me-2"></i>New Support Ticket
-                                    </h5>
-                                    <button
-                                        type="button"
-                                        className="btn-close btn-close-white"
-                                        onClick={() => { setShowCreate(false); setCreateErrors({}); }}
-                                        disabled={saving}
-                                    />
+                                    <h5 className="modal-title"><i className="bi bi-plus-circle me-2"></i>New Support Ticket</h5>
+                                    <button type="button" className="btn-close btn-close-white" onClick={() => { setShowCreate(false); setCreateErrors({}); }} disabled={saving} />
                                 </div>
                                 <form onSubmit={handleCreate}>
                                     <div className="modal-body">
                                         <div className="row g-3">
-                                        {/* Category dropdown — shown only for roles that have categories */}
-                                        {categories.length > 0 && (
-                                            <div className="col-12">
-                                                <label className="form-label fw-bold">
-                                                    Issue Category <span className="text-danger">*</span>
-                                                </label>
-                                                <select
-                                                    className="form-select"
-                                                    value={createForm.category}
-                                                    onChange={e => setCreateForm({ ...createForm, category: e.target.value })}
-                                                    required
-                                                >
-                                                    <option value="">-- Select a category --</option>
-                                                    {categories.map(c => (
-                                                        <option key={c} value={c}>{c}</option>
-                                                    ))}
-                                                    <option value="Other">Other</option>
-                                                </select>
-                                            </div>
-                                        )}
+                                            {categories.length > 0 && (
+                                                <div className="col-12">
+                                                    <label className="form-label fw-bold">Issue Category <span className="text-danger">*</span></label>
+                                                    <select className="form-select" value={createForm.category} onChange={e => setCreateForm({ ...createForm, category: e.target.value })} required>
+                                                        <option value="">-- Select a category --</option>
+                                                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                                        <option value="Other">Other</option>
+                                                    </select>
+                                                </div>
+                                            )}
                                             <div className="col-md-8">
-                                                <label className="form-label fw-bold">
-                                                    Subject <span className="text-danger">*</span>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className={`form-control${createErrors.subject ? ' is-invalid' : ''}`}
-                                                    value={createForm.subject}
-                                                    onChange={e => setCreateForm({ ...createForm, subject: e.target.value })}
-                                                    onBlur={e => setCreateErrors(prev => ({ ...prev, subject: validateTitle(e.target.value, 'Subject') }))}
-                                                    placeholder="Brief description of the issue..."
-                                                    maxLength={200}
-                                                    required
-                                                />
+                                                <label className="form-label fw-bold">Subject <span className="text-danger">*</span></label>
+                                                <input type="text" className={`form-control${createErrors.subject ? ' is-invalid' : ''}`} value={createForm.subject} onChange={e => setCreateForm({ ...createForm, subject: e.target.value })} onBlur={e => setCreateErrors(prev => ({ ...prev, subject: validateTitle(e.target.value, 'Subject') }))} placeholder="Brief description of the issue..." maxLength={200} required />
                                                 {createErrors.subject && <div className="invalid-feedback">{createErrors.subject}</div>}
                                             </div>
                                             <div className="col-md-4">
-                                                <label className="form-label fw-bold">
-                                                    Priority <span className="text-danger">*</span>
-                                                </label>
-                                                <select
-                                                    className="form-select"
-                                                    value={createForm.priority}
-                                                    onChange={e => setCreateForm({ ...createForm, priority: e.target.value })}
-                                                    required
-                                                >
-                                                    {PRIORITIES.map(p => (
-                                                        <option key={p} value={p}>{p}</option>
-                                                    ))}
+                                                <label className="form-label fw-bold">Priority <span className="text-danger">*</span></label>
+                                                <select className="form-select" value={createForm.priority} onChange={e => setCreateForm({ ...createForm, priority: e.target.value })} required>
+                                                    {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
                                                 </select>
                                             </div>
                                             <div className="col-12">
-                                                <label className="form-label fw-bold">
-                                                    Description <span className="text-danger">*</span>
-                                                </label>
-                                                <textarea
-                                                    className={`form-control${createErrors.description ? ' is-invalid' : ''}`}
-                                                    value={createForm.description}
-                                                    onChange={e => setCreateForm({ ...createForm, description: e.target.value })}
-                                                    onBlur={e => setCreateErrors(prev => ({ ...prev, description: validateMinLength(e.target.value, 10, 'Description') }))}
-                                                    rows={5}
-                                                    placeholder="Describe the issue in detail..."
-                                                    required
-                                                />
+                                                <label className="form-label fw-bold">Description <span className="text-danger">*</span></label>
+                                                <textarea className={`form-control${createErrors.description ? ' is-invalid' : ''}`} value={createForm.description} onChange={e => setCreateForm({ ...createForm, description: e.target.value })} onBlur={e => setCreateErrors(prev => ({ ...prev, description: validateMinLength(e.target.value, 10, 'Description') }))} rows={5} placeholder="Describe the issue in detail..." required />
                                                 {createErrors.description && <div className="invalid-feedback">{createErrors.description}</div>}
                                             </div>
                                         </div>
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
                                     </div>
                                     <div className="modal-footer">
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline-secondary"
-                                            onClick={() => { setShowCreate(false); setCreateErrors({}); }}
-                                            disabled={saving}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="btn btn-primary-edulearn"
-                                            disabled={saving}
-                                        >
-                                            {saving ? (
-                                                <>
-                                                    <span className="spinner-border spinner-border-sm me-2"></span>
-                                                    Creating...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <i className="bi bi-check-lg me-2"></i>
-                                                    Create Ticket
-                                                </>
-                                            )}
+                                        <button type="button" className="btn btn-outline-secondary" onClick={() => { setShowCreate(false); setCreateErrors({}); }} disabled={saving}>Cancel</button>
+                                        <button type="submit" className="btn btn-primary-edulearn" disabled={saving}>
+                                            {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Creating...</> : <><i className="bi bi-check-lg me-2"></i>Create Ticket</>}
                                         </button>
                                     </div>
                                 </form>
@@ -517,66 +422,25 @@ export default function TicketsPage() {
                         <div className="modal-dialog modal-dialog-centered">
                             <div className="modal-content">
                                 <div className="modal-header bg-primary-edulearn text-white">
-                                    <h5 className="modal-title">
-                                        <i className="bi bi-person-check me-2"></i>
-                                        Assign Ticket #{selected?.ticketID}
-                                    </h5>
-                                    <button
-                                        type="button"
-                                        className="btn-close btn-close-white"
-                                        onClick={() => setShowAssign(false)}
-                                        disabled={saving}
-                                    />
+                                    <h5 className="modal-title"><i className="bi bi-person-check me-2"></i>Assign Ticket #{selected?.ticketID}</h5>
+                                    <button type="button" className="btn-close btn-close-white" onClick={() => setShowAssign(false)} disabled={saving} />
                                 </div>
                                 <form onSubmit={handleAssign}>
                                     <div className="modal-body">
                                         <div className="row g-3">
                                             <div className="col-12">
-                                                <label className="form-label fw-bold">
-                                                    Assign To (ITAdmin User ID) <span className="text-danger">*</span>
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    className={`form-control${assignErrors.assignedToUserId ? ' is-invalid' : ''}`}
-                                                    value={assignForm.assignedToUserId}
-                                                    onChange={e => setAssignForm({ assignedToUserId: e.target.value })}
-                                                    onBlur={e => setAssignErrors(prev => ({ ...prev, assignedToUserId: validateOptionalPositiveId(e.target.value) }))}
-                                                    placeholder="Enter ITAdmin UserID..."
-                                                    required
-                                                />
+                                                <label className="form-label fw-bold">Assign To (ITAdmin User ID) <span className="text-danger">*</span></label>
+                                                <input type="number" className={`form-control${assignErrors.assignedToUserId ? ' is-invalid' : ''}`} value={assignForm.assignedToUserId} onChange={e => setAssignForm({ assignedToUserId: e.target.value })} onBlur={e => setAssignErrors(prev => ({ ...prev, assignedToUserId: validateOptionalPositiveId(e.target.value) }))} placeholder="Enter ITAdmin UserID..." required />
                                                 {assignErrors.assignedToUserId && <div className="invalid-feedback">{assignErrors.assignedToUserId}</div>}
-                                                <div className="form-text">
-                                                    Must be a user with ITAdmin role.
-                                                </div>
+                                                <div className="form-text">Must be a user with ITAdmin role.</div>
                                             </div>
                                         </div>
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
                                     </div>
                                     <div className="modal-footer">
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline-secondary"
-                                            onClick={() => setShowAssign(false)}
-                                            disabled={saving}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="btn btn-primary-edulearn"
-                                            disabled={saving}
-                                        >
-                                            {saving ? (
-                                                <>
-                                                    <span className="spinner-border spinner-border-sm me-2"></span>
-                                                    Assigning...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <i className="bi bi-check-lg me-2"></i>
-                                                    Assign
-                                                </>
-                                            )}
+                                        <button type="button" className="btn btn-outline-secondary" onClick={() => setShowAssign(false)} disabled={saving}>Cancel</button>
+                                        <button type="submit" className="btn btn-primary-edulearn" disabled={saving}>
+                                            {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Assigning...</> : <><i className="bi bi-check-lg me-2"></i>Assign</>}
                                         </button>
                                     </div>
                                 </form>
@@ -594,81 +458,32 @@ export default function TicketsPage() {
                         <div className="modal-dialog modal-dialog-centered">
                             <div className="modal-content">
                                 <div className="modal-header bg-success text-white">
-                                    <h5 className="modal-title">
-                                        <i className="bi bi-check-circle me-2"></i>
-                                        Resolve Ticket #{selected?.ticketID}
-                                    </h5>
-                                    <button
-                                        type="button"
-                                        className="btn-close btn-close-white"
-                                        onClick={() => setShowResolve(false)}
-                                        disabled={saving}
-                                    />
+                                    <h5 className="modal-title"><i className="bi bi-check-circle me-2"></i>Resolve Ticket #{selected?.ticketID}</h5>
+                                    <button type="button" className="btn-close btn-close-white" onClick={() => setShowResolve(false)} disabled={saving} />
                                 </div>
                                 <form onSubmit={handleResolve}>
                                     <div className="modal-body">
                                         <div className="row g-3">
                                             <div className="col-12">
-                                                <label className="form-label fw-bold">
-                                                    Resolution URI
-                                                    <small className="text-muted fw-normal ms-2">(optional link)</small>
-                                                </label>
+                                                <label className="form-label fw-bold">Resolution URL <span className="text-danger">*</span></label>
                                                 <div className="input-group">
-                                                    <span className="input-group-text">
-                                                        <i className="bi bi-link-45deg"></i>
-                                                    </span>
-                                                    <input
-                                                        type="text"
-                                                        className={`form-control${resolveErrors.resolutionURI ? ' is-invalid' : ''}`}
-                                                        value={resolveForm.resolutionURI}
-                                                        onChange={e => setResolveForm({ ...resolveForm, resolutionURI: e.target.value })}
-                                                        onBlur={e => setResolveErrors(prev => ({ ...prev, resolutionURI: validateOptionalUrl(e.target.value) }))}
-                                                        placeholder="https://..."
-                                                    />
+                                                    <span className="input-group-text"><i className="bi bi-link-45deg"></i></span>
+                                                    <input type="text" className={`form-control${resolveErrors.resolutionURI ? ' is-invalid' : ''}`} value={resolveForm.resolutionURI} onChange={e => setResolveForm({ ...resolveForm, resolutionURI: e.target.value })} onBlur={e => setResolveErrors(prev => ({ ...prev, resolutionURI: !e.target.value.trim() ? 'Resolution URL is required' : validateOptionalUrl(e.target.value) }))} placeholder="https://..." required />
                                                     {resolveErrors.resolutionURI && <div className="invalid-feedback">{resolveErrors.resolutionURI}</div>}
                                                 </div>
                                             </div>
                                             <div className="col-12">
-                                                <label className="form-label fw-bold">
-                                                    Resolution Note
-                                                    <small className="text-muted fw-normal ms-2">(optional)</small>
-                                                </label>
-                                                <textarea
-                                                    className="form-control"
-                                                    value={resolveForm.resolutionNote}
-                                                    onChange={e => setResolveForm({ ...resolveForm, resolutionNote: e.target.value })}
-                                                    rows={3}
-                                                    placeholder="Describe how the issue was resolved..."
-                                                />
+                                                <label className="form-label fw-bold">Resolution Note <span className="text-danger">*</span></label>
+                                                <textarea className={`form-control${resolveErrors.resolutionNote ? ' is-invalid' : ''}`} value={resolveForm.resolutionNote} onChange={e => setResolveForm({ ...resolveForm, resolutionNote: e.target.value })} onBlur={e => setResolveErrors(prev => ({ ...prev, resolutionNote: !e.target.value.trim() ? 'Resolution Note is required' : null }))} rows={3} placeholder="Describe how the issue was resolved..." required />
+                                                {resolveErrors.resolutionNote && <div className="invalid-feedback">{resolveErrors.resolutionNote}</div>}
                                             </div>
                                         </div>
                                         <ErrorAlert error={error} onDismiss={() => setError(null)} />
                                     </div>
                                     <div className="modal-footer">
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline-secondary"
-                                            onClick={() => setShowResolve(false)}
-                                            disabled={saving}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="btn btn-success"
-                                            disabled={saving}
-                                        >
-                                            {saving ? (
-                                                <>
-                                                    <span className="spinner-border spinner-border-sm me-2"></span>
-                                                    Resolving...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <i className="bi bi-check-lg me-2"></i>
-                                                    Mark Resolved
-                                                </>
-                                            )}
+                                        <button type="button" className="btn btn-outline-secondary" onClick={() => setShowResolve(false)} disabled={saving}>Cancel</button>
+                                        <button type="submit" className="btn btn-success" disabled={saving}>
+                                            {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Resolving...</> : <><i className="bi bi-check-lg me-2"></i>Mark Resolved</>}
                                         </button>
                                     </div>
                                 </form>

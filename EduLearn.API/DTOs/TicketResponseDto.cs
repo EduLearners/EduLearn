@@ -7,6 +7,8 @@ public class TicketResponseDto
     public int TicketID { get; set; }
     public int CreatedByUserID { get; set; }
     public string CreatedByUsername { get; set; } = string.Empty;
+    public string CreatedByFullName { get; set; } = string.Empty;
+    public string CreatedByRole { get; set; } = string.Empty;
     public int? AssignedToUserID { get; set; }
     public string? AssignedToUsername { get; set; }
     public string Subject { get; set; } = string.Empty;

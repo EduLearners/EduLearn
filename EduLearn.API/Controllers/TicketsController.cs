@@ -13,10 +13,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace EduLearn.API.Controllers;
 
 // NHT-03 — Helpdesk Ticketing.
-//
-// Error handling: follows the project convention documented in
-// docs/CODEBASE-AUDIT-REPORT.md §9a — pre-validate-then-act, no try/catch,
-// errors returned as `new { error, code }` with SCREAMING_SNAKE_CASE codes.
 [ApiController]
 [Route("api/tickets")]
 [Authorize]
@@ -39,11 +35,7 @@ public class TicketsController : ControllerBase
         _notificationService = notificationService;
     }
 
-    // ── POST /api/tickets — Any authenticated user raises a ticket ──
-    /// <summary>
-    /// Create a new helpdesk support ticket. Any authenticated user may call this endpoint.
-    /// The ticket is opened immediately and the action is recorded in the audit log.
-    /// </summary>
+    // ── POST /api/tickets ──
     [HttpPost]
     public async Task<ActionResult<TicketResponseDto>> Create(CreateTicketDto dto)
     {
@@ -71,10 +63,8 @@ public class TicketsController : ControllerBase
             created.TicketID,
             new { subject = created.Subject, priority = created.Priority.ToString() });
 
-        // NHT-03 ↔ NHT-01: notify support staff (every ITAdmin) that a new
-        // ticket was raised, so it surfaces in their notification bell for
-        // triage. Skip the creator if they are themselves an ITAdmin so no one
-        // is notified about their own ticket.
+        // NHT-03 ↔ NHT-01: notify all ITAdmin staff about new ticket.
+        // Message now includes creator's full name, role, and user ID.
         var supportStaff = await _userRepository.GetByRoleAsync(UserRole.ITAdmin);
         foreach (var admin in supportStaff)
         {
@@ -83,7 +73,7 @@ public class TicketsController : ControllerBase
                 admin.UserID,
                 NotificationCategory.IT,
                 NotificationSeverity.Info,
-                $"New ticket #{created.TicketID} '{created.Subject}' was raised and needs triage.",
+                $"New ticket #{created.TicketID} '{created.Subject}' was raised by {hydrated!.CreatedBy?.FullName} ({hydrated.CreatedBy?.Role}, #{currentUserId}) and needs triage.",
                 created.TicketID);
         }
 
@@ -93,10 +83,7 @@ public class TicketsController : ControllerBase
             MapToDto(hydrated!));
     }
 
-    // ── GET /api/tickets — ITAdmin sees all, others see their own ──
-    /// <summary>
-    /// List tickets visible to the caller. ITAdmin sees all tickets; other roles see only their own.
-    /// </summary>
+    // ── GET /api/tickets ──
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TicketResponseDto>>> GetAll()
     {
@@ -110,11 +97,7 @@ public class TicketsController : ControllerBase
         return Ok(tickets.Select(MapToDto));
     }
 
-    // ── GET /api/tickets/{id} — creator, assignee, or ITAdmin only ──
-    /// <summary>
-    /// Retrieve a single ticket by ID. Accessible to the ticket creator, the assigned support user, or ITAdmin.
-    /// Returns 403 for all other callers.
-    /// </summary>
+    // ── GET /api/tickets/{id} ──
     [HttpGet("{id}")]
     public async Task<ActionResult<TicketResponseDto>> GetById(int id)
     {
@@ -140,11 +123,7 @@ public class TicketsController : ControllerBase
         return Ok(MapToDto(ticket));
     }
 
-    // ── PUT /api/tickets/{id}/assign — ITAdmin assigns ticket to a support user ──
-    /// <summary>
-    /// Assign an open ticket to an ITAdmin support user and set its status to InProgress. SupportStaff (ITAdmin) only.
-    /// Notifies the assignee via the notification service and logs the assignment in the audit trail.
-    /// </summary>
+    // ── PUT /api/tickets/{id}/assign ──
     [HttpPut("{id}/assign")]
     [Authorize(Policy = "SupportStaffPolicy")]
     public async Task<ActionResult<TicketResponseDto>> Assign(int id, AssignTicketDto dto)
@@ -185,7 +164,6 @@ public class TicketsController : ControllerBase
             ticket.TicketID,
             new { assignedToUserId = dto.AssignedToUserId, newStatus = ticket.Status.ToString() });
 
-        // NHT-03 ↔ NHT-01: notify the new assignee in real time.
         await _notificationService.NotifyAsync(
             dto.AssignedToUserId,
             NotificationCategory.IT,
@@ -196,11 +174,7 @@ public class TicketsController : ControllerBase
         return Ok(MapToDto(hydrated!));
     }
 
-    // ── PUT /api/tickets/{id}/resolve — ITAdmin closes with resolution URI ──
-    /// <summary>
-    /// Mark a ticket as Resolved and attach a resolution URI. SupportStaff (ITAdmin) only.
-    /// Notifies the ticket creator and records the resolution note in the audit log.
-    /// </summary>
+    // ── PUT /api/tickets/{id}/resolve ──
     [HttpPut("{id}/resolve")]
     [Authorize(Policy = "SupportStaffPolicy")]
     public async Task<ActionResult<TicketResponseDto>> Resolve(int id, ResolveTicketDto dto)
@@ -223,7 +197,6 @@ public class TicketsController : ControllerBase
         var hydrated = await _ticketRepository.GetByIdWithUsersAsync(updated.TicketID);
 
         var currentUserId = GetCurrentUserId();
-        // ResolutionNote is captured only in the audit trail — no schema change on Tickets.
         await _auditLogService.LogAsync(
             currentUserId,
             "TicketResolved",
@@ -236,7 +209,6 @@ public class TicketsController : ControllerBase
                 newStatus = ticket.Status.ToString()
             });
 
-        // NHT-03 ↔ NHT-01: notify the ticket creator that their ticket is resolved.
         await _notificationService.NotifyAsync(
             ticket.CreatedByFK,
             NotificationCategory.IT,
@@ -262,6 +234,8 @@ public class TicketsController : ControllerBase
         TicketID = t.TicketID,
         CreatedByUserID = t.CreatedByFK,
         CreatedByUsername = t.CreatedBy?.Username ?? string.Empty,
+        CreatedByFullName = t.CreatedBy?.FullName ?? string.Empty,
+        CreatedByRole = t.CreatedBy?.Role.ToString() ?? string.Empty,
         AssignedToUserID = t.AssignedToFK,
         AssignedToUsername = t.AssignedTo?.Username,
         Subject = t.Subject,
