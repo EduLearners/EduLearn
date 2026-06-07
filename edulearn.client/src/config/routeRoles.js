@@ -35,6 +35,7 @@ export const SECTION_ROLES = {
     reports: ['Auditor', 'ITAdmin'],
     kpis: ['Auditor', 'ITAdmin'],
     'audit-log': ['Auditor', 'ITAdmin'],
+    'audit-packages': ['Auditor', 'ITAdmin'],
     users: ['ITAdmin'],
 };
 

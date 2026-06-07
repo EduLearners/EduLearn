@@ -3,10 +3,10 @@ import axios from 'axios';
 const CACHE_KEY = 'edulearn_backend_url';
 
 /**
- * Auto-detect which backend port is running (5000 or 5001)
+ * Auto-detect which backend port is running (5001 HTTPS first, then 5000 HTTP)
  * Tries both URLs in order, returns the first one that responds
  * Caches result in sessionStorage for fast subsequent loads
- * @returns {Promise<string>} Backend URL (e.g., 'http://localhost:5000')
+ * @returns {Promise<string>} Backend URL (e.g., 'https://localhost:5001')
  * @throws {Error} If neither backend port responds
  */
 export async function detectBackend() {
@@ -17,22 +17,19 @@ export async function detectBackend() {
     return cached;
   }
 
-  // Try both ports in order (HTTP first, then HTTPS)
+  // Try HTTPS first (matches vite.config.js proxy target), then HTTP fallback
   const candidates = [
+    'https://localhost:5001',
     'http://localhost:5000',
-    'https://localhost:5001'
   ];
 
   for (const url of candidates) {
     try {
       console.log('[backendConfig] Trying:', url);
 
-      // Use /api/users endpoint which returns 401 when backend is alive
-      // (401 = needs auth = backend responding correctly)
       await axios.get(`${url}/api/users`, {
-        timeout: 1000,
-        validateStatus: (status) => status === 401 || status === 200
-        // Accept 401 (needs auth) or 200 (public) as "backend is alive"
+        timeout: 2000,
+        validateStatus: (status) => status === 401 || status === 200,
       });
 
       console.log('[backendConfig] ✓ Backend detected:', url);
@@ -40,12 +37,13 @@ export async function detectBackend() {
       return url;
     } catch (error) {
       console.log('[backendConfig] ✗ Failed:', url, error.message);
-      // Try next candidate
     }
   }
 
-  // Neither port responded
-  throw new Error('Backend not reachable on http://localhost:5000 or https://localhost:5001');
+  throw new Error(
+    'Backend not reachable on https://localhost:5001 or http://localhost:5000. ' +
+    'Please start the API with dotnet run.'
+  );
 }
 
 /**

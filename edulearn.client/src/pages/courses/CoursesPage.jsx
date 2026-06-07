@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { courseService } from '../../services/courseService';
 import { sectionService } from '../../services/sectionService';
 import { authService } from '../../services/authService';
+import { studentService } from '../../services/studentService';
+import { programService } from '../../services/programService';
 import { CourseStatus } from '../../models/Course';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -12,6 +14,7 @@ export default function CoursesPage() {
     const navigate = useNavigate();
     const { role, userId } = authService.getCurrentUser();
     const isInstructor = role === 'Instructor';
+    const isStudent = role === 'Student';
 
     const [allCourses, setAllCourses] = useState([]);
     const [myCourses, setMyCourses]   = useState([]);
@@ -33,13 +36,45 @@ export default function CoursesPage() {
             setLoading(true);
             setError(null);
             const data = await courseService.getAll();
-            setAllCourses(data);
 
-            // For Instructors: derive their courses from assigned sections
-            if (isInstructor && userId) {
-                const sections = await sectionService.getByInstructor(userId).catch(() => []);
-                const myCourseIds = new Set(sections.map(s => s.courseID));
-                setMyCourses(data.filter(c => myCourseIds.has(c.courseID)));
+            if (isStudent) {
+                // Student: only show courses from their enrolled program
+                // Get their program's required + elective course IDs
+                const myPrograms = await programService.getMine().catch(() => []);
+                const myProgram = myPrograms?.[0];
+                if (myProgram) {
+                    const parseIds = (json) => {
+                        if (!json) return [];
+                        try {
+                            const parsed = JSON.parse(json);
+                            if (!Array.isArray(parsed)) return [];
+                            return parsed.map(item =>
+                                typeof item === 'number' ? item :
+                                typeof item === 'object' ? (item.courseId ?? item.courseID ?? item.id ?? null) : null
+                            ).filter(Boolean);
+                        } catch { return []; }
+                    };
+                    const programCourseIds = new Set([
+                        ...parseIds(myProgram.requiredCoursesJSON),
+                        ...parseIds(myProgram.electivesJSON),
+                    ]);
+                    // If program has no courses assigned yet, show all courses
+                    // (so student is not left with an empty page)
+                    const filtered = programCourseIds.size > 0
+                        ? data.filter(c => programCourseIds.has(c.courseID))
+                        : data;
+                    setAllCourses(filtered);
+                } else {
+                    setAllCourses(data);
+                }
+            } else {
+                setAllCourses(data);
+                // For Instructors: derive their courses from assigned sections
+                if (isInstructor && userId) {
+                    const sections = await sectionService.getByInstructor(userId).catch(() => []);
+                    const myCourseIds = new Set(sections.map(s => s.courseID));
+                    setMyCourses(data.filter(c => myCourseIds.has(c.courseID)));
+                }
             }
         } catch (err) {
             setError(err);

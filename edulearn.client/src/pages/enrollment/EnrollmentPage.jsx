@@ -14,6 +14,7 @@ import Toast from '../../components/Toast';
 import { getFriendlySimpleMessage } from '../../utils/errorMessage';
 import axiosClient from '../../api/axiosClient';
 import { validateCourseCode, validateMinLength, validateJson, validatePositiveInteger, validateOptionalPositiveId, validateTerm, validatePositiveId } from '../../utils/validators';
+import { CURRENT_TERM } from '../../config/academic';
 
 export default function EnrollmentPage() {
     const [searchParams] = useSearchParams();
@@ -33,7 +34,7 @@ export default function EnrollmentPage() {
 
     // Search filters
     const [courseId, setCourseId] = useState('');
-    const [term, setTerm] = useState('2026-Fall');
+    const [term, setTerm] = useState(CURRENT_TERM);
     const [studentId, setStudentId] = useState('');
     const [errors, setErrors] = useState({});
 

@@ -20,6 +20,7 @@ export default function ProgramDetailPage() {
     const [error, setError] = useState(null);
 
     const canManage = ['DeptAdmin', 'ITAdmin'].includes(role);
+    const isStudent = role === 'Student';
 
     useEffect(() => { loadProgram(); }, [id]);
 
@@ -268,9 +269,11 @@ export default function ProgramDetailPage() {
                                 <button className="btn btn-outline-primary" onClick={() => navigate('/courses')}>
                                     <i className="bi bi-book me-2"></i>All Courses
                                 </button>
-                                <button className="btn btn-outline-primary" onClick={() => navigate(`/students?programId=${id}`)}>
-                                    <i className="bi bi-people me-2"></i>Students in this Program
-                                </button>
+                                {!isStudent && (
+                                    <button className="btn btn-outline-primary" onClick={() => navigate(`/students?programId=${id}`)  }>
+                                        <i className="bi bi-people me-2"></i>Students in this Program
+                                    </button>
+                                )}
                                 {canManage && (
                                     <button className="btn btn-outline-secondary" onClick={() => navigate(`/programs/${id}/edit`)}>
                                         <i className="bi bi-pencil me-2"></i>Edit Program

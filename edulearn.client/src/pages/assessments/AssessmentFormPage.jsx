@@ -136,6 +136,8 @@ export default function AssessmentFormPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return;         // ← prevent double submit
+        setLoading(true);            // ← disable button immediately
         setError(null);
         setSuccess('');
 
@@ -146,9 +148,11 @@ export default function AssessmentFormPage() {
             instructionsURI: validateOptionalUrl(form.instructionsURI),
             ...(!isInstructor ? { courseID: validatePositiveId(form.courseID) } : {}),
         };
-        if (Object.values(next).some(Boolean)) { setErrors(next); return; }
-
-        setLoading(true);
+        if (Object.values(next).some(Boolean)) {
+            setErrors(next);
+            setLoading(false);       // ← re-enable if validation fails
+            return;
+        }
 
         const payload = {
             courseID: Number(form.courseID),

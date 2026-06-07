@@ -9,14 +9,14 @@ import StatusBadge from '../../components/StatusBadge';
 export default function ProgramsPage() {
     const navigate = useNavigate();
     const { role } = authService.getCurrentUser();
+    const isStudent = role === 'Student';
+    // Backend DeptAdminPolicy: DeptAdmin + ITAdmin only for create/edit
+    const canManage = ['DeptAdmin', 'ITAdmin'].includes(role);
 
     const [programs, setPrograms] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState('');
-
-    // Backend DeptAdminPolicy: DeptAdmin + ITAdmin only for create/edit
-    const canManage = ['DeptAdmin', 'ITAdmin'].includes(role);
 
     useEffect(() => {
         loadPrograms();
@@ -26,8 +26,16 @@ export default function ProgramsPage() {
         try {
             setLoading(true);
             setError(null);
-            const data = await programService.getAll();
-            setPrograms(data || []);
+            if (isStudent) {
+                // Student: use dedicated /programs/mine endpoint
+                // returns only programs the student is enrolled in
+                const data = await programService.getMine();
+                setPrograms(data || []);
+            } else {
+                // All other roles: load all programs
+                const data = await programService.getAll();
+                setPrograms(data || []);
+            }
         } catch (err) {
             setError(err);
         } finally {

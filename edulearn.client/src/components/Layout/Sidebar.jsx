@@ -56,7 +56,6 @@ const NAV_ITEMS = [
     { label: 'Sections',      to: '/sections',      icon: 'collection',             roles: ['DeptAdmin'] },
     { label: 'Rooms',         to: '/rooms',         icon: 'door-closed',            roles: ['DeptAdmin'] },
     { label: 'Syllabus',      to: '/syllabi',       icon: 'file-earmark-ruled',     roles: ['DeptAdmin'] },
-    { label: 'Discussions',   to: '/discussions',   icon: 'chat-square-text',       roles: ['DeptAdmin'] },
     { label: 'Notifications', to: '/notifications', icon: 'bell',                   roles: ['DeptAdmin'] },
     { label: 'Tickets',       to: '/tickets',       icon: 'headset',                roles: ['DeptAdmin'] },
 
