@@ -165,23 +165,30 @@ public class SubmissionsController : ControllerBase
                 ?? throw new InvalidOperationException("NameIdentifier claim missing"));
 
             if (!submission.Assessment.SectionID.HasValue)
-                return BadRequest(new {
-                    error = "Assessment is not linked to a section",
-                    code = "ASSESSMENT_NO_SECTION"
-                });
+            {
+                // Course-wide assessment — verify instructor teaches at least one section of this course
+                var instructorSections = await _sectionRepository.GetByInstructorIdAsync(callerId);
+                if (!instructorSections.Any(s => s.CourseID == submission.Assessment.CourseID))
+                    return StatusCode(403, new {
+                        error = "You can only view submissions from your own courses",
+                        code = "NOT_YOUR_COURSE"
+                    });
+            }
+            else
+            {
+                var section = await _sectionRepository.GetByIdAsync(submission.Assessment.SectionID.Value);
+                if (section is null)
+                    return BadRequest(new {
+                        error = "Section not found",
+                        code = "SECTION_NOT_FOUND"
+                    });
 
-            var section = await _sectionRepository.GetByIdAsync(submission.Assessment.SectionID.Value);
-            if (section is null)
-                return BadRequest(new {
-                    error = "Section not found",
-                    code = "SECTION_NOT_FOUND"
-                });
-
-            if (section.InstructorID != callerId)
-                return StatusCode(403, new {
-                    error = "You can only view submissions from your own sections",
-                    code = "NOT_YOUR_SECTION"
-                });
+                if (section.InstructorID != callerId)
+                    return StatusCode(403, new {
+                        error = "You can only view submissions from your own sections",
+                        code = "NOT_YOUR_SECTION"
+                    });
+            }
         }
 
         return Ok(MapToDto(submission));
@@ -216,23 +223,30 @@ public class SubmissionsController : ControllerBase
         if (grader.Role == UserRole.Instructor)
         {
             if (!submission.Assessment.SectionID.HasValue)
-                return BadRequest(new {
-                    error = "Assessment is not linked to a section",
-                    code = "ASSESSMENT_NO_SECTION"
-                });
+            {
+                // Course-wide assessment — verify instructor teaches at least one section of this course
+                var instructorSections = await _sectionRepository.GetByInstructorIdAsync(callerId);
+                if (!instructorSections.Any(s => s.CourseID == submission.Assessment.CourseID))
+                    return StatusCode(403, new {
+                        error = "You can only grade submissions from your own courses",
+                        code = "NOT_YOUR_COURSE"
+                    });
+            }
+            else
+            {
+                var section = await _sectionRepository.GetByIdAsync(submission.Assessment.SectionID.Value);
+                if (section is null)
+                    return BadRequest(new {
+                        error = "Section not found",
+                        code = "SECTION_NOT_FOUND"
+                    });
 
-            var section = await _sectionRepository.GetByIdAsync(submission.Assessment.SectionID.Value);
-            if (section is null)
-                return BadRequest(new {
-                    error = "Section not found",
-                    code = "SECTION_NOT_FOUND"
-                });
-
-            if (section.InstructorID != callerId)
-                return StatusCode(403, new {
-                    error = "You can only grade submissions from your own sections",
-                    code = "NOT_YOUR_SECTION"
-                });
+                if (section.InstructorID != callerId)
+                    return StatusCode(403, new {
+                        error = "You can only grade submissions from your own sections",
+                        code = "NOT_YOUR_SECTION"
+                    });
+            }
         }
 
         if (dto.Score > submission.Assessment.MaxScore)

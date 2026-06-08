@@ -17,28 +17,6 @@ const validateApplicantName = (v) => {
     return null;
 };
 
-const validateApplicantEmail = (v) => {
-    const t = String(v ?? '').trim().toLowerCase();
-    if (!t) return 'Email is required';
-    if (!t.includes('@'))
-        return "Invalid email — missing '@'. Enter a valid email like name@gmail.com";
-    const parts = t.split('@');
-    if (parts.length > 2)
-        return "Invalid email — multiple '@' signs found";
-    const [local, domain] = parts;
-    if (!local)
-        return "Invalid email — nothing before '@'. Enter a valid email like name@gmail.com";
-    if (!domain || !domain.includes('.'))
-        return "Invalid email — domain must include a '.' (e.g. name@gmail.com)";
-    if (domain.startsWith('.') || domain.endsWith('.'))
-        return 'Invalid email format — check the domain part (e.g. name@gmail.com)';
-    if (/\.{2,}/.test(t))
-        return 'Email cannot contain consecutive dots';
-    if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(t))
-        return 'Enter a valid email address (e.g. name@gmail.com)';
-    return null;
-};
-
 export default function NewApplicantPage() {
     const navigate = useNavigate();
     const [saving, setSaving] = useState(false);
@@ -101,7 +79,7 @@ export default function NewApplicantPage() {
 
         const next = {
             name: validateApplicantName(form.name),
-            email: validateApplicantEmail(form.email),
+            email: validateEmail(form.email),
             phone: validatePhoneRequired(form.phone),
             address: validateAddress(form.address),
             nationalID: validateNationalId(form.nationalID),
@@ -257,9 +235,9 @@ export default function NewApplicantPage() {
                                     onChange={e => {
                                         const val = e.target.value.toLowerCase();
                                         setForm(prev => ({ ...prev, email: val }));
-                                        if (errors.email) setErrors(prev => ({ ...prev, email: validateApplicantEmail(val) }));
+                                        if (errors.email) setErrors(prev => ({ ...prev, email: validateEmail(val) }));
                                     }}
-                                    onBlur={e => setErrors(prev => ({ ...prev, email: validateApplicantEmail(e.target.value) }))}
+                                    onBlur={e => setErrors(prev => ({ ...prev, email: validateEmail(e.target.value) }))}
                                     placeholder="e.g. name@gmail.com"
                                     required
                                 />

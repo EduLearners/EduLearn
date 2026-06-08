@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { assessmentService } from '../../services/assessmentService';
+import { submissionService } from '../../services/submissionService';
 import { authService } from '../../services/authService';
 import Loading from '../../components/Loading';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -28,9 +29,16 @@ export default function AssessmentDetailPage() {
             setLoading(true);
             setError(null);
 
+            // Fetch assessment + submissions in parallel.
+            // Student role → use getByStudent (allowed) then filter by assessmentID.
+            // Instructor / ITAdmin → use getSubmissions (roster endpoint, allowed).
+            const submissionsPromise = isStudent
+                ? submissionService.getByStudent(userId)
+                : assessmentService.getSubmissions(id);
+
             const [assessmentData, submissionsData] = await Promise.allSettled([
                 assessmentService.getById(id),
-                assessmentService.getSubmissions(id),
+                submissionsPromise,
             ]);
 
             if (assessmentData.status === 'fulfilled') {
@@ -42,9 +50,10 @@ export default function AssessmentDetailPage() {
             if (submissionsData.status === 'fulfilled') {
                 const allSubmissions = submissionsData.value;
                 if (isStudent) {
+                    // filter to only submissions for THIS assessment
                     setSubmissions(
                         allSubmissions.filter(
-                            s => String(s.studentID) === String(userId)
+                            s => String(s.assessmentID) === String(id)
                         )
                     );
                 } else {
