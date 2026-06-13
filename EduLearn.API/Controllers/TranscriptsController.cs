@@ -35,10 +35,11 @@ public class TranscriptsController : ControllerBase
         _submissionRepo = submissionRepo;
     }
 
-    // POST /api/transcripts/generate/{studentId} — Generate transcript from enrollment data
+    // POST /api/transcripts/generate/{studentId}
     /// <summary>
     /// Generate a new transcript draft for the given student. Registrar and ITAdmin only.
-    /// Includes only Enrolled course entries and computes a 10-point CGPA from graded submissions.
+    /// CGPA is credit-weighted and only shown when ALL graded courses are passed.
+    /// If any course has grade F → CGPA is withheld and Remark = "XP".
     /// </summary>
     [HttpPost("generate/{studentId}")]
     [Authorize(Roles = "Registrar,ITAdmin")]
@@ -51,13 +52,10 @@ public class TranscriptsController : ControllerBase
 
         var program = await _programRepo.GetByIdAsync(student.ProgramID);
 
-        // Get all enrollments for this student (includes Section + Course via Include)
         var enrollments = await _enrollRepo.GetByStudentIdAsync(studentId);
-
-        // Load all graded submissions for this student to look up grade per course
         var submissions = await _submissionRepo.GetByStudentIdWithDetailsAsync(studentId);
 
-        // Helper: compute letter grade from percentage
+        // Helper: letter grade from percentage
         static string ToLetterGrade(decimal pct) => pct switch
         {
             >= 90m => "A+",
@@ -70,7 +68,7 @@ public class TranscriptsController : ControllerBase
             _      => "F"
         };
 
-        // Helper: compute GPA points from percentage (10-point CGPA scale)
+        // Helper: GPA points from percentage (10-point scale)
         static decimal ToGpaPoints(decimal pct) => pct switch
         {
             >= 90m => 10m,
@@ -83,12 +81,11 @@ public class TranscriptsController : ControllerBase
             _      => 0m
         };
 
-        // R-4: official transcripts must show only Enrolled entries
+        // R-4: only Enrolled entries appear on official transcripts
         var entries = enrollments
             .Where(e => e.Status == EnrollmentStatus.Enrolled)
             .Select(e =>
             {
-                // Find the best graded submission for this course's section
                 var courseSubmissions = submissions
                     .Where(s =>
                         s.Assessment.SectionID == e.SectionID &&
@@ -96,32 +93,33 @@ public class TranscriptsController : ControllerBase
                         s.Assessment.MaxScore > 0)
                     .ToList();
 
-                decimal? percentage = null;
-                decimal? score = null;
-                decimal? maxScore = null;
-                string? letterGrade = null;
-                bool gradePosted = e.GradePostedFlag;
+                decimal? percentage  = null;
+                decimal? score       = null;
+                decimal? maxScore    = null;
+                string?  letterGrade = null;
+                bool     gradePosted = e.GradePostedFlag;
 
                 if (courseSubmissions.Any())
                 {
-                    // Use the best (highest) score among all graded submissions for this section
-                    var best = courseSubmissions.OrderByDescending(s => s.Score!.Value / s.Assessment.MaxScore).First();
-                    score = best.Score;
-                    maxScore = best.Assessment.MaxScore;
-                    percentage = Math.Round(best.Score!.Value / best.Assessment.MaxScore * 100m, 2);
+                    var best = courseSubmissions
+                        .OrderByDescending(s => s.Score!.Value / s.Assessment.MaxScore)
+                        .First();
+                    score       = best.Score;
+                    maxScore    = best.Assessment.MaxScore;
+                    percentage  = Math.Round(best.Score!.Value / best.Assessment.MaxScore * 100m, 2);
                     letterGrade = ToLetterGrade(percentage.Value);
                     gradePosted = true;
                 }
 
                 return new
                 {
-                    courseName = e.Section.Course.Title,
-                    courseCode = e.Section.Course.Code,
-                    credits = e.Section.Course.Credits,
-                    term = e.Section.Term,
-                    status = e.Status.ToString(),
+                    courseName   = e.Section.Course.Title,
+                    courseCode   = e.Section.Course.Code,
+                    credits      = e.Section.Course.Credits,
+                    term         = e.Section.Term,
+                    status       = e.Status.ToString(),
                     gradePosted,
-                    enrolledAt = e.EnrolledAt,
+                    enrolledAt   = e.EnrolledAt,
                     score,
                     maxScore,
                     percentage,
@@ -129,23 +127,42 @@ public class TranscriptsController : ControllerBase
                 };
             }).ToList();
 
-        var totalCredits = entries.Sum(e => e.credits);
-
-        // R-5: CGPA from graded entries only
+        // Graded entries = entries that have a percentage value
         var gradedEntries = entries.Where(e => e.percentage.HasValue).ToList();
-        decimal? gpa = null;
-        if (gradedEntries.Any())
+
+        // R-5: CGPA + Remark logic
+        // Policy: CGPA shown only if ALL graded courses are passed (no F grade)
+        // Any F → CGPA withheld, Remark = "XP"
+        // No graded courses yet → CGPA null, Remark null (Result Awaited)
+        decimal? gpa;
+        if (!gradedEntries.Any())
         {
-            var avgPercent = gradedEntries.Average(e => e.percentage!.Value);
-            gpa = ToGpaPoints(avgPercent);
+            // No grades recorded yet
+            gpa = null;
+        }
+        else if (gradedEntries.Any(e => e.letterGrade == "F"))
+        {
+            // At least one failed course → withhold CGPA
+            gpa = null;
+        }
+        else
+        {
+            // All graded courses passed → credit-weighted CGPA
+            // Correct formula: Σ(GPA points × credits) / Σ(credits)
+            var totalWeightedPoints = gradedEntries
+                .Sum(e => ToGpaPoints(e.percentage!.Value) * e.credits);
+            var totalCredits = gradedEntries.Sum(e => e.credits);
+            gpa = totalCredits > 0
+                ? Math.Round(totalWeightedPoints / totalCredits, 2)
+                : (decimal?)null;
         }
 
         var transcript = new Transcript
         {
-            StudentID = studentId,
-            EntriesJSON = JsonSerializer.Serialize(entries),
-            GPA = gpa,
-            Status = TranscriptStatus.Draft
+            StudentID    = studentId,
+            EntriesJSON  = JsonSerializer.Serialize(entries),
+            GPA          = gpa,
+            Status       = TranscriptStatus.Draft
         };
 
         var created = await _transcriptRepo.CreateAsync(transcript);
@@ -155,53 +172,48 @@ public class TranscriptsController : ControllerBase
             MapToDto(created, student, program?.Name ?? "Unknown"));
     }
 
-    // GET /api/transcripts/student/{studentId} — Get all transcripts for a student
+    // GET /api/transcripts/student/{studentId}
     /// <summary>
-    /// List all transcripts for a given student. Any authenticated user may call this endpoint.
-    /// Students may only view their own transcripts; Registrar and ITAdmin may view any.
+    /// List all transcripts for a given student.
+    /// Students may only view their own; Registrar and ITAdmin may view any.
     /// </summary>
     [HttpGet("student/{studentId}")]
     [Authorize(Policy = "TranscriptReadPolicy")]
     public async Task<ActionResult<IEnumerable<TranscriptResponseDto>>> GetByStudent(
         int studentId, CancellationToken cancellationToken)
     {
-        // phase4-fix-8: Runtime role guard mirrors TranscriptReadPolicy; Student allowed with ownership check.
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var allowedRoles = new[] { "Registrar", "ITAdmin", "Student" };
         if (!allowedRoles.Contains(callerRole))
-            return StatusCode(403, new { error = "Access denied — registrar or admin role required", code = "TRANSCRIPT_POLICY_DENIED" });
+            return StatusCode(403, new { error = "Access denied", code = "TRANSCRIPT_POLICY_DENIED" });
 
         var student = await _studentRepo.GetByIdAsync(studentId);
         if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
         if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
-            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
+            return Unauthorized(new { error = "Your session is invalid.", code = "INVALID_TOKEN" });
 
         if (callerRole == "Student" && student.UserID != callerId)
             return StatusCode(403, new { error = "You may only view your own transcripts", code = "TRANSCRIPT_FORBIDDEN" });
 
-        var program = await _programRepo.GetByIdAsync(student.ProgramID);
+        var program    = await _programRepo.GetByIdAsync(student.ProgramID);
         var transcripts = await _transcriptRepo.GetByStudentIdAsync(studentId);
 
         return Ok(transcripts.Select(t => MapToDto(t, student, program?.Name ?? "Unknown")));
     }
 
     // GET /api/transcripts/{id}
-    /// <summary>
-    /// Retrieve a single transcript by its ID. Any authenticated user may call this endpoint.
-    /// Students may only view their own transcripts; Registrar and ITAdmin may view any.
-    /// </summary>
+    /// <summary>Retrieve a single transcript by ID.</summary>
     [HttpGet("{id}")]
     [Authorize(Policy = "TranscriptReadPolicy")]
     public async Task<ActionResult<TranscriptResponseDto>> GetTranscript(
         int id, CancellationToken cancellationToken)
     {
-        // phase4-fix-8: Runtime role guard mirrors TranscriptReadPolicy; Student allowed with ownership check.
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         var allowedRoles = new[] { "Registrar", "ITAdmin", "Student" };
         if (!allowedRoles.Contains(callerRole))
-            return StatusCode(403, new { error = "Access denied — registrar or admin role required", code = "TRANSCRIPT_POLICY_DENIED" });
+            return StatusCode(403, new { error = "Access denied", code = "TRANSCRIPT_POLICY_DENIED" });
 
         var transcript = await _transcriptRepo.GetByIdAsync(id);
         if (transcript is null)
@@ -212,21 +224,17 @@ public class TranscriptsController : ControllerBase
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
         if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
-            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
+            return Unauthorized(new { error = "Your session is invalid.", code = "INVALID_TOKEN" });
 
         if (callerRole == "Student" && student.UserID != callerId)
             return StatusCode(403, new { error = "You may only view your own transcripts", code = "TRANSCRIPT_FORBIDDEN" });
 
         var program = await _programRepo.GetByIdAsync(student.ProgramID);
-
         return Ok(MapToDto(transcript, student, program?.Name ?? "Unknown"));
     }
 
-    // PUT /api/transcripts/{id}/publish — Publish a draft transcript
-    /// <summary>
-    /// Promote a Draft transcript to Issued status, recording the issued timestamp. Registrar and ITAdmin only.
-    /// Returns 400 if the transcript is already in a non-Draft state.
-    /// </summary>
+    // PUT /api/transcripts/{id}/publish
+    /// <summary>Promote a Draft transcript to Issued status. Registrar and ITAdmin only.</summary>
     [HttpPut("{id}/publish")]
     [Authorize(Roles = "Registrar,ITAdmin")]
     public async Task<ActionResult<TranscriptResponseDto>> PublishTranscript(
@@ -239,26 +247,22 @@ public class TranscriptsController : ControllerBase
         if (transcript.Status != TranscriptStatus.Draft)
             return BadRequest(new
             {
-                error = $"Only Draft transcripts can be published (current status: {transcript.Status})",
-                code = "INVALID_TRANSCRIPT_STATUS"
+                error = $"Only Draft transcripts can be published (current: {transcript.Status})",
+                code  = "INVALID_TRANSCRIPT_STATUS"
             });
 
-        transcript.Status = TranscriptStatus.Issued;
+        transcript.Status   = TranscriptStatus.Issued;
         transcript.IssuedAt = DateTime.UtcNow;
 
         var updated = await _transcriptRepo.UpdateAsync(transcript);
-
         var student = await _studentRepo.GetByIdAsync(transcript.StudentID);
         var program = await _programRepo.GetByIdAsync(student!.ProgramID);
 
         return Ok(MapToDto(updated, student, program?.Name ?? "Unknown"));
     }
 
-    // GET /api/transcripts/{id}/pdf — SRA-03: Download transcript as a formatted PDF
-    /// <summary>
-    /// Download an Issued transcript as a PDF file. Only Issued transcripts can be downloaded.
-    /// Students may only download their own. Registrar and ITAdmin may download any.
-    /// </summary>
+    // GET /api/transcripts/{id}/pdf
+    /// <summary>Download an Issued transcript as a PDF. Only Issued transcripts can be downloaded.</summary>
     [HttpGet("{id}/pdf")]
     public async Task<IActionResult> DownloadPdf(int id, CancellationToken cancellationToken)
     {
@@ -266,28 +270,25 @@ public class TranscriptsController : ControllerBase
         if (transcript is null)
             return NotFound(new { error = "Transcript not found", code = "TRANSCRIPT_NOT_FOUND" });
 
-        // Only Issued transcripts can be downloaded as PDF
         if (transcript.Status != TranscriptStatus.Issued)
             return BadRequest(new
             {
-                error = $"Only Issued transcripts can be downloaded as PDF (current status: {transcript.Status})",
-                code = "TRANSCRIPT_NOT_ISSUED"
+                error = $"Only Issued transcripts can be downloaded (current: {transcript.Status})",
+                code  = "TRANSCRIPT_NOT_ISSUED"
             });
 
         var student = await _studentRepo.GetByIdAsync(transcript.StudentID);
         if (student is null)
             return NotFound(new { error = "Student not found", code = "STUDENT_NOT_FOUND" });
 
-        // Ownership check: students can only download their own transcript
         var callerRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
-            return Unauthorized(new { error = "Your session is invalid. Please sign in again.", code = "INVALID_TOKEN" });
+            return Unauthorized(new { error = "Your session is invalid.", code = "INVALID_TOKEN" });
         if (callerRole == "Student" && student.UserID != callerId)
             return StatusCode(403, new { error = "You may only download your own transcript", code = "TRANSCRIPT_FORBIDDEN" });
 
         var program = await _programRepo.GetByIdAsync(student.ProgramID);
 
-        // Deserialize the stored EntriesJSON back into typed rows
         var entries = JsonSerializer.Deserialize<List<TranscriptEntryRow>>(
             transcript.EntriesJSON,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
@@ -296,33 +297,66 @@ public class TranscriptsController : ControllerBase
         var pdfData = new TranscriptPdfData
         {
             StudentName = student.Name,
-            MRN = student.MRN,
+            MRN         = student.MRN,
             ProgramName = program?.Name ?? "Unknown",
-            GPA = transcript.GPA,
-            IssuedAt = transcript.IssuedAt,
-            Status = transcript.Status.ToString(),
-            Entries = entries
+            GPA         = transcript.GPA,
+            Remark      = ComputeRemark(transcript.EntriesJSON),
+            IssuedAt    = transcript.IssuedAt,
+            Status      = transcript.Status.ToString(),
+            Entries     = entries
         };
 
-        // Generate PDF bytes in memory using QuestPDF
-        var doc = new TranscriptPdfDocument(pdfData);
+        var doc      = new TranscriptPdfDocument(pdfData);
         var pdfBytes = doc.ToPdfBytes();
-
         var filename = $"Transcript_{student.MRN}_{DateTime.UtcNow:yyyyMMdd}.pdf";
         return File(pdfBytes, "application/pdf", filename);
     }
 
+    // ── Helpers ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Computes the Remark from stored EntriesJSON.
+    /// "PASS" = all graded courses passed, "XP" = at least one F, null = no grades yet.
+    /// </summary>
+    private static string? ComputeRemark(string? entriesJson)
+    {
+        if (string.IsNullOrEmpty(entriesJson)) return null;
+        try
+        {
+            using var doc     = JsonDocument.Parse(entriesJson);
+            var allEntries    = doc.RootElement.EnumerateArray().ToList();
+
+            var gradedEntries = allEntries.Where(e =>
+            {
+                if (e.TryGetProperty("percentage", out var p))
+                    return p.ValueKind != JsonValueKind.Null;
+                return false;
+            }).ToList();
+
+            if (!gradedEntries.Any()) return null; // Result Awaited
+
+            var hasF = gradedEntries.Any(e =>
+                e.TryGetProperty("letterGrade", out var g) &&
+                g.ValueKind != JsonValueKind.Null &&
+                g.GetString() == "F");
+
+            return hasF ? "XP" : "PASS";
+        }
+        catch { return null; }
+    }
+
     private static TranscriptResponseDto MapToDto(Transcript t, Student s, string programName) => new()
     {
-        TranscriptID = t.TranscriptID,
-        StudentID = t.StudentID,
-        StudentName = s.Name,
-        MRN = s.MRN,
-        ProgramName = programName,
-        IssuedAt = t.IssuedAt,
-        EntriesJSON = t.EntriesJSON,
-        GPA = t.GPA,
-        Status = t.Status,
+        TranscriptID  = t.TranscriptID,
+        StudentID     = t.StudentID,
+        StudentName   = s.Name,
+        MRN           = s.MRN,
+        ProgramName   = programName,
+        IssuedAt      = t.IssuedAt,
+        EntriesJSON   = t.EntriesJSON,
+        GPA           = t.GPA,
+        Remark        = ComputeRemark(t.EntriesJSON),
+        Status        = t.Status,
         TranscriptURI = t.TranscriptURI
     };
 }

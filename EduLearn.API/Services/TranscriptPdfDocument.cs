@@ -1,8 +1,6 @@
 // ============================================================
 // SRA-03: TranscriptPdfDocument.cs
 // QuestPDF document definition for official transcript PDF output.
-// Install: dotnet add package QuestPDF
-// License: QuestPDF.Settings.License = LicenseType.Community (set in Program.cs)
 // ============================================================
 
 using QuestPDF.Fluent;
@@ -18,6 +16,7 @@ public class TranscriptPdfData
     public string MRN { get; set; } = string.Empty;
     public string ProgramName { get; set; } = string.Empty;
     public decimal? GPA { get; set; }
+    public string? Remark { get; set; }      // "PASS" | "XP" | null (Result Awaited)
     public DateTime? IssuedAt { get; set; }
     public string Status { get; set; } = string.Empty;
     public List<TranscriptEntryRow> Entries { get; set; } = new();
@@ -31,10 +30,10 @@ public class TranscriptEntryRow
     public int Credits { get; set; }
     public string Term { get; set; } = string.Empty;
     public bool GradePosted { get; set; }
-    public decimal? Score { get; set; }          // actual score earned
-    public decimal? MaxScore { get; set; }       // max possible score
-    public decimal? Percentage { get; set; }     // score / maxScore * 100
-    public string? LetterGrade { get; set; }     // A+, A, B+, B, C, D, F
+    public decimal? Score { get; set; }
+    public decimal? MaxScore { get; set; }
+    public decimal? Percentage { get; set; }
+    public string? LetterGrade { get; set; }
     public string? Status { get; set; }
     public DateTime? EnrolledAt { get; set; }
 }
@@ -44,21 +43,15 @@ public class TranscriptPdfDocument : IDocument
 {
     private readonly TranscriptPdfData _data;
 
-    // Brand colours
-    private static readonly string PrimaryColor = "#1a3c6e";   // dark navy
-    private static readonly string AccentColor  = "#f0f4fa";   // light blue-grey background
-    private static readonly string MutedColor   = "#6b7280";   // grey text
+    private static readonly string PrimaryColor = "#1a3c6e";
+    private static readonly string AccentColor  = "#f0f4fa";
+    private static readonly string MutedColor   = "#6b7280";
 
     public TranscriptPdfDocument(TranscriptPdfData data) => _data = data;
 
     public DocumentMetadata GetMetadata() => DocumentMetadata.Default;
-
     public DocumentSettings GetSettings() => DocumentSettings.Default;
 
-    // BUG-5 FIX: Single source of truth for page layout. Previously this method had a
-    // duplicate copy of the same page setup that already lives in Compose(); editing one
-    // and forgetting the other was a real risk. Now ToPdfBytes() just delegates to
-    // Document.Create(Compose) which invokes IDocument.Compose on this instance.
     public byte[] ToPdfBytes()
     {
         using var stream = new System.IO.MemoryStream();
@@ -73,7 +66,6 @@ public class TranscriptPdfDocument : IDocument
             page.Size(PageSizes.A4);
             page.Margin(40);
             page.DefaultTextStyle(t => t.FontSize(10).FontFamily(Fonts.Arial));
-
             page.Header().Element(ComposeHeader);
             page.Content().PaddingTop(16).Element(ComposeContent);
             page.Footer().AlignCenter().Text(x =>
@@ -86,12 +78,10 @@ public class TranscriptPdfDocument : IDocument
         });
     }
 
-    // ── Header: University logo area + title ────────────────────
     private void ComposeHeader(IContainer container)
     {
         container.Column(col =>
         {
-            // Top bar
             col.Item().Background(PrimaryColor).Padding(14).Row(row =>
             {
                 row.RelativeItem().Column(inner =>
@@ -105,13 +95,10 @@ public class TranscriptPdfDocument : IDocument
                     .Text("OFFICIAL COPY")
                     .FontSize(9).Bold().FontColor("#b8cce4");
             });
-
-            // Divider line
-            col.Item().Height(3).Background("#e2a94b");  // gold accent line
+            col.Item().Height(3).Background("#e2a94b");
         });
     }
 
-    // ── Content: student info card + course table + totals ──────
     private void ComposeContent(IContainer container)
     {
         container.Column(col =>
@@ -120,7 +107,7 @@ public class TranscriptPdfDocument : IDocument
             col.Item().Background(AccentColor).Border(1).BorderColor("#d1d5db")
                 .Padding(14).Row(row =>
                 {
-                    // Left side
+                    // Left — name, MRN, program
                     row.RelativeItem().Column(left =>
                     {
                         left.Item().Text(txt =>
@@ -140,16 +127,31 @@ public class TranscriptPdfDocument : IDocument
                         });
                     });
 
-                    // Right side
+                    // Right — CGPA, Result, Status, Issued
                     row.RelativeItem().Column(right =>
                     {
+                        // CGPA — shown only when Remark = PASS
                         right.Item().Text(txt =>
                         {
                             txt.Span("CGPA: ").Bold();
                             txt.Span(_data.GPA.HasValue
                                 ? $"{_data.GPA:0.00} / 10.00"
-                                : "Not yet computed");
+                                : "—");
                         });
+
+                        // Result — PASS / XP / Result Awaited
+                        right.Item().PaddingTop(4).Text(txt =>
+                        {
+                            txt.Span("Result: ").Bold();
+                            var remarkText = _data.Remark switch
+                            {
+                                "PASS" => "PASS",
+                                "XP"   => "XP (Backlog Pending)",
+                                _      => "Result Awaited"
+                            };
+                            txt.Span(remarkText);
+                        });
+
                         right.Item().PaddingTop(4).Text(txt =>
                         {
                             txt.Span("Status: ").Bold();
@@ -167,57 +169,58 @@ public class TranscriptPdfDocument : IDocument
 
             col.Item().PaddingTop(16);
 
-            // ── Section header ────────────────────────────────────
+            // ── XP warning note ───────────────────────────────────
+            if (_data.Remark == "XP")
+            {
+                col.Item().Background("#fff3cd").Border(1).BorderColor("#ffc107")
+                    .Padding(8).Text(
+                        "⚠ This student has one or more failed courses (grade F). " +
+                        "CGPA has been withheld until all backlogs are cleared.")
+                    .FontSize(9).FontColor("#856404").Italic();
+                col.Item().PaddingTop(8);
+            }
+
+            // ── Academic Record table ─────────────────────────────
             col.Item().Background(PrimaryColor).Padding(8)
                 .Text("Academic Record")
                 .FontSize(11).Bold().FontColor(Colors.White);
 
-            // ── Course table ──────────────────────────────────────
             col.Item().Border(1).BorderColor("#d1d5db").Table(table =>
             {
                 table.ColumnsDefinition(cols =>
                 {
-                    cols.ConstantColumn(80);   // Course Code
-                    cols.RelativeColumn(3);    // Course Name
-                    cols.ConstantColumn(55);   // Credits
-                    cols.ConstantColumn(80);   // Term
-                    cols.ConstantColumn(75);   // Grade Status
+                    cols.ConstantColumn(80);
+                    cols.RelativeColumn(3);
+                    cols.ConstantColumn(55);
+                    cols.ConstantColumn(80);
+                    cols.ConstantColumn(75);
                 });
 
-                // Table header row
                 table.Header(header =>
                 {
-                    void HeaderCell(string text) =>
+                    void H(string text) =>
                         header.Cell().Background(PrimaryColor).Padding(6)
                             .Text(text).Bold().FontColor(Colors.White).FontSize(9);
-
-                    HeaderCell("Code");
-                    HeaderCell("Course Title");
-                    HeaderCell("Credits");
-                    HeaderCell("Term");
-                    HeaderCell("Grade");
+                    H("Code"); H("Course Title"); H("Credits"); H("Term"); H("Grade");
                 });
 
-                // Data rows — alternating background
                 for (int i = 0; i < _data.Entries.Count; i++)
                 {
                     var entry = _data.Entries[i];
-                    var bg = i % 2 == 0 ? Colors.White.ToString() : AccentColor;
+                    var bg    = i % 2 == 0 ? Colors.White.ToString() : AccentColor;
 
-                    void DataCell(string text, bool centred = false)
+                    void D(string text, bool centred = false)
                     {
                         var cell = table.Cell().Background(bg).Padding(6);
-                        if (centred)
-                            cell.AlignCenter().Text(text).FontSize(9);
-                        else
-                            cell.Text(text).FontSize(9);
+                        if (centred) cell.AlignCenter().Text(text).FontSize(9);
+                        else cell.Text(text).FontSize(9);
                     }
 
-                    DataCell(entry.CourseCode);
-                    DataCell(entry.CourseName);
-                    DataCell(entry.Credits.ToString(), centred: true);
-                    DataCell(entry.Term, centred: true);
-                    // Show letter grade if available, score% if only score exists, otherwise Pending
+                    D(entry.CourseCode);
+                    D(entry.CourseName);
+                    D(entry.Credits.ToString(), centred: true);
+                    D(entry.Term, centred: true);
+
                     string gradeDisplay;
                     if (!string.IsNullOrWhiteSpace(entry.LetterGrade))
                         gradeDisplay = entry.LetterGrade;
@@ -227,10 +230,10 @@ public class TranscriptPdfDocument : IDocument
                         gradeDisplay = "Graded";
                     else
                         gradeDisplay = "Pending";
-                    DataCell(gradeDisplay, centred: true);
+
+                    D(gradeDisplay, centred: true);
                 }
 
-                // Empty state
                 if (_data.Entries.Count == 0)
                 {
                     table.Cell().ColumnSpan(5).Padding(16)
@@ -258,10 +261,10 @@ public class TranscriptPdfDocument : IDocument
 
             col.Item().PaddingTop(24);
 
-            // ── Official seal / signature line ───────────────────
+            // ── Signature line ────────────────────────────────────
             col.Item().Row(row =>
             {
-                row.RelativeItem(); // spacer
+                row.RelativeItem();
                 row.ConstantItem(200).Column(sig =>
                 {
                     sig.Item().BorderBottom(1).BorderColor(PrimaryColor).Height(30);

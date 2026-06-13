@@ -104,9 +104,9 @@ builder.Services.AddScoped<IScholarshipRepository, ScholarshipRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 builder.Services.AddScoped<IGradeChangeRepository, GradeChangeRepository>();
 builder.Services.AddScoped<ISyllabusRepository, SyllabusRepository>();
-builder.Services.AddScoped<IPlagiarismRepository, PlagiarismRepository>();  // AGI-04
-builder.Services.AddScoped<PrerequisiteEngine>();  // CCM-03: prerequisite check service
-builder.Services.AddScoped<TimetableConflictService>();  // BUG-3 FIX: shared schedule conflict detection (ETS-01 + ETS-03)
+builder.Services.AddScoped<IPlagiarismRepository, PlagiarismRepository>();
+builder.Services.AddScoped<PrerequisiteEngine>();  
+builder.Services.AddScoped<TimetableConflictService>();
 
 
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();

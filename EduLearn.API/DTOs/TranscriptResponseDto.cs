@@ -12,6 +12,7 @@ public class TranscriptResponseDto
     public DateTime IssuedAt { get; set; }
     public string EntriesJSON { get; set; } = null!;
     public decimal? GPA { get; set; }
+    public string? Remark { get; set; }   // "PASS" | "XP" | null (Result Awaited)
     public TranscriptStatus Status { get; set; }
     public string? TranscriptURI { get; set; }
 }

@@ -14,14 +14,11 @@ export default function TranscriptsPage() {
     const [transcripts, setTranscripts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [actionMessage, setActionMessage] = useState(null); // { type, text }
-    const [actionInProgress, setActionInProgress] = useState(null); // 'generate' | id of transcript
+    const [actionMessage, setActionMessage] = useState(null);
+    const [actionInProgress, setActionInProgress] = useState(null);
 
-    // Confirmation dialogs
     const [generateConfirm, setGenerateConfirm] = useState(false);
     const [publishConfirm, setPublishConfirm] = useState(null);
-
-    // Detail modal
     const [detailModal, setDetailModal] = useState(null);
 
     const { role } = authService.getCurrentUser();
@@ -59,7 +56,13 @@ export default function TranscriptsPage() {
             const result = await transcriptService.generate(studentId);
             setActionMessage({
                 type: 'success',
-                text: `Draft transcript generated (ID ${result.transcriptID}). GPA: ${result.gpa?.toFixed(2) || 'Not yet computed'}.`,
+                text: `Draft transcript generated (ID ${result.transcriptID}). ${
+                    result.remark === 'PASS'
+                        ? `CGPA: ${result.gpa?.toFixed(2)} — PASS`
+                        : result.remark === 'XP'
+                        ? 'Result: XP — Student has a failed course. CGPA withheld.'
+                        : 'Result Awaited — no grades recorded yet.'
+                }`,
             });
             await loadTranscripts();
         } catch (err) {
@@ -111,7 +114,6 @@ export default function TranscriptsPage() {
         }
     };
 
-    // Parse entries JSON for preview in modal
     const parseEntries = (json) => {
         if (!json) return [];
         try {
@@ -128,7 +130,6 @@ export default function TranscriptsPage() {
                 <i className="bi bi-file-earmark-text me-2"></i>Transcripts
             </h2>
 
-            {/* Top-right auto-dismissing toast for action results */}
             <Toast
                 show={!!actionMessage}
                 type={actionMessage?.type}
@@ -136,7 +137,6 @@ export default function TranscriptsPage() {
                 onClose={() => setActionMessage(null)}
             />
 
-            {/* Search panel */}
             <div className="card shadow-sm mb-4">
                 <div className="card-body">
                     <div className="row g-3 align-items-end">
@@ -153,7 +153,6 @@ export default function TranscriptsPage() {
                                 min="1"
                             />
                         </div>
-
                         <div className="col-md-3">
                             <label className="form-label fw-bold">&nbsp;</label>
                             <button
@@ -164,7 +163,6 @@ export default function TranscriptsPage() {
                                 <i className="bi bi-arrow-clockwise me-1"></i>Refresh
                             </button>
                         </div>
-
                         <div className="col-md-3">
                             <label className="form-label fw-bold">&nbsp;</label>
                             {canManage && (
@@ -186,10 +184,8 @@ export default function TranscriptsPage() {
             </div>
 
             <ErrorAlert error={error} onDismiss={() => setError(null)} />
-
             {loading && <Loading message="Loading transcripts..." />}
 
-            {/* Empty state */}
             {!studentId && (
                 <div className="alert alert-info">
                     <i className="bi bi-info-circle me-2"></i>
@@ -197,17 +193,13 @@ export default function TranscriptsPage() {
                 </div>
             )}
 
-            {/* Transcripts list */}
             {!loading && studentId && transcripts.length === 0 && !error && (
                 <div className="card shadow-sm">
                     <div className="card-body text-center py-5 text-muted">
                         <i className="bi bi-file-earmark-x" style={{ fontSize: '3rem' }}></i>
                         <p className="mt-3 mb-0">No transcripts found for this student.</p>
                         {canManage && (
-                            <button
-                                className="btn btn-link mt-2"
-                                onClick={() => setGenerateConfirm(true)}
-                            >
+                            <button className="btn btn-link mt-2" onClick={() => setGenerateConfirm(true)}>
                                 <i className="bi bi-plus-lg me-1"></i>Generate the first transcript
                             </button>
                         )}
@@ -226,27 +218,21 @@ export default function TranscriptsPage() {
                     <div className="list-group list-group-flush">
                         {transcripts.map(t => {
                             const isIssued = t.status === 'Issued';
-                            const isBusy = actionInProgress === t.transcriptID;
-                            const entries = parseEntries(t.entriesJSON);
+                            const isBusy   = actionInProgress === t.transcriptID;
+                            const entries  = parseEntries(t.entriesJSON);
 
                             return (
                                 <div key={t.transcriptID} className="list-group-item p-3">
                                     <div className="row align-items-center">
                                         <div className="col-md-7">
                                             <div className="d-flex align-items-center gap-2 mb-1">
-                                                <h6 className="mb-0">
-                                                    Transcript {t.transcriptID}
-                                                </h6>
+                                                <h6 className="mb-0">Transcript {t.transcriptID}</h6>
                                                 <StatusBadge status={t.status} />
                                                 {(() => {
-                                                    const entries = parseEntries(t.entriesJSON);
                                                     const isStale = t.status !== 'Issued' &&
                                                         entries.some(e => e.gradePosted && !e.letterGrade);
                                                     return isStale ? (
-                                                        <span
-                                                            className="badge bg-warning text-dark"
-                                                            title="Grades were updated after this transcript was generated"
-                                                        >
+                                                        <span className="badge bg-warning text-dark" title="Grades updated after generation">
                                                             <i className="bi bi-exclamation-triangle me-1"></i>Stale
                                                         </span>
                                                     ) : null;
@@ -267,11 +253,23 @@ export default function TranscriptsPage() {
                                             </div>
                                         </div>
 
+                                        {/* CGPA + Remark */}
                                         <div className="col-md-3 text-center">
                                             <div className="display-6 text-primary-edulearn fw-bold mb-0" style={{ fontSize: '2rem' }}>
                                                 {t.gpa != null ? t.gpa.toFixed(2) : '—'}
                                             </div>
                                             <small className="text-muted">CGPA / 10.00</small>
+                                            <div className="mt-1">
+                                                {t.remark === 'PASS' && (
+                                                    <span className="badge bg-success">PASS</span>
+                                                )}
+                                                {t.remark === 'XP' && (
+                                                    <span className="badge bg-danger">XP — Backlog Pending</span>
+                                                )}
+                                                {!t.remark && (
+                                                    <span className="badge bg-secondary">Result Awaited</span>
+                                                )}
+                                            </div>
                                         </div>
 
                                         <div className="col-md-2 text-end">
@@ -283,32 +281,28 @@ export default function TranscriptsPage() {
                                                 >
                                                     <i className="bi bi-eye me-1"></i>View
                                                 </button>
-
                                                 {!isIssued && canManage && (
                                                     <button
                                                         className="btn btn-outline-success"
                                                         onClick={() => setPublishConfirm(t)}
                                                         disabled={isBusy}
                                                     >
-                                                        {isBusy ? (
-                                                            <><span className="spinner-border spinner-border-sm"></span></>
-                                                        ) : (
-                                                            <><i className="bi bi-check2-circle me-1"></i>Issue</>
-                                                        )}
+                                                        {isBusy
+                                                            ? <span className="spinner-border spinner-border-sm"></span>
+                                                            : <><i className="bi bi-check2-circle me-1"></i>Issue</>
+                                                        }
                                                     </button>
                                                 )}
-
                                                 {isIssued && (
                                                     <button
                                                         className="btn btn-primary-edulearn"
                                                         onClick={() => handleDownloadPdf(t)}
                                                         disabled={isBusy}
                                                     >
-                                                        {isBusy ? (
-                                                            <><span className="spinner-border spinner-border-sm me-1"></span>...</>
-                                                        ) : (
-                                                            <><i className="bi bi-download me-1"></i>PDF</>
-                                                        )}
+                                                        {isBusy
+                                                            ? <><span className="spinner-border spinner-border-sm me-1"></span>...</>
+                                                            : <><i className="bi bi-download me-1"></i>PDF</>
+                                                        }
                                                     </button>
                                                 )}
                                             </div>
@@ -321,14 +315,13 @@ export default function TranscriptsPage() {
                 </div>
             )}
 
-            {/* Generate confirmation */}
             <ConfirmDialog
                 show={generateConfirm}
                 title="Generate New Transcript"
                 message={
                     `Generate a fresh draft transcript for Student #${studentId}? ` +
-                    'This will compute their GPA from all graded enrollments. ' +
-                    'The transcript starts in Draft status and must be issued before it can be downloaded.'
+                    'CGPA is credit-weighted and shown only if all courses are passed. ' +
+                    'The transcript starts in Draft and must be issued before download.'
                 }
                 onConfirm={handleGenerate}
                 onCancel={() => setGenerateConfirm(false)}
@@ -336,14 +329,13 @@ export default function TranscriptsPage() {
                 confirmVariant="primary"
             />
 
-            {/* Issue confirmation */}
             <ConfirmDialog
                 show={!!publishConfirm}
                 title="Issue Transcript"
                 message={
                     publishConfirm
                         ? `Issue Transcript ${publishConfirm.transcriptID} for ${publishConfirm.studentName}? ` +
-                          'Once issued, the transcript becomes the official record and can be downloaded as a PDF.'
+                          'Once issued, it becomes the official record and can be downloaded as PDF.'
                         : ''
                 }
                 onConfirm={handlePublish}
@@ -367,7 +359,6 @@ export default function TranscriptsPage() {
                                     <button type="button" className="btn-close btn-close-white" onClick={() => setDetailModal(null)}></button>
                                 </div>
                                 <div className="modal-body">
-                                    {/* Header info */}
                                     <div className="row g-3 mb-4">
                                         <div className="col-md-8">
                                             <h4 className="text-primary-edulearn mb-1">{detailModal.studentName}</h4>
@@ -383,21 +374,27 @@ export default function TranscriptsPage() {
                                                 <span className="text-muted h6 ms-1">/10.00</span>
                                             </div>
                                             <small className="text-muted">CGPA · <StatusBadge status={detailModal.status} /></small>
+                                            <div className="mt-1">
+                                                {detailModal.remark === 'PASS' && (
+                                                    <span className="badge bg-success ms-1">PASS</span>
+                                                )}
+                                                {detailModal.remark === 'XP' && (
+                                                    <span className="badge bg-danger ms-1">XP — Backlog Pending</span>
+                                                )}
+                                                {!detailModal.remark && (
+                                                    <span className="badge bg-secondary ms-1">Result Awaited</span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
                                     <hr />
-
                                     <h6 className="text-muted text-uppercase small mb-3">Academic Record</h6>
 
                                     {(() => {
                                         const entries = parseEntries(detailModal.entriesJSON);
                                         if (entries.length === 0) {
-                                            return (
-                                                <p className="text-muted text-center py-3 mb-0">
-                                                    No course entries on this transcript.
-                                                </p>
-                                            );
+                                            return <p className="text-muted text-center py-3 mb-0">No course entries on this transcript.</p>;
                                         }
                                         return (
                                             <div className="table-responsive">
@@ -421,7 +418,7 @@ export default function TranscriptsPage() {
                                                                 <td className="text-center">
                                                                     {entry.letterGrade ? (
                                                                         <span className={`badge ${
-                                                                            entry.letterGrade === 'F'                          ? 'bg-danger' :
+                                                                            entry.letterGrade === 'F' ? 'bg-danger' :
                                                                             entry.letterGrade === 'E' || entry.letterGrade === 'D' ? 'bg-warning text-dark' :
                                                                             'bg-success'
                                                                         }`}>
@@ -429,10 +426,7 @@ export default function TranscriptsPage() {
                                                                             {entry.percentage != null ? ` · ${Number(entry.percentage).toFixed(1)}%` : ''}
                                                                         </span>
                                                                     ) : entry.gradePosted ? (
-                                                                        <span
-                                                                            className="badge bg-warning text-dark"
-                                                                            title="Grade was posted after this transcript was generated — regenerate for updated grade"
-                                                                        >
+                                                                        <span className="badge bg-warning text-dark" title="Grade posted after generation">
                                                                             <i className="bi bi-clock-history me-1"></i>Stale
                                                                         </span>
                                                                     ) : (
@@ -447,7 +441,6 @@ export default function TranscriptsPage() {
                                         );
                                     })()}
 
-                                    {/* Stale warning — shown when gradePosted=true but letterGrade=null */}
                                     {(() => {
                                         const entries = parseEntries(detailModal.entriesJSON);
                                         const hasStale = detailModal.status !== 'Issued' &&
@@ -456,16 +449,10 @@ export default function TranscriptsPage() {
                                         return (
                                             <div className="alert alert-warning py-2 mt-3 mb-2">
                                                 <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                                                <strong>Stale transcript</strong> — One or more grades were recorded
-                                                after this transcript was generated. The CGPA shown may be incorrect.
+                                                <strong>Stale transcript</strong> — Grades were updated after generation.
                                                 {canManage && (
-                                                    <button
-                                                        className="btn btn-link btn-sm p-0 ms-2 fw-bold"
-                                                        onClick={() => {
-                                                            setDetailModal(null);
-                                                            setGenerateConfirm(true);
-                                                        }}
-                                                    >
+                                                    <button className="btn btn-link btn-sm p-0 ms-2 fw-bold"
+                                                        onClick={() => { setDetailModal(null); setGenerateConfirm(true); }}>
                                                         Regenerate now →
                                                     </button>
                                                 )}
@@ -476,7 +463,7 @@ export default function TranscriptsPage() {
                                     <div className="alert alert-info mb-0 mt-2 py-2">
                                         <i className="bi bi-info-circle me-2"></i>
                                         <small>
-                                            This is a preview. {detailModal.status === 'Issued'
+                                            {detailModal.status === 'Issued'
                                                 ? 'Click "PDF" to download the official document.'
                                                 : 'Issue this transcript to enable PDF download.'}
                                         </small>
@@ -484,14 +471,8 @@ export default function TranscriptsPage() {
                                 </div>
                                 <div className="modal-footer">
                                     {detailModal.status === 'Issued' && (
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary-edulearn"
-                                            onClick={() => {
-                                                setDetailModal(null);
-                                                handleDownloadPdf(detailModal);
-                                            }}
-                                        >
+                                        <button type="button" className="btn btn-primary-edulearn"
+                                            onClick={() => { setDetailModal(null); handleDownloadPdf(detailModal); }}>
                                             <i className="bi bi-download me-2"></i>Download PDF
                                         </button>
                                     )}

@@ -63,7 +63,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasKey("ApplicantID");
 
-                    b.ToTable("Applicants");
+                    b.ToTable("Applicants", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Assessment", b =>
@@ -122,7 +122,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("SectionID");
 
-                    b.ToTable("Assessments");
+                    b.ToTable("Assessments", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.AuditLog", b =>
@@ -159,7 +159,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("UserID");
 
-                    b.ToTable("AuditLogs");
+                    b.ToTable("AuditLogs", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.AuditPackage", b =>
@@ -189,7 +189,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasKey("PackageID");
 
-                    b.ToTable("AuditPackages");
+                    b.ToTable("AuditPackages", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Content", b =>
@@ -241,7 +241,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("UploadedByFK");
 
-                    b.ToTable("Contents");
+                    b.ToTable("Contents", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Course", b =>
@@ -291,7 +291,7 @@ namespace EduLearn.API.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("Courses");
+                    b.ToTable("Courses", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Discussion", b =>
@@ -330,7 +330,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("ThreadStarterID");
 
-                    b.ToTable("Discussions");
+                    b.ToTable("Discussions", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Enrollment", b =>
@@ -369,7 +369,7 @@ namespace EduLearn.API.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_Enrollments_StudentID_SectionID");
 
-                    b.ToTable("Enrollments");
+                    b.ToTable("Enrollments", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.FeeSchedule", b =>
@@ -407,7 +407,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("ProgramID");
 
-                    b.ToTable("FeeSchedules");
+                    b.ToTable("FeeSchedules", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.GradeChange", b =>
@@ -447,7 +447,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("SubmissionID");
 
-                    b.ToTable("GradeChanges");
+                    b.ToTable("GradeChanges", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Invoice", b =>
@@ -492,7 +492,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("StudentID");
 
-                    b.ToTable("Invoices");
+                    b.ToTable("Invoices", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.KPI", b =>
@@ -528,7 +528,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasKey("KPIID");
 
-                    b.ToTable("KPIs");
+                    b.ToTable("KPIs", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Notification", b =>
@@ -575,7 +575,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("UserID");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Payment", b =>
@@ -613,7 +613,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("InvoiceID");
 
-                    b.ToTable("Payments");
+                    b.ToTable("Payments", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.PlagiarismReport", b =>
@@ -654,7 +654,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("SubmissionID");
 
-                    b.ToTable("PlagiarismReports");
+                    b.ToTable("PlagiarismReports", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Program", b =>
@@ -694,7 +694,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasKey("ProgramID");
 
-                    b.ToTable("Programs");
+                    b.ToTable("Programs", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Report", b =>
@@ -730,7 +730,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("GeneratedByFK");
 
-                    b.ToTable("Reports");
+                    b.ToTable("Reports", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Room", b =>
@@ -764,7 +764,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasKey("RoomID");
 
-                    b.ToTable("Rooms");
+                    b.ToTable("Rooms", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Scholarship", b =>
@@ -804,7 +804,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("StudentID");
 
-                    b.ToTable("Scholarships");
+                    b.ToTable("Scholarships", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Section", b =>
@@ -851,7 +851,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("RoomID");
 
-                    b.ToTable("Sections");
+                    b.ToTable("Sections", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Student", b =>
@@ -915,7 +915,7 @@ namespace EduLearn.API.Migrations
                     b.HasIndex("UserID")
                         .IsUnique();
 
-                    b.ToTable("Students");
+                    b.ToTable("Students", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Submission", b =>
@@ -965,7 +965,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("StudentID");
 
-                    b.ToTable("Submissions");
+                    b.ToTable("Submissions", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Syllabus", b =>
@@ -1006,7 +1006,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("CreatedByFK");
 
-                    b.ToTable("Syllabi");
+                    b.ToTable("Syllabi", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Ticket", b =>
@@ -1058,7 +1058,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("CreatedByFK");
 
-                    b.ToTable("Tickets");
+                    b.ToTable("Tickets", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Transcript", b =>
@@ -1095,7 +1095,7 @@ namespace EduLearn.API.Migrations
 
                     b.HasIndex("StudentID");
 
-                    b.ToTable("Transcripts");
+                    b.ToTable("Transcripts", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.User", b =>
@@ -1168,7 +1168,7 @@ namespace EduLearn.API.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("EduLearn.API.Models.Assessment", b =>
